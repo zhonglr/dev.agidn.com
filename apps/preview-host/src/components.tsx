@@ -10,9 +10,9 @@ function content(slots: RuntimeComponentProps["slots"], name = "content"): React
   return slots[name] ?? null;
 }
 
-const Button = ({ node, style, hostProps, onEvent }: RuntimeComponentProps) => (
+const Button = ({ node, slots, style, hostProps, onEvent }: RuntimeComponentProps) => (
   <button {...hostProps} className={`ui-button ui-button--${node.variant ?? "primary"}`} style={style} disabled={node.props?.disabled === true} onClick={() => onEvent("press")}>
-    {text(node, "label", "Button")}
+    {content(slots, "leading")}<span className="ui-button__content">{slots.content?.length ? content(slots) : text(node, "label", "Button")}</span>{content(slots, "trailing")}
   </button>
 );
 

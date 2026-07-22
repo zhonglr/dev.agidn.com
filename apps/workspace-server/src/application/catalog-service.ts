@@ -15,21 +15,28 @@ export interface WorkspaceCatalog {
 function componentForApi(definition: ComponentDefinition) {
   return {
     name: definition.name,
+    ...(definition.displayName === undefined ? {} : { displayName: structuredClone(definition.displayName) }),
+    ...(definition.category === undefined ? {} : { category: definition.category }),
+    ...(definition.categoryDisplayName === undefined ? {} : { categoryDisplayName: structuredClone(definition.categoryDisplayName) }),
     version: definition.version,
     source: definition.source,
     roles: [...definition.roles],
     props: Object.fromEntries(Object.entries(definition.props).map(([name, prop]) => [name, {
       type: prop.type,
+      ...(prop.displayName === undefined ? {} : { displayName: structuredClone(prop.displayName) }),
       ...(prop.required === undefined ? {} : { required: prop.required }),
-      ...(prop.values === undefined ? {} : { values: [...prop.values] })
+      ...(prop.values === undefined ? {} : { values: [...prop.values] }),
+      ...(prop.valueDisplayNames === undefined ? {} : { valueDisplayNames: structuredClone(prop.valueDisplayNames) })
     }])),
     slots: Object.fromEntries(Object.entries(definition.slots).map(([name, slot]) => [name, {
+      ...(slot.displayName === undefined ? {} : { displayName: structuredClone(slot.displayName) }),
       ...(slot.required === undefined ? {} : { required: slot.required }),
       ...(slot.accepts === undefined ? {} : { accepts: [...slot.accepts] }),
       ...(slot.minItems === undefined ? {} : { minItems: slot.minItems }),
       ...(slot.maxItems === undefined ? {} : { maxItems: slot.maxItems })
     }])),
     variants: [...definition.variants],
+    ...(definition.variantDisplayNames === undefined ? {} : { variantDisplayNames: structuredClone(definition.variantDisplayNames) }),
     states: [...definition.states],
     ...(definition.accessibleName === undefined ? {} : { accessibleName: definition.accessibleName })
   };

@@ -1,6 +1,6 @@
 import { defineComponent } from "@agidn/component-registry";
 export const PricingCardDefinition = defineComponent({
-  name: "PricingCard", version: "1.0.0", source: "@app/billing/PricingCard", roles: ["pricing-plan"],
+  name: "PricingCard", category: "commerce", version: "1.0.0", source: "@app/billing/PricingCard", roles: ["pricing-plan"],
   props: {
     planName: { type: "string", required: true }, price: { type: "string", required: true }, featured: { type: "boolean" }
   },
