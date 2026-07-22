@@ -10,6 +10,10 @@ import {
   TransportErrorResponseSchema
 } from "./schemas/document.js";
 import type { CommitCommandsRequest, NavigationRequest } from "./types.js";
+import { GetHistoryResponseSchema } from "./schemas/history.js";
+import { GetCatalogResponseSchema } from "./schemas/catalog.js";
+import { ExportContextRequestSchema, ExportContextResponseSchema } from "./schemas/export.js";
+import type { ExportContextRequest } from "./types.js";
 
 export interface ProtocolIssue {
   path: string;
@@ -40,3 +44,7 @@ export const decodeNavigationRequest = decoder<NavigationRequest>(TypeCompiler.C
 export const checkNavigationResponse = checker(NavigationResponseSchema);
 export const checkProtocolErrorResponse = checker(ProtocolErrorResponseSchema);
 export const checkTransportErrorResponse = checker(TransportErrorResponseSchema);
+export const checkGetHistoryResponse = checker(GetHistoryResponseSchema);
+export const checkGetCatalogResponse = checker(GetCatalogResponseSchema);
+export const decodeExportContextRequest = decoder<ExportContextRequest>(TypeCompiler.Compile(ExportContextRequestSchema));
+export const checkExportContextResponse = checker(ExportContextResponseSchema);
