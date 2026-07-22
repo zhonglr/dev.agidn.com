@@ -1,0 +1,59 @@
+# Studio 第三轮验收整改记录
+
+> 日期：2026-07-23
+> 来源：Studio 第三轮用户反馈
+> 当前状态：Development complete / Ready for Verification
+
+本轮把 12 项反馈拆成结构编辑、Revision、信息架构和 Workbench 四组。`Ready for Verification` 表示实现、契约测试、类型检查和构建已经完成，仍需在真实浏览器中按下列路径复验。
+
+## 结构编辑
+
+| 项目 | 实现结果 | 验收重点 |
+| --- | --- | --- |
+| 新组件插入位置不可见 | Component 拖动经过 Canvas 时持续请求 Preview hit-test，以绿色 before / inside / after 几何层和文字显示最终位置 | 不同缩放和 breakpoint 下提示与实际插入位置一致 |
+| Outline 无法可靠排序或换父节点 | 拖动源状态移入 Studio Session，不再依赖浏览器在 `dragover` 阶段暴露 DataTransfer 内容；Outline 与 Canvas 共用 MoveTarget | 同组排序、跨父级移动、named Slot、非法目标和 undo/redo |
+| 组件不能放入组件内部 | Registry Slot 是唯一合法内部入口；Button 新增 leading Icon、content Text、trailing Icon Slot，Renderer 消费这些 Slot | Icon/Text 拖入 Button 后 Preview、Outline、Revision 一致 |
+| 保存自定义组件入口缺失 | Inspector 新增“保存为可复用组件”，Components 新增 Saved components 分组，可点击或拖动重复插入并重新生成全部 node ID | 保存、刷新后保留、插入多次不产生 ID 冲突、删除 |
+
+“保存为可复用组件”当前保存的是由已注册组件组成的选中节点子树，持久化在当前浏览器。它不会伪造新的代码组件实现；新的代码组件仍需通过 Component Registry 和 Preview Runtime 注册。
+
+## Revision History
+
+| 项目 | 实现结果 | 验收重点 |
+| --- | --- | --- |
+| History 只能查看、不能恢复 | 每个历史 Revision 提供 Restore 和确认操作；恢复目标快照时创建新的单调 Revision，保留完整审计记录，并将恢复前状态放入 undo 栈 | 恢复 Revision 0 / 中间 Revision、刷新后记录保留、恢复后 undo |
+
+## 信息架构与国际化
+
+| 项目 | 实现结果 |
+| --- | --- |
+| Inspector 参数大小写混杂 | 所有标识符先经过 Display Label 层，camelCase、点号和连字符不直接进入可见 UI |
+| 实际名称与展示名称未分离 | Component / Prop / Slot / Variant Schema 新增可本地化 display metadata；Catalog API 保留并返回该元数据 |
+| Components 未分组 | Registry 增加 category，面板按 Actions、Typography、Media、Content、Layout、Navigation、Commerce 分组 |
+| 缺少 i18n | 新增 `I18nProvider`、`en-US` / `zh-CN` 消息、Settings 语言切换；支持 `VITE_STUDIO_LOCALE` 和 `window.__AGIDN_STUDIO_CONFIG__.locale` 配置 |
+
+## Workbench 与视觉层级
+
+| 项目 | 实现结果 |
+| --- | --- |
+| Outline 层级难辨 | 按树深度绘制连续纵向引导线，不影响 selection 和 drop indicator |
+| Dock 轮盘难唤出且边框太小 | `dragover` 即激活目标，拖动期间显示操作提示；compass 从 92px 增至 136px，目标从 28px 增至 40px |
+| 面板显示/隐藏入口集中在左侧 | 建立 JetBrains 风格周边工具栏：左侧项目类、右侧内容类、底部状态类；按钮可切换显示/隐藏；顶部新增 File / Edit / View 菜单 |
+
+## 自动化与构建证据
+
+- `pnpm typecheck`：通过。
+- `pnpm test`：22 个文件、90 项测试通过。
+- `pnpm build`、`pnpm studio:build`、`pnpm preview:build`：通过。
+- Chrome 1600×1000 静态渲染检查：顶部菜单、三侧工具栏、Outline 引导线和面板布局无溢出。
+- Catalog 运行冒烟：category、displayName 和 Button Slot 均由 Workspace Server 返回。
+
+## 尚需人工验收
+
+1. Component Grid → Canvas / Outline 的 before、inside、after 插入。
+2. Outline / Canvas 的 reorder、reparent、named Slot 和非法落点提示。
+3. Icon / Text → Button，以及 undo / redo。
+4. Saved components 的刷新持久化和重复插入。
+5. Dock compass 在连续跨 Panel 拖动时的发现性、稳定性和观感。
+6. Settings 切换中英文后的文案覆盖完整性。
+7. History 恢复旧 Revision、二次确认、恢复后 undo 以及刷新后的持久化。

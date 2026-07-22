@@ -8,11 +8,13 @@
 
 > 第二轮 UAT 进一步确认已有节点移动、Tree 拖动、Tooltip 时序、variant 视觉覆盖和 Dock Overlay 仍未达到产品验收，详见 [Studio 第二轮验收问题追踪](./STUDIO_UAT_ROUND_2_ISSUES.md)。
 
+> 第三轮反馈已完成开发整改：新增插入位置预览、可靠的 Outline 移动、Button 内部 Slot、可复用组件保存、Revision 恢复、Display Label、组件分组、基础 i18n、树引导线、Dock 发现性和环绕式工具窗口栏；等待真实交互复验。详见 [Studio 第三轮验收整改记录](./STUDIO_UAT_ROUND_3_ISSUES.md)。
+
 > Cycle 边界：[C01 — Studio Foundation & First UAT](./cycles/c01/README.md) 已在 `9bece1d` 关闭，状态为 `Closed with carryover`，产品验收为 `Not accepted`。
 
 项目已经完成可运行的无界面内核、具备本地持久化的 Workspace Server、React Renderer / Preview Host，以及可编排的 Studio Workbench 代码基线。布局树、面板停靠、独立 Canvas Viewport 和版本化 Preview 消息协议均已存在，但首轮 UAT 确认了选择链路、布局恢复和视觉一致性缺陷。
 
-Heading / Text Inspector、Revision 提交与 undo/redo 已有实现，但画布点击选择和 Preview 同步尚未通过 UAT，因此首个编辑闭环当前仍视为未验收。结构拖放、其他组件编辑器、乐观更新/失败回滚、面板折叠和布局 migration 也尚未完成。
+Heading / Text Inspector、Revision 提交、undo/redo、结构拖放和组件 Slot 插入已有实现，但仍需第三轮真实浏览器 UAT，因此首个完整编辑闭环当前仍视为未验收。乐观更新/失败回滚、面板折叠和布局 migration 尚未完成。
 
 ## 已完成功能
 
@@ -26,10 +28,10 @@ Heading / Text Inspector、Revision 提交与 undo/redo 已有实现，但画布
 | Command Engine | Insert、Move、Remove、Set Prop、Set Variant、Set Token、Set Responsive Policy、Set Role 和受控布局属性 |
 | Patch | 基于 Node ID 的 Insert、Move、Remove 和 Update 操作 |
 | Document Engine | 原子事务、baseRevision 冲突检测、重复 Command ID 拒绝、Revision 历史 |
-| Undo/Redo | 撤销和重做均创建新的单调 Revision |
+| Undo/Redo/Restore | 撤销、重做和历史恢复均创建新的单调 Revision；恢复操作本身可撤销 |
 | Context Exporter | 七文件导出、引用裁剪、稳定 JSON 和 SHA-256 内容 Hash |
 | CLI | `validate`、`apply`、`export` |
-| Workspace Server | Document、History、Catalog、Command、undo/redo 和 Revision Export HTTP API |
+| Workspace Server | Document、History、Catalog、Command、undo/redo、历史恢复和 Revision Export HTTP API |
 | Revision Store | `1.0.0` 持久化格式、运行时校验、原子文件替换、串行写入和服务重启恢复 |
 | API Protocol | 版本化请求/响应 Schema、400/409/422 错误边界 |
 | Workspace 配置 | Component、Token、Action、Policy 和 Constraint JSON 运行时校验 |
@@ -38,8 +40,8 @@ Heading / Text Inspector、Revision 提交与 undo/redo 已有实现，但画布
 | Preview Protocol | 版本化、严格运行时验证的 document / breakpoint / selection / hit-test / bounds / insert-drop / existing-node-move / error 消息 |
 | Studio Workbench | 版本化布局 Schema、Panel/Command/Contribution Registry、嵌套 Split/Tab/Panel、可访问分隔条、紧凑 Dock compass、几何预览、标签合并和布局持久化 |
 | Canvas Viewport | 独立平移/缩放、触控板手势、`100%`、Fit Page / Selection、选中 Overlay、已有节点拖动和统一坐标转换服务 |
-| Editing Slice | 动态 Page Outline、画布/大纲选中同步、Registry Inspector、插入/移动、Revision 确认和 undo/redo |
-| Tests | 85 项契约、规则、渲染、Variant 覆盖、Tooltip 时序、结构拖动、Preview 协议、Workbench、坐标、事务、模块边界、持久化恢复和 HTTP 集成测试 |
+| Editing Slice | 动态 Page Outline、画布/大纲选中同步、Registry Inspector、插入/移动、Revision 确认、undo/redo 和 History 恢复 |
+| Tests | 90 项契约、规则、渲染、Display Label、Variant 覆盖、Tooltip 时序、结构拖动、Preview 协议、Workbench、坐标、事务、模块边界、持久化恢复和 HTTP 集成测试 |
 
 ## 已支持 Command
 
@@ -70,6 +72,7 @@ GET  /v1/catalog
 POST /v1/commands
 POST /v1/undo
 POST /v1/redo
+POST /v1/history/restore
 POST /v1/export
 ```
 
@@ -118,7 +121,7 @@ pnpm preview
 
 ## 下一步顺序
 
-1. 定义 Data Source / Binding Schema 并补齐引用验证。
-2. 补齐 Workbench 面板折叠、键盘停靠命令、布局 migration 和恢复测试。
-3. 实现合法 Slot 的结构拖放、插入指示和命中诊断。
-4. 将编辑提交升级为乐观状态，补齐失败回滚与更完整的错误展示。
+1. 按第三轮验收矩阵完成插入、移动、Button Slot、Saved components、Dock 与 i18n 的真实浏览器 UAT。
+2. 定义 Data Source / Binding Schema 并补齐引用验证。
+3. 将编辑提交升级为乐观状态，补齐失败回滚与更完整的错误展示。
+4. 补齐 Workbench 面板折叠、键盘停靠命令、布局 migration 和恢复测试。

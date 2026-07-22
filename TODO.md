@@ -21,14 +21,14 @@
 - [x] 实现 Insert、Move、Remove、Set Prop、Set Variant、Set Token、Set Responsive Policy、Set Role 和受控布局 Command。
 - [x] 实现基于 Node ID 的 Insert、Move、Remove 和 Update Patch。
 - [x] 实现原子事务、`baseRevision` 冲突检测和重复 Command ID 拒绝。
-- [x] 实现单调 Revision history、undo 和 redo。
+- [x] 实现单调 Revision history、undo、redo 和可撤销的历史恢复。
 
 ### Workspace Server
 
 - [x] 实现版本化 Revision Store 和运行时状态校验。
 - [x] 实现原子文件替换、串行写入和服务重启恢复。
 - [x] 实现 Document、History 和 Catalog 查询 API。
-- [x] 实现 Command、undo 和 redo API。
+- [x] 实现 Command、undo、redo 和历史恢复 API。
 - [x] 实现从当前或指定正式 Revision 导出 Context Package 的 API。
 - [x] 限制客户端导出路径，并串行化同目录并发导出。
 - [x] 为所有 HTTP 请求和响应提供 TypeBox 协议验证与明确错误边界。
@@ -57,9 +57,9 @@ P2 专业 Studio Workbench
 P3 Migration、Validation API 与 WebSocket 完善
 ```
 
-- [ ] P0 完成后立即启动 UI 基础，不等待 P3 全部完成。
-- [ ] P1 交付第一个可查看的真实 Golden Pricing Page。
-- [ ] P2 交付布局可恢复、面板可编排、画布可独立缩放，且能选择、编辑、撤销和导出的 Studio。
+- [x] P0 完成后立即启动 UI 基础，不等待 P3 全部完成。
+- [x] P1 交付第一个可查看的真实 Golden Pricing Page。
+- [x] P2 已交付布局可恢复、面板可编排、画布可独立缩放，且能选择、编辑、撤销和导出的代码基线；产品验收仍在进行。
 
 ### P0：UI 前置数据安全
 
@@ -94,12 +94,12 @@ P3 Migration、Validation API 与 WebSocket 完善
 - [x] 建立统一坐标转换服务，确保 iframe DOM 与 Selection Overlay 对齐；辅助线和结构拖放继续复用该服务。
 - [x] 实现真实页面画布、节点选择与选中同步。
 - [x] 完成 Text / Heading Prop 修改、Revision 确认、undo/redo 的首个端到端编辑闭环。
-- [ ] 实现合法 Slot 拖放、插入、移动和排序。
+- [x] 实现合法 Slot 拖放、插入位置提示、移动和排序；等待第三轮真实浏览器 UAT。
 - [ ] 实现 Props、Variant、Token、布局和响应式属性面板。
 - [ ] 实现规则错误和修复建议展示。
 - [ ] 实现乐观 Command、服务端确认与失败回滚。
-- [x] 实现 undo/redo 和 Revision 保存状态 UI。
-- [ ] 实现导出 UI。
+- [x] 实现 undo/redo、History 恢复和 Revision 保存状态 UI。
+- [x] 实现导出 UI。
 - [ ] 添加 Workbench 布局恢复、画布手势/坐标、Studio 组件和完整编辑流程 E2E 测试。
 
 ### P3：完善 Migration 与 Workspace Server
@@ -136,7 +136,7 @@ P3 Migration、Validation API 与 WebSocket 完善
 | M0 领域资产 | 部分完成 |
 | M1 无界面内核 | 大部分完成 |
 | M2 Workspace Server | 核心 HTTP 与持久化完成，实时能力待完成 |
-| M3 React Renderer / Preview | 最小 Renderer 与 Preview Host 已完成，iframe 隔离与通信待完成 |
-| M4 Studio | 未开始 |
+| M3 React Renderer / Preview | Renderer、Preview Host、iframe 隔离与版本化通信已完成 |
+| M4 Studio | Workbench 与编辑闭环代码基线已完成，第三轮 UAT 待验收 |
 | M5 Context Package 导出闭环 | 已完成 |
 | M6 MCP | 后置，未开始 |
