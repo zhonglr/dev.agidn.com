@@ -1,6 +1,6 @@
 # AI 友好的低代码网页设计器：技术架构设计
 
-> 产品定位、核心功能与 MVP 验收标准参见 [AI_LOW_CODE_DESIGNER.md](../product/AI_LOW_CODE_DESIGNER.md)，具体技术选型参见 [TECHNICAL_DECISIONS.md](./TECHNICAL_DECISIONS.md)，开工条件与实施顺序参见 [IMPLEMENTATION_READINESS.md](../development/IMPLEMENTATION_READINESS.md)。
+> 产品定位、核心功能与 MVP 验收标准参见 [AI_LOW_CODE_DESIGNER.md](../product/AI_LOW_CODE_DESIGNER.md)，Studio 工作区与画布参见 [STUDIO_WORKBENCH.md](./STUDIO_WORKBENCH.md)，具体技术选型参见 [TECHNICAL_DECISIONS.md](./TECHNICAL_DECISIONS.md)，开工条件与实施顺序参见 [IMPLEMENTATION_READINESS.md](../development/IMPLEMENTATION_READINESS.md)。
 
 ## 1. 架构目标
 
@@ -474,9 +474,21 @@ apps/studio/src/
 │   ├── App.tsx
 │   ├── routes.tsx
 │   └── providers.tsx
+├── workbench/
+│   ├── layout-model.ts
+│   ├── layout-controller.ts
+│   ├── panel-registry.ts
+│   ├── contribution-registry.ts
+│   ├── command-registry.ts
+│   ├── persistence.ts
+│   └── components/
 ├── features/
 │   ├── canvas/
 │   │   ├── Canvas.tsx
+│   │   ├── CanvasViewport.ts
+│   │   ├── CoordinateService.ts
+│   │   ├── GestureController.ts
+│   │   ├── PreviewBridge.ts
 │   │   ├── DragController.ts
 │   │   ├── DropResolver.ts
 │   │   ├── SelectionOverlay.tsx
@@ -513,9 +525,13 @@ Editor State                    Page Document
 
 编辑器 UI 状态不能混入页面 Schema。
 
+Studio 不使用写死的左中右页面结构。Workbench Shell 根据版本化布局树渲染嵌套 Split、Tab Group 和 Panel Host，支持面板调整尺寸、移动、停靠、折叠、关闭与持久化恢复。内置面板通过 Panel Registry 注册，默认布局只是可替换配置。
+
+画布使用独立 Canvas Viewport。触控板 pinch、双指平移、指针中心缩放和 Fit 命令只改变 Preview Surface 与 Interaction Overlay，不缩放 Studio Chrome 和其他面板。详细模型和验收标准见 [Studio Workbench 架构](./STUDIO_WORKBENCH.md)。
+
 ### 7.4 `packages/studio-ui`
 
-该包只包含编辑器自身使用的通用界面组件，例如按钮、面板、树、标签页和对话框。它不包含用户正在设计的业务组件，也不承载页面规则。
+该包只包含编辑器自身使用的通用界面组件，例如按钮、面板、可访问分隔条、树、标签页、命令面板和对话框。它不包含用户正在设计的业务组件，也不承载页面规则。
 
 ## 8. 后端、导出与未来 MCP
 

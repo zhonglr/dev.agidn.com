@@ -52,44 +52,52 @@ P0 核心数据安全
         ↓
 P1 React Renderer / Preview
         ↓
-P2 最小可用 Studio
+P2 专业 Studio Workbench
         ↓
 P3 Migration、Validation API 与 WebSocket 完善
 ```
 
 - [ ] P0 完成后立即启动 UI 基础，不等待 P3 全部完成。
 - [ ] P1 交付第一个可查看的真实 Golden Pricing Page。
-- [ ] P2 交付第一个可选择、编辑、撤销和导出的 Studio 页面。
+- [ ] P2 交付布局可恢复、面板可编排、画布可独立缩放，且能选择、编辑、撤销和导出的 Studio。
 
 ### P0：UI 前置数据安全
 
-- [ ] 验证所有 Action 引用是否存在。
-- [ ] 验证 Action arguments 是否符合注册定义。
+- [x] 验证所有 Action 引用是否存在。
+- [x] 验证 Action arguments 是否符合注册定义。
 - [ ] 定义 Data Source 和 Binding Schema。
 - [ ] 验证 Data Source、Binding 和组件 Props 之间的引用关系。
 
 ### P1：真实渲染与隔离预览
 
-- [ ] 为 15 个注册组件实现真实 React 组件。
-- [ ] 创建 `packages/react-renderer`。
-- [ ] 将 PageDocument、Token、Variant 和 Layout Policy 确定性渲染为 React。
-- [ ] 创建独立 Vite Preview Host。
+- [x] 为 15 个注册组件实现真实 React 组件。
+- [x] 创建 `packages/react-renderer`。
+- [x] 将 PageDocument、Token、Variant 和受控 Layout 确定性渲染为 React。
+- [x] 创建独立 Vite Preview Host。
 - [ ] 使用 sandboxed iframe 隔离项目运行时代码。
 - [ ] 定义 Studio 与 Preview Host 的版本化 `postMessage` 协议。
 - [ ] 实现组件错误边界和 Preview 崩溃恢复。
-- [ ] 验证 Desktop、Tablet 和 Mobile 响应式渲染。
+- [x] 验证 Desktop、Tablet 和 Mobile 响应式渲染。
 
-### P2：最小可用 Studio
+### P2：专业 Studio Workbench 与首个编辑闭环
 
 - [ ] 创建 React + TypeScript + Vite Studio 应用。
-- [ ] 实现组件、Token 和页面结构资源面板。
-- [ ] 实现真实页面画布和节点选择。
+- [ ] 定义版本化 Workbench Layout Schema 和布局 migration 边界。
+- [ ] 实现嵌套 Split、Tab Group、Panel Host 和可键盘调整的分隔条。
+- [ ] 实现面板移动、停靠、标签合并、折叠、关闭、最大化和布局持久化恢复。
+- [ ] 建立 Panel、Command、Inspector、Route 和 Status Item 的内部 Contribution Registry。
+- [ ] 实现 Activity Bar、Command Palette、快捷键冲突检测和 Status Bar。
+- [ ] 实现组件和页面结构面板；Token / Registry 全局管理使用独立页面或对话框。
+- [ ] 实现 Canvas Viewport，支持触控板双指平移、pinch 缩放、指针中心缩放、`100%`、Fit Page 和 Fit Selection。
+- [ ] 建立统一坐标转换服务，确保 iframe DOM、Selection Overlay、辅助线和拖放命中对齐。
+- [ ] 实现真实页面画布、节点选择与选中同步。
+- [ ] 先完成 Text / Heading Prop 修改的端到端编辑闭环。
 - [ ] 实现合法 Slot 拖放、插入、移动和排序。
 - [ ] 实现 Props、Variant、Token、布局和响应式属性面板。
 - [ ] 实现规则错误和修复建议展示。
 - [ ] 实现乐观 Command、服务端确认与失败回滚。
 - [ ] 实现 undo/redo、保存和导出 UI。
-- [ ] 添加 Studio 组件测试和完整编辑流程 E2E 测试。
+- [ ] 添加 Workbench 布局恢复、画布手势/坐标、Studio 组件和完整编辑流程 E2E 测试。
 
 ### P3：完善 Migration 与 Workspace Server
 
@@ -125,7 +133,7 @@ P3 Migration、Validation API 与 WebSocket 完善
 | M0 领域资产 | 部分完成 |
 | M1 无界面内核 | 大部分完成 |
 | M2 Workspace Server | 核心 HTTP 与持久化完成，实时能力待完成 |
-| M3 React Renderer / Preview | 未开始 |
+| M3 React Renderer / Preview | 最小 Renderer 与 Preview Host 已完成，iframe 隔离与通信待完成 |
 | M4 Studio | 未开始 |
 | M5 Context Package 导出闭环 | 已完成 |
 | M6 MCP | 后置，未开始 |

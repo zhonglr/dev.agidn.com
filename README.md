@@ -109,6 +109,7 @@ M6  MCP 与 AI Proposed Commands，后置
 ## 文档导航
 
 - [文档中心](./docs/README.md)：所有产品、架构、开发、API 和 ADR 文档的固定入口。
+- [Studio Workbench 架构](./docs/architecture/STUDIO_WORKBENCH.md)：可编排面板、插件扩展点、信息层级和画布独立缩放基线。
 - [当前状态](./docs/development/CURRENT_STATUS.md)：已经完成、尚未完成和下一步工作。
 - [贡献指南](./docs/development/CONTRIBUTING.md)：编码、拆分、依赖、测试和提交规范。
 - [Workspace Server API](./docs/api/WORKSPACE_SERVER.md)：HTTP 端点、状态码和调用示例。

@@ -9,6 +9,7 @@
 ## 架构
 
 - [技术架构](./architecture/ARCHITECTURE.md)：模块职责、依赖边界和核心数据流。
+- [Studio Workbench 架构](./architecture/STUDIO_WORKBENCH.md)：可编排工作区、面板注册、插件扩展点和画布独立缩放。
 - [技术决策](./architecture/TECHNICAL_DECISIONS.md)：已确定选型、MVP 默认和后置能力。
 
 ## 开发

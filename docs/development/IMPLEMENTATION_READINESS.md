@@ -34,7 +34,7 @@ MVP 不以以下能力为目标：
 - 任意视觉绘图。
 - 任意 CSS 编辑。
 - 任意绝对定位。
-- 无限画布。
+- 使用任意坐标摆放页面内容的无限画布；Studio Canvas Viewport 仍支持平移与缩放。
 - 完整富文本。
 - 动画时间轴。
 - 任意 JavaScript 编写。
@@ -698,19 +698,27 @@ apps/preview-host/
 - Token 修改影响所有引用节点。
 - 渲染异常不会导致宿主应用崩溃。
 
-### 16.5 M4：人类优先的最小编辑器
+### 16.5 M4：专业 Studio Workbench 与首个编辑闭环
 
-创建 `apps/studio`，第一版只实现：
+创建 `apps/studio`。Studio 不以写死的三栏布局起步，先建立可编排的 Workbench 和独立 Canvas Viewport，再接入文档编辑。详细架构见 [STUDIO_WORKBENCH.md](../architecture/STUDIO_WORKBENCH.md)。
 
-1. 显示已注册组件。
-2. 渲染 Golden Page。
-3. 将组件插入合法 Slot。
-4. 重新排列节点。
-5. 修改合法 Props 和 Token。
-6. 显示规则错误和修复建议。
-7. 撤销和重做。
+实施顺序：
 
-暂不实现自由缩放、复杂快捷键、多人协作和高保真动画。
+1. 定义版本化布局树、Panel Registry、Command Registry 和 Contribution Registry。
+2. 实现嵌套 Split、Tab Group、可拖动分隔条、面板停靠/折叠/关闭和布局恢复。
+3. 实现只缩放 Preview Surface 的 Canvas Viewport，支持触控板 pinch、双指平移、指针中心缩放、`100%`、Fit Page 和 Fit Selection。
+4. 通过 sandboxed iframe 和版本化 `postMessage` 协议接入 Preview Host，统一处理坐标转换、节点边界和选择 Overlay。
+5. 显示页面结构与已注册组件，完成选中节点、修改 Text / Heading Prop、Revision 确认/回滚和 undo/redo 的首个闭环。
+6. 实现合法 Slot 拖放、插入、移动和排序。
+7. 实现 Props、Variant、Token、Layout 和 Responsive Inspector，显示规则错误和修复建议。
+
+产品信息层级：
+
+- 画布、当前选中、核心属性、undo/redo、断点和缩放常驻。
+- Token、Registry、Policy、Constraint、Data Source 和项目设置使用独立页面或大型对话框，不长期侵占画布。
+- 内置功能通过受控扩展点注册；公开第三方插件市场和任意代码加载仍属后置能力。
+
+验收：用户能恢复自己的面板布局，使用触控板只缩放/平移画布，选中 Pricing Page 标题并修改文案，服务端生成新 Revision，且可正确撤销。
 
 ### 16.6 M5：Schema 导出闭环
 

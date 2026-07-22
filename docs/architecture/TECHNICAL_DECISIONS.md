@@ -1,6 +1,6 @@
 # AI 友好的低代码网页设计器：技术决策记录
 
-> 产品设计参见 [AI_LOW_CODE_DESIGNER.md](../product/AI_LOW_CODE_DESIGNER.md)，模块和目录设计参见 [ARCHITECTURE.md](./ARCHITECTURE.md)，开工条件与实施顺序参见 [IMPLEMENTATION_READINESS.md](../development/IMPLEMENTATION_READINESS.md)。
+> 产品设计参见 [AI_LOW_CODE_DESIGNER.md](../product/AI_LOW_CODE_DESIGNER.md)，模块和目录设计参见 [ARCHITECTURE.md](./ARCHITECTURE.md)，Studio 与画布参见 [STUDIO_WORKBENCH.md](./STUDIO_WORKBENCH.md)，开工条件与实施顺序参见 [IMPLEMENTATION_READINESS.md](../development/IMPLEMENTATION_READINESS.md)。
 
 ## 1. 文档目的
 
@@ -390,6 +390,24 @@ Studio 组件测试   Testing Library
 
 规则测试必须包含大量负向用例，证明非法状态无法创建，而不能只测试合法页面能够渲染。
 
+### TD-022A：Studio Workbench 布局
+
+**状态：已确定**
+
+Studio 使用数据驱动、可版本化和可持久化的 Workbench 布局树，不使用写死的左中右三栏。布局节点支持嵌套 Split、Tab Group 和 Panel Host。
+
+面板必须通过 Panel Registry 注册，并支持可访问的尺寸调整、移动、停靠、标签合并、折叠、关闭和恢复。Workbench State 与 PageDocument 完全分离。
+
+### TD-022B：Canvas Viewport 与缩放边界
+
+**状态：已确定**
+
+画布使用独立 Viewport Controller。只有 Preview Surface 和 Interaction Overlay 应用 scale/translation，Studio Shell、工具栏、面板和文字不参与缩放。
+
+触控板 pinch、双指平移、指针中心缩放、Fit Page 和 Fit Selection 是首版 Canvas 基线。iframe 节点边界、Selection Overlay、拖放命中和辅助线共用单一坐标转换服务。
+
+详细决策见 [ADR-0003](../adr/0003-studio-workbench-and-canvas-viewport.md)。
+
 ## 4. 后置决策
 
 ### TD-023：多人实时协作
@@ -436,12 +454,15 @@ MVP 采用：
 
 **状态：后置**
 
-首版不开放通用插件 API。未来只考虑受权限控制的扩展点：
+首版必须建立内部 Contribution Registry，为 Panel、Command、Inspector、Route 和 Status Item 提供稳定扩展点，并优先用内置功能验证这些接口。
+
+后置的是公开第三方插件 API、插件市场、远程安装和任意代码权限系统。未来只考虑受权限控制的扩展点：
 
 - 新增规则。
 - 新增 Runtime Adapter。
 - 新增 Context Provider。
 - 新增只读检查器。
+- 新增 Studio 面板、命令和 Inspector 区块。
 
 插件不能绕过 Schema、Token、Rule Engine 和组件注册表。
 
@@ -465,6 +486,8 @@ MCP 不拥有独立持久化或规则逻辑；写入必须携带 `baseRevision` 
 工作区             pnpm workspace + Turborepo
 语言               TypeScript
 Studio             React + Vite
+工作区           数据驱动 Workbench Layout + Panel Registry
+画布               独立 Canvas Viewport + 统一坐标转换
 核心协议           JSON Schema 2020-12
 Schema 编写        TypeBox
 运行时验证         Ajv 或 TypeBox Schema Compiler（技术验证后确定）
