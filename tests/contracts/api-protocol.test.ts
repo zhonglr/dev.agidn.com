@@ -1,11 +1,18 @@
 import {
   checkCommitCommandsResponse,
+  checkExportContextResponse,
+  checkGetCatalogResponse,
   checkGetDocumentResponse,
+  checkGetHistoryResponse,
   decodeCommitCommandsRequest,
+  decodeExportContextRequest,
   decodeNavigationRequest
 } from "@agidn/api-protocol";
 import { InMemoryRevisionStore } from "@agidn/document-engine";
+import { CatalogService } from "../../apps/workspace-server/src/application/catalog-service.js";
 import { DocumentService } from "../../apps/workspace-server/src/application/document-service.js";
+import { ExportService } from "../../apps/workspace-server/src/application/export-service.js";
+import { HistoryService } from "../../apps/workspace-server/src/application/history-service.js";
 import { loadGoldenProject } from "../helpers.js";
 
 describe("Workspace API protocol", () => {
@@ -31,6 +38,13 @@ describe("Workspace API protocol", () => {
     expect(decodeNavigationRequest({ protocolVersion: "1.0.0", baseRevision: -1 }).valid).toBe(false);
   });
 
+  it("strictly decodes Revision export requests without accepting client paths", () => {
+    expect(decodeExportContextRequest({ protocolVersion: "1.0.0" }).valid).toBe(true);
+    expect(decodeExportContextRequest({ protocolVersion: "1.0.0", revision: 3 }).valid).toBe(true);
+    expect(decodeExportContextRequest({ protocolVersion: "1.0.0", revision: -1 }).valid).toBe(false);
+    expect(decodeExportContextRequest({ protocolVersion: "1.0.0", outputDirectory: "/tmp/escape" }).valid).toBe(false);
+  });
+
   it("validates application responses at the process boundary", async () => {
     const project = await loadGoldenProject();
     const service = new DocumentService(new InMemoryRevisionStore(project.document, project));
@@ -50,5 +64,21 @@ describe("Workspace API protocol", () => {
     expect(checkGetDocumentResponse(current)).toBe(true);
     expect(checkCommitCommandsResponse(committed)).toBe(true);
     expect(committed).toMatchObject({ ok: true, revision: { revision: 1 } });
+  });
+
+  it("validates History, Catalog and Export application responses", async () => {
+    const project = await loadGoldenProject();
+    const store = new InMemoryRevisionStore(project.document, project);
+    const history = new HistoryService(store).getHistory();
+    const catalog = new CatalogService(project).getCatalog();
+    const exported = await new ExportService(store, project, { write: async () => "/workspace/.ui-context" }).exportContext({
+      protocolVersion: "1.0.0"
+    });
+
+    expect(checkGetHistoryResponse(history)).toBe(true);
+    expect(checkGetCatalogResponse(catalog)).toBe(true);
+    expect(checkExportContextResponse(exported)).toBe(true);
+    expect(checkGetHistoryResponse({ ...history, internalState: true })).toBe(false);
+    expect(checkGetCatalogResponse({ ...catalog, internalState: true })).toBe(false);
   });
 });
