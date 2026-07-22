@@ -20,7 +20,7 @@ async function main(): Promise<void> {
   }
   const documentPath = resolve(fileArgument);
   const project = await loadWorkspaceProject(documentPath);
-  const context = { components: project.components, tokens: project.tokens };
+  const context = { components: project.components, tokens: project.tokens, actions: project.actions };
 
   if (command === "validate") {
     const result = validateDocument(project.document, context);

@@ -10,7 +10,7 @@ import { collectDocumentReferences, validateDocument, type RuleContext } from "@
 export interface ActionDefinition {
   name: string;
   description: string;
-  arguments?: Record<string, string>;
+  arguments?: Record<string, "string" | "number" | "boolean">;
 }
 
 export interface ActionRegistry {
@@ -47,7 +47,7 @@ function hash(content: string): string {
 }
 
 export function createContextPackage(input: ExportInput): ContextPackage {
-  const context: RuleContext = { components: input.components, tokens: input.tokens };
+  const context: RuleContext = { components: input.components, tokens: input.tokens, actions: input.actions };
   const validation = validateDocument(input.document, context);
   if (!validation.valid) {
     throw new Error(`Cannot export invalid PageDocument: ${validation.violations.map(({ code, message }) => `${code}: ${message}`).join("; ")}`);

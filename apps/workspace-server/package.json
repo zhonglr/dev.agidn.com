@@ -12,6 +12,7 @@
     "@agidn/document-codec": "workspace:*",
     "@agidn/document-engine": "workspace:*",
     "@agidn/document-schema": "workspace:*",
-    "@agidn/rule-engine": "workspace:*"
+    "@agidn/rule-engine": "workspace:*",
+    "@sinclair/typebox": "^0.34.38"
   }
 }

@@ -81,6 +81,9 @@ importers:
       '@agidn/rule-engine':
         specifier: workspace:*
         version: link:../../packages/rule-engine
+      '@sinclair/typebox':
+        specifier: ^0.34.38
+        version: 0.34.52
 
   packages/api-protocol:
     dependencies:

@@ -20,6 +20,8 @@ export type ViolationCode =
   | "MISSING_RESPONSIVE_RULE"
   | "INVALID_OVERLAY"
   | "ACCESSIBLE_NAME_REQUIRED"
+  | "UNKNOWN_ACTION"
+  | "INVALID_ACTION_ARGUMENT"
   | "UNKNOWN_VARIANT"
   | "UNKNOWN_STATE"
   | "UNKNOWN_TOKEN"
@@ -46,6 +48,11 @@ export interface RuleViolation {
 export interface RuleContext {
   components: ComponentRegistry;
   tokens: TokenRegistry;
+  actions?: {
+    actions: Record<string, {
+      arguments?: Record<string, "string" | "number" | "boolean">;
+    }>;
+  };
   maxLayoutDepth?: number;
 }
 
@@ -118,6 +125,11 @@ function valueMatchesProp(value: unknown, prop: PropDefinition): boolean {
   return (typeof value === "string" || typeof value === "number") && (prop.values?.includes(value) ?? false);
 }
 
+function valueMatchesArgument(value: unknown, expectedType: "string" | "number" | "boolean"): boolean {
+  if (expectedType === "number") return typeof value === "number" && Number.isFinite(value);
+  return typeof value === expectedType;
+}
+
 function validateComponent(node: ComponentNode, definition: ComponentDefinition | undefined, context: RuleContext): RuleViolation[] {
   if (!definition) {
     return [violation("UNKNOWN_COMPONENT", `Component '${node.componentRef}' is not registered.`, {
@@ -183,6 +195,31 @@ function validateComponent(node: ComponentNode, definition: ComponentDefinition 
       issues.push(violation("UNKNOWN_TOKEN", `Token '${reference}' is not registered.`, { nodeId: node.id }));
     } else if (expectedType && !hasToken(context.tokens, reference, expectedType)) {
       issues.push(violation("TOKEN_TYPE_MISMATCH", `Token '${reference}' cannot be used for '${property}'.`, { nodeId: node.id }));
+    }
+  }
+  if (context.actions) {
+    for (const interaction of node.interactions ?? []) {
+      const action = context.actions.actions[interaction.actionRef];
+      if (!action) {
+        issues.push(violation("UNKNOWN_ACTION", `Action '${interaction.actionRef}' is not registered.`, {
+          nodeId: node.id,
+          suggestions: [{ description: "Choose an action from the registered catalog." }]
+        }));
+        continue;
+      }
+      const suppliedArguments = interaction.arguments ?? {};
+      for (const [name, expectedType] of Object.entries(action.arguments ?? {})) {
+        if (!(name in suppliedArguments)) {
+          issues.push(violation("INVALID_ACTION_ARGUMENT", `Action '${interaction.actionRef}' requires argument '${name}'.`, { nodeId: node.id }));
+        } else if (!valueMatchesArgument(suppliedArguments[name], expectedType)) {
+          issues.push(violation("INVALID_ACTION_ARGUMENT", `Argument '${name}' for action '${interaction.actionRef}' must be ${expectedType}.`, { nodeId: node.id }));
+        }
+      }
+      for (const name of Object.keys(suppliedArguments)) {
+        if (!(name in (action.arguments ?? {}))) {
+          issues.push(violation("INVALID_ACTION_ARGUMENT", `Argument '${name}' is not registered for action '${interaction.actionRef}'.`, { nodeId: node.id }));
+        }
+      }
     }
   }
   return issues;

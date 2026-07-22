@@ -71,7 +71,12 @@ const ActionDefinitionSchema = Type.Object(
   {
     name: Type.String({ minLength: 1 }),
     description: Type.String(),
-    arguments: Type.Optional(Type.Record(Type.String(), Type.String()))
+    arguments: Type.Optional(
+      Type.Record(
+        Type.String(),
+        Type.Union([Type.Literal("string"), Type.Literal("number"), Type.Literal("boolean")])
+      )
+    )
   },
   { additionalProperties: false }
 );
