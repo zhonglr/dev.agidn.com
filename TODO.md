@@ -84,7 +84,8 @@ P3 Migration、Validation API 与 WebSocket 完善
 - [x] 创建 React + TypeScript + Vite Studio 应用。
 - [x] 定义版本化 Workbench Layout Schema 和布局 migration 边界。
 - [x] 实现嵌套 Split、Tab Group、Panel Host 和可键盘调整的分隔条。
-- [ ] 实现面板移动、停靠、标签合并、折叠、关闭、最大化和布局持久化恢复。
+- [x] 实现面板移动、边缘停靠、标签合并、关闭、最大化和布局持久化恢复。
+- [ ] 实现面板折叠、布局 migration 和完整键盘停靠命令。
 - [x] 建立 Panel、Command、Inspector、Route 和 Status Item 的内部 Contribution Registry。
 - [x] 实现 Activity Bar、Command Palette、快捷键冲突检测和 Status Bar。
 - [ ] 实现组件和页面结构面板；Token / Registry 全局管理使用独立页面或对话框。
