@@ -74,21 +74,22 @@ P3 Migration、Validation API 与 WebSocket 完善
 - [x] 创建 `packages/react-renderer`。
 - [x] 将 PageDocument、Token、Variant 和受控 Layout 确定性渲染为 React。
 - [x] 创建独立 Vite Preview Host。
-- [ ] 使用 sandboxed iframe 隔离项目运行时代码。
+- [x] 使用 sandboxed iframe 隔离项目运行时代码。
 - [ ] 定义 Studio 与 Preview Host 的版本化 `postMessage` 协议。
 - [ ] 实现组件错误边界和 Preview 崩溃恢复。
 - [x] 验证 Desktop、Tablet 和 Mobile 响应式渲染。
 
 ### P2：专业 Studio Workbench 与首个编辑闭环
 
-- [ ] 创建 React + TypeScript + Vite Studio 应用。
-- [ ] 定义版本化 Workbench Layout Schema 和布局 migration 边界。
-- [ ] 实现嵌套 Split、Tab Group、Panel Host 和可键盘调整的分隔条。
+- [x] 创建 React + TypeScript + Vite Studio 应用。
+- [x] 定义版本化 Workbench Layout Schema 和布局 migration 边界。
+- [x] 实现嵌套 Split、Tab Group、Panel Host 和可键盘调整的分隔条。
 - [ ] 实现面板移动、停靠、标签合并、折叠、关闭、最大化和布局持久化恢复。
-- [ ] 建立 Panel、Command、Inspector、Route 和 Status Item 的内部 Contribution Registry。
-- [ ] 实现 Activity Bar、Command Palette、快捷键冲突检测和 Status Bar。
+- [x] 建立 Panel、Command、Inspector、Route 和 Status Item 的内部 Contribution Registry。
+- [x] 实现 Activity Bar、Command Palette、快捷键冲突检测和 Status Bar。
 - [ ] 实现组件和页面结构面板；Token / Registry 全局管理使用独立页面或对话框。
-- [ ] 实现 Canvas Viewport，支持触控板双指平移、pinch 缩放、指针中心缩放、`100%`、Fit Page 和 Fit Selection。
+- [x] 实现 Canvas Viewport，支持触控板双指平移、pinch 缩放、指针中心缩放、`100%` 和 Fit Page。
+- [ ] 接入真实节点选中后实现 Fit Selection。
 - [ ] 建立统一坐标转换服务，确保 iframe DOM、Selection Overlay、辅助线和拖放命中对齐。
 - [ ] 实现真实页面画布、节点选择与选中同步。
 - [ ] 先完成 Text / Heading Prop 修改的端到端编辑闭环。

@@ -90,7 +90,7 @@ M0  领域词汇、Golden Page、组件定义和非法操作矩阵
 M1  Document Schema、Codec、Command、Rule Engine 和 Context Exporter
 M2  Workspace Server、Revision、事务和持久化
 M3  React Renderer 和隔离 Preview Host
-M4  人类优先的最小 Studio
+M4  专业 Studio Workbench 与编辑闭环
 M5  Schema Context Package 导出闭环，MVP 完成
 M6  MCP 与 AI Proposed Commands，后置
 ```
@@ -113,6 +113,15 @@ M6  MCP 与 AI Proposed Commands，后置
 - [当前状态](./docs/development/CURRENT_STATUS.md)：已经完成、尚未完成和下一步工作。
 - [贡献指南](./docs/development/CONTRIBUTING.md)：编码、拆分、依赖、测试和提交规范。
 - [Workspace Server API](./docs/api/WORKSPACE_SERVER.md)：HTTP 端点、状态码和调用示例。
+
+## 运行 Studio
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Studio 运行在 `http://127.0.0.1:4173/`，隔离 Preview Host 运行在 `http://127.0.0.1:4174/`。
 
 ## 当前最先完成的资产
 

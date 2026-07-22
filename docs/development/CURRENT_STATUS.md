@@ -4,9 +4,9 @@
 
 ## 当前结论
 
-项目已经完成可运行的无界面内核、具备本地持久化的 Workspace Server，以及最小 React Renderer / Preview Host。现在可以验证 PageDocument、应用受控 Command、提交 Revision、撤销/重做、查询 History/Catalog、导出 Schema Context Package，并将 Golden Pricing Page 确定性渲染为真实 React 页面。Revision、Command/Patch history 和 undo/redo 状态会在服务重启后恢复。
+项目已经完成可运行的无界面内核、具备本地持久化的 Workspace Server、React Renderer / Preview Host，以及 Studio Workbench 首个可运行基础版。Studio 已使用数据驱动布局树渲染嵌套 Split、Tab 和 Panel，支持尺寸调整、面板关闭/重新打开/最大化、布局恢复、Command Palette 与独立 Canvas Viewport。
 
-当前还没有可视化 Studio；Preview Host 尚未接入 sandboxed iframe、`postMessage` 协议和崩溃恢复。
+当前 Studio 仍是 Workbench 基础版：尚未实现面板拖动停靠、Preview `postMessage` 协议、节点选择、真实属性编辑和 Document Command 提交。
 
 ## 已完成功能
 
@@ -29,7 +29,9 @@
 | Workspace 配置 | Component、Token、Action、Policy 和 Constraint JSON 运行时校验 |
 | React Renderer | PageDocument、Token 和受控布局到 React 的确定性渲染 |
 | Preview Host | Vite 独立预览端、15 个 React 组件和 Desktop/Tablet/Mobile 响应式页面 |
-| Tests | 60 项契约、规则、渲染、事务、模块边界、持久化恢复、Revision 导出和 HTTP 集成测试 |
+| Studio Workbench | 版本化布局 Schema、Panel/Command/Contribution Registry、嵌套 Split/Tab/Panel、可访问分隔条、布局持久化 |
+| Canvas Viewport | 画布独立平移/缩放、触控板手势、`100%`、Fit Page 与统一坐标转换服务 |
+| Tests | 69 项契约、规则、渲染、Workbench、坐标、事务、模块边界、持久化恢复和 HTTP 集成测试 |
 
 ## 已支持 Command
 
@@ -72,6 +74,8 @@ pnpm typecheck
 pnpm test
 pnpm build
 pnpm preview:build
+pnpm studio:build
+pnpm dev
 
 pnpm ui validate examples/golden-pricing/page.ui.json
 pnpm ui apply examples/golden-pricing/page.ui.json examples/golden-pricing/commands/add-card.json
@@ -85,8 +89,9 @@ pnpm preview
 
 - Schema migration 和旧版本升级路径。
 - Data Source / Binding Schema 及完整引用验证。
-- Preview Host 的 sandboxed iframe、`postMessage` 协议、错误边界和崩溃恢复。
-- 可编排 Studio Workbench、独立 Canvas Viewport、拖放、属性面板和乐观状态回滚。
+- Preview Host 的版本化 `postMessage` 协议、错误边界和崩溃恢复。
+- Workbench 面板拖动停靠、标签组合和布局 migration。
+- Canvas 节点选择/Overlay、结构拖放、真实属性编辑和乐观状态回滚。
 - Workspace Server 的独立 Validation 和 WebSocket API。
 - ESLint、Formatter、CI 和正式 Commit 规范自动化。
 - MCP；按产品计划后置。
@@ -99,13 +104,13 @@ pnpm preview
 | M1 无界面内核 | 大部分完成 |
 | M2 Workspace Server | 核心服务、HTTP API 和本地 Revision 持久化已完成，WebSocket 未完成 |
 | M3 React Renderer / Preview | 最小确定性 Renderer、Vite Preview 和响应式 Golden Page 已完成，隔离通信待完成 |
-| M4 Studio | 未开始 |
+| M4 Studio | W0 契约已完成，W1 Shell 与 W2 Canvas Viewport 基础版已可运行，拖动停靠与编辑闭环待完成 |
 | M5 完整导出闭环 | 指定正式 Revision 的可重复导出 API 已完成 |
 | M6 MCP | 未开始 |
 
 ## 下一步顺序
 
 1. 定义 Data Source / Binding Schema 并补齐引用验证。
-2. 按 [Studio Workbench 架构](../architecture/STUDIO_WORKBENCH.md) 定义布局树、Panel/Command/Contribution Registry 和布局持久化。
-3. 实现可编排 Workbench Shell 和独立 Canvas Viewport，再通过 sandboxed iframe 与版本化 `postMessage` 接入 Preview Host。
-4. 完成节点选择、Text / Heading 属性编辑、Revision 确认/回滚和 undo/redo 的首个编辑闭环。
+2. 补齐 Workbench 面板拖动停靠、标签组合、布局 migration 和恢复测试。
+3. 定义 Preview 版本化 `postMessage` 协议，实现节点命中、边界回传、Selection Overlay 和崩溃恢复。
+4. 完成 Text / Heading 属性编辑、Revision 确认/回滚和 undo/redo 的首个编辑闭环。
