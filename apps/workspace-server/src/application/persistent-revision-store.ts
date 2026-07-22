@@ -5,6 +5,7 @@ import {
   type CommitRequest,
   type CommitResult,
   type DocumentRevision,
+  type HistoryEntry,
   type NavigationResult,
   type RevisionNumber,
   type RevisionStoreOptions
@@ -45,6 +46,26 @@ export class PersistentRevisionStore implements WorkspaceRevisionStorePort {
 
   getCurrent(): DocumentRevision {
     return this.#store.getCurrent();
+  }
+
+  get currentRevision(): RevisionNumber {
+    return this.#store.currentRevision;
+  }
+
+  get canUndo(): boolean {
+    return this.#store.canUndo;
+  }
+
+  get canRedo(): boolean {
+    return this.#store.canRedo;
+  }
+
+  getRevision(revision: RevisionNumber): DocumentRevision | undefined {
+    return this.#store.getRevision(revision);
+  }
+
+  getHistory(): HistoryEntry[] {
+    return this.#store.getHistory();
   }
 
   commit(request: CommitRequest): Promise<CommitResult> {

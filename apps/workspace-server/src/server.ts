@@ -8,6 +8,7 @@ export async function startWorkspaceServer(documentPath: string, port = 4178): P
     console.log(`Workspace Server listening on http://127.0.0.1:${port}`);
     console.log(`PageDocument: ${application.project.documentPath}`);
     console.log(`Revision Store: ${application.revisionStatePath}`);
+    console.log(`Context Export: ${application.contextOutputDirectory}`);
   });
 }
 
