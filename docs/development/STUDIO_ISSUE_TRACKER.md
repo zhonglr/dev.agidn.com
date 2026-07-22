@@ -84,6 +84,8 @@
   - iframe 使用 `sandbox="allow-scripts"`，Preview 文档因此是 opaque origin；开发服务需要明确处理 `Origin: null`。
   - `CanvasViewport` 依赖 `preview.ready` 后才发送 `preview.hitTest`，但 iframe `onLoad` 会将 `previewReady` 重置为 `false`。如果 `preview.ready` 早于父页 `onLoad` 处理，就会丢失就绪状态。
   - 当前没有 ready 超时、重试、心跳或用户可见的“Preview 未连接”状态。
+- **已修复的子问题（2026-07-23）**：Preview Host 未允许 sandbox iframe 的 `Origin: null`，导致 Vite 的 `@vite/client`、`@react-refresh` 和 `src/main.tsx` 被 CORS 拦截，画布完全无法加载。`apps/preview-host/vite.config.ts` 现仅允许该 opaque origin，同时保留 `sandbox="allow-scripts"` 隔离；三个开发模块均已验证返回 HTTP 200 和 `Access-Control-Allow-Origin: null`。Preview Host 生产构建、全仓类型检查和 74 项测试通过。
+- **剩余风险**：本次修复恢复了 Preview 模块加载，但尚未解决 `load` / `preview.ready` 时序、失败重试和浏览器级交互测试，因此 STUDIO-002 保持 Open。
 - **期望行为**：画布点击通过统一坐标服务命中最深层可编辑节点，并在任意缩放、平移和断点下同步 Outline、Overlay 和 Inspector。
 - **验收条件**：
   - Preview 握手只有一个明确的状态机，不受 `load` / `ready` 时序影响。
@@ -353,5 +355,6 @@
 | --- | --- | --- |
 | 2026-07-23 | 用户对首个 Studio 编辑版进行验收 | 提交 17 项功能、视觉和布局问题 |
 | 2026-07-23 | 核对 App、Canvas、Preview、Inspector、Outline、Workbench Layout 和 CSS | 建立 STUDIO-001～STUDIO-017，明确根因、依赖与验收条件 |
+| 2026-07-23 | 修复 STUDIO-002 的 opaque-origin 开发加载子问题 | Preview Host 明确允许 `Origin: null`；模块加载、构建、类型检查和测试通过，Issue 保持 Open 等待完整交互复验 |
 
 后续每次状态变更都应在本表追加记录，而不覆盖历史。
