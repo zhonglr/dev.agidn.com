@@ -28,7 +28,7 @@ pnpm workspace-server examples/golden-pricing/page.ui.json 4178
 | --- | --- |
 | 200 | 查询或事务成功 |
 | 400 | JSON 或协议 Schema 无效 |
-| 404 | Endpoint 不存在 |
+| 404 | Endpoint 或请求的 Revision 不存在 |
 | 405 | Endpoint 不支持该 Method |
 | 409 | `baseRevision` 已过期 |
 | 413 | 请求体超过限制 |
@@ -52,6 +52,77 @@ pnpm workspace-server examples/golden-pricing/page.ui.json 4178
 ```
 
 `document` 是完整 PageDocument；示例中省略了具体内容。
+
+## GET `/v1/history`
+
+返回单调 Revision 事件流和当前导航能力。Commit 条目包含正式解析后的 Command 和 Patch；undo/redo 条目包含目标 Revision。
+
+```json
+{
+  "protocolVersion": "1.0.0",
+  "ok": true,
+  "currentRevision": 2,
+  "canUndo": true,
+  "canRedo": true,
+  "entries": [
+    {
+      "kind": "commit",
+      "revision": 1,
+      "parentRevision": 0,
+      "createdAt": "2026-07-22T00:00:01.000Z",
+      "source": "human",
+      "commands": [
+        {
+          "commandId": "cmd_set_pricing_role",
+          "protocolVersion": "1.0.0",
+          "type": "node.setRole",
+          "nodeId": "text_hero",
+          "role": "pricing-summary"
+        }
+      ],
+      "patches": [
+        {
+          "protocolVersion": "1.0.0",
+          "commandId": "cmd_set_pricing_role",
+          "operations": [
+            {
+              "op": "node.update",
+              "nodeId": "text_hero",
+              "changes": { "role": "pricing-summary" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "undo",
+      "revision": 2,
+      "parentRevision": 1,
+      "createdAt": "2026-07-22T00:00:02.000Z",
+      "source": "human",
+      "targetRevision": 0
+    }
+  ]
+}
+```
+
+## GET `/v1/catalog`
+
+返回当前 Workspace 的完整只读 Catalog：
+
+```json
+{
+  "protocolVersion": "1.0.0",
+  "ok": true,
+  "components": { "version": "1.0.0", "components": {} },
+  "tokens": { "version": "1.0.0", "tokens": {} },
+  "policies": {},
+  "actions": { "version": "1.0.0", "actions": {}, "dataSources": {} },
+  "constraints": {}
+}
+```
+
+Catalog 用于 Studio 的资源面板和属性配置。Context Exporter 仍只把指定 Revision 实际引用的组件、Token 和 Action 写入导出包。
 
 ## POST `/v1/commands`
 
@@ -147,8 +218,40 @@ Revision 冲突：
 
 请求结构与 undo 相同。没有可重做状态时返回 422 和 `NOTHING_TO_REDO`。
 
+## POST `/v1/export`
+
+从指定的正式 Revision 导出 Schema Context Package。省略 `revision` 时导出当前 Revision。
+
+```json
+{
+  "protocolVersion": "1.0.0",
+  "revision": 3
+}
+```
+
+成功响应：
+
+```json
+{
+  "protocolVersion": "1.0.0",
+  "ok": true,
+  "revision": 3,
+  "outputDirectory": "/workspace/project/.ui-context",
+  "manifest": {
+    "protocolVersion": "1.0.0",
+    "documentId": "page_pricing",
+    "schemaVersion": "1.0.0",
+    "hashAlgorithm": "sha256",
+    "files": {},
+    "contentHash": "0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}
+```
+
+如果 Revision 不存在，返回 404 和 `REVISION_NOT_FOUND`。客户端不能传入输出目录；Workspace Server 只写入启动时配置的目录，默认是 PageDocument 同目录的 `.ui-context`。指向同一目录的导出会按请求顺序写入，避免并发文件交错。
+
 ## 当前限制
 
-- 暂无 History、Catalog、Export 和 WebSocket Endpoint。
+- 暂无独立 Validation 和 WebSocket Endpoint。
 - 暂无 Revision Store 格式迁移和外部 PageDocument 文件变更协调。
 - 当前仅监听本机回环地址。
