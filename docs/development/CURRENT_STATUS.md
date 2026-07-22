@@ -6,6 +6,8 @@
 
 > 验收提醒：2026-07-23 的首轮 Studio UAT 已确认 17 项未关闭问题。下文“已完成”表示代码基线已存在，不表示用户验收通过。详见 [Studio 验收问题追踪](./STUDIO_ISSUE_TRACKER.md)。
 
+> Cycle 边界：[C01 — Studio Foundation & First UAT](./cycles/c01/README.md) 已在 `9bece1d` 关闭，状态为 `Closed with carryover`，产品验收为 `Not accepted`。
+
 项目已经完成可运行的无界面内核、具备本地持久化的 Workspace Server、React Renderer / Preview Host，以及可编排的 Studio Workbench 代码基线。布局树、面板停靠、独立 Canvas Viewport 和版本化 Preview 消息协议均已存在，但首轮 UAT 确认了选择链路、布局恢复和视觉一致性缺陷。
 
 Heading / Text Inspector、Revision 提交与 undo/redo 已有实现，但画布点击选择和 Preview 同步尚未通过 UAT，因此首个编辑闭环当前仍视为未验收。结构拖放、其他组件编辑器、乐观更新/失败回滚、面板折叠和布局 migration 也尚未完成。
