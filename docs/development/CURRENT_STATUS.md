@@ -6,6 +6,8 @@
 
 > 验收提醒：2026-07-23 的首轮 Studio UAT 已确认 17 项未关闭问题。下文“已完成”表示代码基线已存在，不表示用户验收通过。详见 [Studio 验收问题追踪](./STUDIO_ISSUE_TRACKER.md)。
 
+> 第二轮 UAT 进一步确认已有节点移动、Tree 拖动、Tooltip 时序、variant 视觉覆盖和 Dock Overlay 仍未达到产品验收，详见 [Studio 第二轮验收问题追踪](./STUDIO_UAT_ROUND_2_ISSUES.md)。
+
 > Cycle 边界：[C01 — Studio Foundation & First UAT](./cycles/c01/README.md) 已在 `9bece1d` 关闭，状态为 `Closed with carryover`，产品验收为 `Not accepted`。
 
 项目已经完成可运行的无界面内核、具备本地持久化的 Workspace Server、React Renderer / Preview Host，以及可编排的 Studio Workbench 代码基线。布局树、面板停靠、独立 Canvas Viewport 和版本化 Preview 消息协议均已存在，但首轮 UAT 确认了选择链路、布局恢复和视觉一致性缺陷。
@@ -33,11 +35,11 @@ Heading / Text Inspector、Revision 提交与 undo/redo 已有实现，但画布
 | Workspace 配置 | Component、Token、Action、Policy 和 Constraint JSON 运行时校验 |
 | React Renderer | PageDocument、Token 和受控布局到 React 的确定性渲染 |
 | Preview Host | Vite 独立预览端、15 个 React 组件和 Desktop/Tablet/Mobile 响应式页面 |
-| Preview Protocol | 版本化、严格运行时验证的 document / breakpoint / selection / hit-test / bounds / error 消息 |
-| Studio Workbench | 版本化布局 Schema、Panel/Command/Contribution Registry、嵌套 Split/Tab/Panel、可访问分隔条、拖动停靠/标签合并、布局持久化 |
-| Canvas Viewport | 独立平移/缩放、触控板手势、`100%`、Fit Page / Selection、选中 Overlay 和统一坐标转换服务 |
-| Editing Slice | 动态 Page Outline、画布/大纲选中同步、Heading/Text Inspector、Revision 确认和 undo/redo |
-| Tests | 74 项契约、规则、渲染、Preview 协议、Workbench、坐标、事务、模块边界、持久化恢复和 HTTP 集成测试 |
+| Preview Protocol | 版本化、严格运行时验证的 document / breakpoint / selection / hit-test / bounds / insert-drop / existing-node-move / error 消息 |
+| Studio Workbench | 版本化布局 Schema、Panel/Command/Contribution Registry、嵌套 Split/Tab/Panel、可访问分隔条、紧凑 Dock compass、几何预览、标签合并和布局持久化 |
+| Canvas Viewport | 独立平移/缩放、触控板手势、`100%`、Fit Page / Selection、选中 Overlay、已有节点拖动和统一坐标转换服务 |
+| Editing Slice | 动态 Page Outline、画布/大纲选中同步、Registry Inspector、插入/移动、Revision 确认和 undo/redo |
+| Tests | 85 项契约、规则、渲染、Variant 覆盖、Tooltip 时序、结构拖动、Preview 协议、Workbench、坐标、事务、模块边界、持久化恢复和 HTTP 集成测试 |
 
 ## 已支持 Command
 
@@ -97,7 +99,7 @@ pnpm preview
 - Data Source / Binding Schema 及完整引用验证。
 - Preview 组件级错误隔离、重试控件和更完整的运行时诊断。
 - Workbench 面板折叠、完整键盘停靠命令和布局 migration。
-- Canvas 结构拖放、其他组件编辑器和乐观状态回滚。
+- 更完整的键盘跨父级移动、拖动自动滚屏和乐观状态回滚。
 - Workspace Server 的独立 Validation 和 WebSocket API。
 - ESLint、Formatter、CI 和正式 Commit 规范自动化。
 - MCP；按产品计划后置。

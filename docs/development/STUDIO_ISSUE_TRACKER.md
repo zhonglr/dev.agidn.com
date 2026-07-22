@@ -5,6 +5,8 @@
 > 验收基线：`2eeb35f` 及其之前的 Studio / Preview / Workbench 实现  
 > 追踪范围：17 项用户反馈，对应原始编号 0～16
 
+> 第二轮 UAT 已确认其中 3 项需要重开，并新增 2 项独立问题；精确复现、根因和新验收矩阵见 [Studio 第二轮验收问题追踪](./STUDIO_UAT_ROUND_2_ISSUES.md)。
+
 本文档是 Studio 当前用户可见问题的事实来源。`TODO.md` 记录路线，`CURRENT_STATUS.md` 记录已交付能力，本文档则记录“已实现但未通过用户验收”、“仅有占位 UI”与“明确缺失”的项目。代码已存在、类型检查通过或单元测试通过，都不等于用户验收通过。
 
 ## 1. 管理规则
@@ -18,6 +20,7 @@
 | Ready for Verification | 已通过开发检查，等待按本文验收条件复验 |
 | Closed | 验收条件全部通过，已记录修复提交和测试证据 |
 | Blocked | 受上游协议、产品决策或其他 Issue 阻塞 |
+| Reopened | 曾进入待验证或关闭状态，但后续用户验收证明条件未满足 |
 
 ### 1.2 优先级
 
@@ -40,30 +43,30 @@
 
 | ID | 原始编号 | 类型 | 优先级 | 状态 | 标题 |
 | --- | ---: | --- | --- | --- | --- |
-| STUDIO-001 | 0 | Missing integration | P1 | Open | Export 按钮未连接导出流程 |
-| STUDIO-002 | 1 | Functional bug | P0 | Open | 画布点击无法稳定选中 Preview 节点 |
-| STUDIO-003 | 2 | Functional bug / incomplete capability | P0 | Open | Inspector 控件与 Preview 更新链路不可靠 |
-| STUDIO-004 | 3 | Missing capability | P1 | Open | 组件无法点击或拖放到页面 |
-| STUDIO-005 | 4 | Missing capability | P2 | Open | Page 和 Component 搜索框不执行过滤 |
-| STUDIO-006 | 5 | Missing capability | P2 | Open | Page Outline 节点无法折叠或展开 |
-| STUDIO-007 | 6 | Product gap | P2 | Open | Studio 只有暗色主题 |
-| STUDIO-008 | 7 | Visual usability | P1 | Open | 图标语义不清且尺寸不一致 |
-| STUDIO-009 | 8 | Workbench layout defect | P1 | Open | 面板停靠后产生零碎且不规则的嵌套网格 |
-| STUDIO-010 | 9 | Visual usability | P2 | Open | 面板滚动条过粗且与界面密度不匹配 |
-| STUDIO-011 | 10 | Layout defect | P1 | Open | Titlebar 的网格定义与子元素数量不匹配 |
-| STUDIO-012 | 11 | Layout defect | P1 | Open | 面板边界和分隔缝宽度不一致 |
-| STUDIO-013 | 12 | CSS defect | P1 | Open | Tree kind 标识在窄面板中被压缩 |
-| STUDIO-014 | 13 | CSS defect | P1 | Open | Component Grid 文字在窄面板中溢出 |
-| STUDIO-015 | 14 | CSS/layout defect | P1 | Open | 结构树行在窄面板中不能稳定占满可见宽度 |
-| STUDIO-016 | 15 | Recoverability bug | P0 | Open | 关闭某区域最后一个 Tab 后无法重新打开面板 |
-| STUDIO-017 | 16 | Missing capability | P1 | Open | Token / Registry / Settings 管理入口缺失 |
+| STUDIO-001 | 0 | Missing integration | P1 | Ready for Verification | Export 按钮未连接导出流程 |
+| STUDIO-002 | 1 | Functional bug | P0 | Ready for Verification | 画布点击无法稳定选中 Preview 节点 |
+| STUDIO-003 | 2 | Functional bug / incomplete capability | P0 | Ready for Verification | Inspector 控件与 Preview 更新链路不可靠 |
+| STUDIO-004 | 3 | Missing capability | P1 | Ready for Verification | 组件无法点击或拖放到页面 |
+| STUDIO-005 | 4 | Missing capability | P2 | Ready for Verification | Page 和 Component 搜索框不执行过滤 |
+| STUDIO-006 | 5 | Missing capability | P2 | Ready for Verification | Page Outline 节点无法折叠或展开 |
+| STUDIO-007 | 6 | Product gap | P2 | Ready for Verification | Studio 只有暗色主题 |
+| STUDIO-008 | 7 | Visual usability | P1 | Ready for Verification | 图标语义不清且尺寸不一致 |
+| STUDIO-009 | 8 | Workbench layout defect | P1 | Ready for Verification | 面板停靠后产生零碎且不规则的嵌套网格 |
+| STUDIO-010 | 9 | Visual usability | P2 | Ready for Verification | 面板滚动条过粗且与界面密度不匹配 |
+| STUDIO-011 | 10 | Layout defect | P1 | Ready for Verification | Titlebar 的网格定义与子元素数量不匹配 |
+| STUDIO-012 | 11 | Layout defect | P1 | Ready for Verification | 面板边界和分隔缝宽度不一致 |
+| STUDIO-013 | 12 | CSS defect | P1 | Ready for Verification | Tree kind 标识在窄面板中被压缩 |
+| STUDIO-014 | 13 | CSS defect | P1 | Ready for Verification | Component Grid 文字在窄面板中溢出 |
+| STUDIO-015 | 14 | CSS/layout defect | P1 | Ready for Verification | 结构树行在窄面板中不能稳定占满可见宽度 |
+| STUDIO-016 | 15 | Recoverability bug | P0 | Ready for Verification | 关闭某区域最后一个 Tab 后无法重新打开面板 |
+| STUDIO-017 | 16 | Missing capability | P1 | Ready for Verification | Token / Registry / Settings 管理入口缺失 |
 
 ## 3. 功能 Issue
 
 ### STUDIO-001：Export 按钮未连接导出流程
 
 - **原始编号**：0
-- **类型 / 优先级 / 状态**：Missing integration / P1 / Open
+- **类型 / 优先级 / 状态**：Missing integration / P1 / Ready for Verification
 - **影响范围**：Titlebar、Studio Session、Workspace Export API、导出结果反馈
 - **实际行为**：点击 Titlebar 中的 `Export` 按钮没有任何反应。
 - **代码证据**：`apps/studio/src/App.tsx` 中 `.export-button` 只有文本和样式，没有 `onClick`；`StudioSessionValue` 也没有 export 操作。Workspace Server 已提供 `POST /v1/export`，因此这是 Studio 集成缺失，不是服务端能力缺失。
@@ -77,7 +80,7 @@
 ### STUDIO-002：画布点击无法稳定选中 Preview 节点
 
 - **原始编号**：1
-- **类型 / 优先级 / 状态**：Functional bug / P0 / Open
+- **类型 / 优先级 / 状态**：Functional bug / P0 / Ready for Verification
 - **影响范围**：Canvas Viewport、sandboxed iframe、Preview 协议、Selection Overlay、Inspector
 - **实际行为**：画布中的元素可见，但鼠标点击后不会稳定更新当前选中节点、Outline 选中态和 Inspector。
 - **代码证据**：
@@ -85,7 +88,8 @@
   - `CanvasViewport` 依赖 `preview.ready` 后才发送 `preview.hitTest`，但 iframe `onLoad` 会将 `previewReady` 重置为 `false`。如果 `preview.ready` 早于父页 `onLoad` 处理，就会丢失就绪状态。
   - 当前没有 ready 超时、重试、心跳或用户可见的“Preview 未连接”状态。
 - **已修复的子问题（2026-07-23）**：Preview Host 未允许 sandbox iframe 的 `Origin: null`，导致 Vite 的 `@vite/client`、`@react-refresh` 和 `src/main.tsx` 被 CORS 拦截，画布完全无法加载。`apps/preview-host/vite.config.ts` 现仅允许该 opaque origin，同时保留 `sandbox="allow-scripts"` 隔离；三个开发模块均已验证返回 HTTP 200 和 `Access-Control-Allow-Origin: null`。Preview Host 生产构建、全仓类型检查和 74 项测试通过。
-- **剩余风险**：本次修复恢复了 Preview 模块加载，但尚未解决 `load` / `preview.ready` 时序、失败重试和浏览器级交互测试，因此 STUDIO-002 保持 Open。
+- **本轮修复（2026-07-23）**：Preview 在挂载期间周期性重发 `preview.ready`，Studio 使用显式 connecting / ready / error 状态、5 秒超时和 Retry 重建 iframe；`load` 即使晚于首次 ready 也会在下一次公告恢复握手。点击与拖放都经版本化 Preview 协议返回命中意图，Canvas 对断点、缩放和平移统一使用坐标转换服务。
+- **剩余复验**：自动化协议与坐标测试通过；当前执行环境没有可用的内置浏览器实例，仍需按验收矩阵完成真实浏览器点击、手势和 opaque-origin 复验，因此状态为 Ready for Verification。
 - **期望行为**：画布点击通过统一坐标服务命中最深层可编辑节点，并在任意缩放、平移和断点下同步 Outline、Overlay 和 Inspector。
 - **验收条件**：
   - Preview 握手只有一个明确的状态机，不受 `load` / `ready` 时序影响。
@@ -97,7 +101,8 @@
 ### STUDIO-003：Inspector 控件与 Preview 更新链路不可靠
 
 - **原始编号**：2
-- **类型 / 优先级 / 状态**：Functional bug / incomplete capability / P0 / Open
+- **类型 / 优先级 / 状态**：Functional bug / incomplete capability / P0 / Ready for Verification
+- **第二轮复验**：Registry 已能生成 variant 选项并提交 `node.setVariant`，但 Preview 只实现少量 modifier，多数组件切换后没有可辨识视觉差异。详见 [STUDIO-R2-004](./STUDIO_UAT_ROUND_2_ISSUES.md#studio-r2-004registry-variant-可以提交但多数变体在-preview-中没有可辨识差异)。
 - **影响范围**：Inspector、Component Registry、Command 提交、Revision、Preview 同步
 - **实际行为**：部分字段可产生保存状态，但 Preview 没有可见变化；部分看起来可操作的设置点击后没有任何行为。
 - **代码证据**：
@@ -116,7 +121,8 @@
 ### STUDIO-004：组件无法点击或拖放到页面
 
 - **原始编号**：3
-- **类型 / 优先级 / 状态**：Missing capability / P1 / Open
+- **类型 / 优先级 / 状态**：Missing capability / P1 / Ready for Verification
+- **第二轮复验**：第一轮整改只完成 Component Grid 新组件插入，没有实现 Canvas / Outline 已有节点的 `node.move`。详见 [STUDIO-R2-001](./STUDIO_UAT_ROUND_2_ISSUES.md#studio-r2-001画布中的已有节点不能拖动排序或更换父节点) 与 [STUDIO-R2-002](./STUDIO_UAT_ROUND_2_ISSUES.md#studio-r2-002page-outline-中的已有节点不能拖动重组结构)。
 - **实际行为**：Component Grid 的卡片显示抓取光标，但无法拖动，点击也不会向页面插入组件。
 - **代码证据**：`ComponentsPanel` 中的 button 没有 `onClick`、`draggable`、drag payload 或键盘插入命令；`StudioSessionValue` 也没有 `node.insert` / `node.move` 提交方法。CSS 却使用 `cursor: grab`，导致错误的功能暗示。
 - **期望行为**：点击使用可预测的默认位置插入；拖动时仅显示符合 Slot Policy 的合法落点和插入位置。
@@ -130,7 +136,7 @@
 ### STUDIO-005：Page 和 Component 搜索框不执行过滤
 
 - **原始编号**：4
-- **类型 / 优先级 / 状态**：Missing capability / P2 / Open
+- **类型 / 优先级 / 状态**：Missing capability / P2 / Ready for Verification
 - **实际行为**：在 Page Outline 或 Component Grid 的搜索框输入内容后，列表完全不变。
 - **代码证据**：两个 `input type="search"` 都没有 value state、`onChange`、过滤函数或空结果状态。
 - **期望行为**：Page 搜索节点名称、ID、role 和 componentRef；Component 搜索组件名称与可搜索元数据。
@@ -143,7 +149,7 @@
 ### STUDIO-006：Page Outline 节点无法折叠或展开
 
 - **原始编号**：5
-- **类型 / 优先级 / 状态**：Missing capability / P2 / Open
+- **类型 / 优先级 / 状态**：Missing capability / P2 / Ready for Verification
 - **实际行为**：所有有子节点的行都显示向下箭头，点击箭头或行只会选中，不会收起子树。
 - **代码证据**：`OutlineNode` 无条件递归渲染所有 children，箭头固定为 `▾`，没有 expanded state 和独立的 disclosure button。
 - **期望行为**：有子节点的行支持独立折叠/展开，并保留键盘可达的 Tree 语义。
@@ -158,7 +164,7 @@
 ### STUDIO-007：Studio 只有暗色主题
 
 - **原始编号**：6
-- **类型 / 优先级 / 状态**：Product gap / P2 / Open
+- **类型 / 优先级 / 状态**：Product gap / P2 / Ready for Verification
 - **实际行为**：Studio Chrome 只提供暗色外观，没有 Light 或 Follow System 选项。
 - **代码证据**：`apps/studio/src/styles.css` 中大量颜色为暗色字面量；没有 `data-theme`、`prefers-color-scheme`、主题 Store 或设置入口。
 - **期望行为**：Studio 提供 Light、Dark 和 Follow System；主题只影响编辑器 Chrome，不得擅自改变项目 Preview 内容。
@@ -171,7 +177,8 @@
 ### STUDIO-008：图标语义不清且尺寸不一致
 
 - **原始编号**：7
-- **类型 / 优先级 / 状态**：Visual usability / P1 / Open
+- **类型 / 优先级 / 状态**：Visual usability / P1 / Ready for Verification
+- **第二轮复验**：图标已统一为 SVG，但提示仍依赖浏览器原生 `title`，首次显示延迟不可控且过慢。详见 [STUDIO-R2-003](./STUDIO_UAT_ROUND_2_ISSUES.md#studio-r2-003图标依赖浏览器原生-title首次-tooltip-出现不可控且过慢)。
 - **实际行为**：Activity Bar、Tab action、Undo/Redo、选中摘要和问题面板使用不同字符系的符号，含义难以识别，视觉尺寸和基线不一致。
 - **代码证据**：Panel contribution 和操作按钮直接使用 `⊞`、`◈`、`▣`、`☷`、`△`、`◷`、`□`、`⧉`、`↶`、`↷` 等 Unicode glyph，它们的字形依赖系统字体。
 - **期望行为**：使用一套具有统一 viewBox、stroke、尺寸和命名的产品图标系统，每个操作配有清晰 tooltip 和无障碍名称。
@@ -184,7 +191,7 @@
 ### STUDIO-009：面板停靠后产生零碎且不规则的嵌套网格
 
 - **原始编号**：8
-- **类型 / 优先级 / 状态**：Workbench layout defect / P1 / Open
+- **类型 / 优先级 / 状态**：Workbench layout defect / P1 / Ready for Verification
 - **实际行为**：面板停靠数次后，工作区出现过多嵌套分割、双重边框、不一致的缝隙和过小区域，难以读出主次。
 - **代码证据**：`dockPanel` 每次边缘停靠都在目标外新建一层 Split，即使父 Split 方向相同也不展平；新区域固定使用 30% / 70%；每个 `.wb-panel` 自带 1px 边框，Split 又插入 4px separator。
 - **期望行为**：停靠结果应像 IDE 一样形成可理解的主区域、工具区域和 Tab Group，而不是无限嵌套的盒子。
@@ -198,7 +205,7 @@
 ### STUDIO-010：面板滚动条过粗且与界面密度不匹配
 
 - **原始编号**：9
-- **类型 / 优先级 / 状态**：Visual usability / P2 / Open
+- **类型 / 优先级 / 状态**：Visual usability / P2 / Ready for Verification
 - **实际行为**：面板的滚动条占用明显宽度，在窄工具面板中进一步压缩内容。
 - **代码证据**：`.wb-panel__body` 和 Command Palette 使用 `overflow: auto`，但 Studio 没有统一的 scrollbar width、thumb、track、hover 或 Firefox 规则。
 - **期望行为**：采用适合高密度生产力工具的细滚动条，同时保留可发现性和无障碍滚动。
@@ -212,7 +219,7 @@
 ### STUDIO-011：Titlebar 的网格定义与子元素数量不匹配
 
 - **原始编号**：10
-- **类型 / 优先级 / 状态**：Layout defect / P1 / Open
+- **类型 / 优先级 / 状态**：Layout defect / P1 / Ready for Verification
 - **实际行为**：品牌标识、项目名、搜索和操作区无法稳定保持在同一水平线，窗口宽度变化后更明显。
 - **代码证据**：`.titlebar` 只定义 3 个 grid column，但存在 4 个直接子元素：`.app-mark`、`.titlebar__project`、`.titlebar__center` 和 `.titlebar__actions`。第 4 个元素会被 CSS Grid 自动放置到隐式行；同时项目名使用负 margin 补偿标识位置。
 - **期望行为**：Titlebar 使用明确 grid area 或嵌套分组，品牌/项目、全局搜索和文档操作始终处于一行。
@@ -225,7 +232,7 @@
 ### STUDIO-012：面板边界和分隔缝宽度不一致
 
 - **原始编号**：11
-- **类型 / 优先级 / 状态**：Layout defect / P1 / Open
+- **类型 / 优先级 / 状态**：Layout defect / P1 / Ready for Verification
 - **实际行为**：不同面板之间有的是细线，有的是宽条或双线，拖放重组后更明显。
 - **代码证据**：`.wb-separator` 占 4px 实体宽度，`.wb-panel` 四周同时有 1px border，Tab bar 再增加 bottom border；嵌套 Split 没有统一 seam 所有权。
 - **期望行为**：相邻区域之间只渲染一条视觉 seam，而 resize 命中区域可以更宽但不可见。
@@ -238,7 +245,7 @@
 ### STUDIO-013：Tree kind 标识在窄面板中被压缩
 
 - **原始编号**：12
-- **类型 / 优先级 / 状态**：CSS defect / P1 / Open
+- **类型 / 优先级 / 状态**：CSS defect / P1 / Ready for Verification
 - **实际行为**：工具面板缩窄时，16×16 的节点类型标识会被 Flex 压缩到难以识别。
 - **代码证据**：`.tree-kind` 只设置 `width` 和 `height`，没有 `flex: 0 0 16px` / `flex-shrink: 0`；`.tree-arrow` 存在同样风险。
 - **期望行为**：类型标识和展开箭头保持固定视觉尺寸，只允许文本区域压缩。
@@ -250,7 +257,7 @@
 ### STUDIO-014：Component Grid 文字在窄面板中溢出
 
 - **原始编号**：13
-- **类型 / 优先级 / 状态**：CSS defect / P1 / Open
+- **类型 / 优先级 / 状态**：CSS defect / P1 / Ready for Verification
 - **实际行为**：当 Component 面板较窄时，如 `PricingCard` 等较长名称超出 button 边界。
 - **代码证据**：Grid 固定为两列，button 虽有 `min-width: 0`，但文字不在独立的可压缩容器中，也没有 wrap、ellipsis 或容器查询降为单列。
 - **期望行为**：组件名称始终保留在卡片内，格子数根据 Panel Host 宽度响应，而不是根据顶层窗口响应。
@@ -262,7 +269,7 @@
 ### STUDIO-015：结构树行在窄面板中不能稳定占满可见宽度
 
 - **原始编号**：14
-- **类型 / 优先级 / 状态**：CSS/layout defect / P1 / Open
+- **类型 / 优先级 / 状态**：CSS/layout defect / P1 / Ready for Verification
 - **实际行为**：Tree row 的 hover / selected 背景和可点击区域没有稳定覆盖面板的整个可见宽度。
 - **代码证据**：代码虽声明 `.tree-row { width: 100% }`，但 `.tree` 使用左右负 margin 做 full-bleed，行内长文本没有可压缩容器和溢出规则，深层 padding 又与内容固有宽度叠加。因此问题不是单纯缺少 `width: 100%`，需要在窄面板中复现并修正整个宽度链。
 - **期望行为**：每个 treeitem 的选中、hover、focus 和点击区域占满 Tree viewport 的可见行宽，文本溢出不扩展行宽。
@@ -275,7 +282,7 @@
 ### STUDIO-016：关闭某区域最后一个 Tab 后无法重新打开面板
 
 - **原始编号**：15
-- **类型 / 优先级 / 状态**：Recoverability bug / P0 / Open
+- **类型 / 优先级 / 状态**：Recoverability bug / P0 / Ready for Verification
 - **实际行为**：关闭某个区域的最后一个 Tab 后，整个 Tab Group 从布局树消失。再点击 Activity Bar 或执行 Open Panel Command 也无法恢复，只能 Reset Workbench Layout。
 - **根因**：`closePanel` 在 Tab Group 变空时删除该布局节点，并可能折叠父 Split；`openPanel` 只能向指定的 `targetTabGroupId` 插入。当 `tabs.primary`、`tabs.secondary` 或 `tabs.bottom` 已被删除时，打开操作直接返回原布局。
 - **期望行为**：任何可关闭 Panel 都能通过 Activity Bar、Command Palette 或 View 菜单恢复，不需要重置其他用户布局。
@@ -289,7 +296,7 @@
 ### STUDIO-017：Token / Registry / Settings 管理入口缺失
 
 - **原始编号**：16
-- **类型 / 优先级 / 状态**：Missing capability / P1 / Open
+- **类型 / 优先级 / 状态**：Missing capability / P1 / Ready for Verification
 - **实际行为**：界面没有 Token、Component Registry、Policy 或其他项目设置的可用入口；Activity Bar 的齿轮按钮无响应，Inspector 的 Token 字段为禁用按钮。
 - **代码证据**：Settings 按钮没有 `onClick`；Studio 没有 Settings route / dialog，也没有调用已存在的 `GET /v1/catalog`。当前 Token Registry 只存在于项目 JSON、服务端 Catalog 和 Preview 渲染链路中，没有用户界面。
 - **期望行为**：按照产品约束，Token 和 Registry 等全局配置进入独立 Settings 页面或对话框，不长期占用画布主工作区。
@@ -356,5 +363,8 @@
 | 2026-07-23 | 用户对首个 Studio 编辑版进行验收 | 提交 17 项功能、视觉和布局问题 |
 | 2026-07-23 | 核对 App、Canvas、Preview、Inspector、Outline、Workbench Layout 和 CSS | 建立 STUDIO-001～STUDIO-017，明确根因、依赖与验收条件 |
 | 2026-07-23 | 修复 STUDIO-002 的 opaque-origin 开发加载子问题 | Preview Host 明确允许 `Origin: null`；模块加载、构建、类型检查和测试通过，Issue 保持 Open 等待完整交互复验 |
+| 2026-07-23 | 完成 STUDIO-001～017 开发修复批次 | 接通 Export / Catalog / Settings / Theme / Inspector / 插入 / 搜索 / Tree 键盘链路；修复 Preview 可恢复握手、Workbench 恢复与归一化、seam、窄面板和统一图标；全仓类型检查、Studio/Preview 生产构建、18 个测试文件 77 项测试通过。因当前环境无可用内置浏览器，统一进入 Ready for Verification，等待真实浏览器 UAT 后关闭。 |
+| 2026-07-23 | 第二轮用户验收与问题重分类 | STUDIO-003、004、008 重开；新增第二轮追踪文档 STUDIO-R2-001～005，明确已有节点移动、Tooltip 时序、variant 视觉覆盖和 Dock Overlay 视觉问题。 |
+| 2026-07-23 | 完成第二轮整改开发门禁 | STUDIO-003、004、008 再次进入 Ready for Verification；实现和测试证据详见第二轮追踪文档。 |
 
 后续每次状态变更都应在本表追加记录，而不覆盖历史。
