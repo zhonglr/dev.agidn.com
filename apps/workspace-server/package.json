@@ -1,0 +1,16 @@
+{
+  "name": "@agidn/workspace-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@agidn/api-protocol": "workspace:*",
+    "@agidn/command-engine": "workspace:*",
+    "@agidn/component-registry": "workspace:*",
+    "@agidn/context-exporter": "workspace:*",
+    "@agidn/design-tokens": "workspace:*",
+    "@agidn/document-codec": "workspace:*",
+    "@agidn/document-engine": "workspace:*",
+    "@agidn/rule-engine": "workspace:*"
+  }
+}
