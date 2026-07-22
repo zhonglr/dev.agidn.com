@@ -13,6 +13,7 @@ import { CommandPalette } from "./CommandPalette.js";
 import { ComponentsPanel, HistoryPanel, InspectorPanel, PageOutlinePanel, ProblemsPanel } from "./panels.js";
 import { DEFAULT_WORKBENCH_LAYOUT, PANEL_TARGETS } from "./workbench-layout.js";
 import { useWorkbenchLayout } from "./use-workbench-layout.js";
+import { StudioSessionProvider, useStudioSession } from "./studio-session.js";
 
 const panelContributions: PanelContribution[] = [
   { id: "page-outline", title: "Page Outline", icon: "⊞", defaultLocation: "primary", minSize: 180, canClose: true, canMove: true, canDock: true, render: () => <PageOutlinePanel /> },
@@ -27,7 +28,8 @@ function targetFor(location: PanelLocation): string {
   return PANEL_TARGETS[location];
 }
 
-export function App() {
+function StudioApp() {
+  const session = useStudioSession();
   const panels = useMemo(() => new PanelRegistry(panelContributions), []);
   const { layout, setLayout, resetLayout } = useWorkbenchLayout(DEFAULT_WORKBENCH_LAYOUT, panels);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -67,9 +69,9 @@ export function App() {
         <div className="titlebar__project"><strong>AGIDN Studio</strong><span>/</span><span>Acme Pricing</span></div>
         <div className="titlebar__center"><button type="button" onClick={() => setPaletteOpen(true)}><span>Search commands and files</span><kbd>⌘⇧P</kbd></button></div>
         <div className="titlebar__actions">
-          <button type="button" aria-label="Undo" disabled>↶</button>
-          <button type="button" aria-label="Redo" disabled>↷</button>
-          <span className="save-state"><i />Saved</span>
+          <button type="button" aria-label="Undo" disabled={!session.canUndo || session.status === "saving"} onClick={() => void session.undo()}>↶</button>
+          <button type="button" aria-label="Redo" disabled={!session.canRedo || session.status === "saving"} onClick={() => void session.redo()}>↷</button>
+          <span className={`save-state save-state--${session.status}`} title={session.error}><i />{session.status === "saving" ? "Saving…" : session.status === "loading" ? "Loading…" : session.status === "error" ? "Attention" : "Saved"}</span>
           <button type="button" className="export-button">Export</button>
         </div>
       </header>
@@ -92,10 +94,14 @@ export function App() {
         </section>
       </div>
       <footer className="statusbar">
-        <div><span className="status-ok">✓</span><span>PageDocument 1.0.0</span><span>Revision 0</span></div>
-        <div><span>Desktop</span><span>71 checks</span><span>UTF-8</span><span>TypeScript</span></div>
+        <div><span className={session.status === "error" ? "status-error" : "status-ok"}>{session.status === "error" ? "!" : "✓"}</span><span>PageDocument 1.0.0</span><span>Revision {session.revision}</span></div>
+        <div><span>{session.selectedNodeId ?? "No selection"}</span><span>UTF-8</span><span>TypeScript</span></div>
       </footer>
       <CommandPalette commands={commands} open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </main>
   );
+}
+
+export function App() {
+  return <StudioSessionProvider><StudioApp /></StudioSessionProvider>;
 }

@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { zoomAtScreenPoint } from "./coordinates.js";
+import {
+  decodePreviewToStudioMessage,
+  PREVIEW_PROTOCOL_VERSION,
+  type PreviewRect,
+  type StudioToPreviewMessage
+} from "@agidn/preview-protocol";
+import { useStudioSession } from "../studio-session.js";
+import { screenToCanvas, zoomAtScreenPoint } from "./coordinates.js";
 
 type Breakpoint = "mobile" | "tablet" | "desktop";
 
@@ -19,17 +26,38 @@ const MIN_SCALE = 0.15;
 const MAX_SCALE = 2;
 
 export function CanvasViewport() {
+  const session = useStudioSession();
   const viewportRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const stateRef = useRef<ViewportState>({ scale: 0.68, offsetX: 56, offsetY: 46 });
   const pendingRef = useRef<ViewportState | undefined>(undefined);
   const frameRef = useRef<number | undefined>(undefined);
   const panningRef = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number } | undefined>(undefined);
   const spacePressedRef = useRef(false);
+  const requestSequenceRef = useRef(0);
+  const initializedRef = useRef(false);
   const [viewport, setViewport] = useState(stateRef.current);
   const [breakpoint, setBreakpoint] = useState<Breakpoint>("desktop");
   const [panning, setPanning] = useState(false);
-  const contentSize = SIZE_BY_BREAKPOINT[breakpoint];
+  const [previewReady, setPreviewReady] = useState(false);
+  const [selectionRect, setSelectionRect] = useState<PreviewRect>();
+  const [previewError, setPreviewError] = useState<string>();
+  const [previewContentHeight, setPreviewContentHeight] = useState(0);
+  const baseSize = SIZE_BY_BREAKPOINT[breakpoint];
+  const contentSize = { width: baseSize.width, height: Math.max(baseSize.height, previewContentHeight) };
   const previewUrl = import.meta.env.VITE_PREVIEW_URL ?? "http://127.0.0.1:4174/";
+
+  const nextRequestId = useCallback((prefix: string): string => `${prefix}_${++requestSequenceRef.current}`, []);
+  const post = useCallback((message: StudioToPreviewMessage): void => {
+    iframeRef.current?.contentWindow?.postMessage(message, "*");
+  }, []);
+
+  const messageBase = useCallback((requestId: string) => ({
+    source: "agidn.studio" as const,
+    protocolVersion: PREVIEW_PROTOCOL_VERSION,
+    requestId,
+    documentRevision: session.revision
+  }), [session.revision]);
 
   const queueViewport = useCallback((update: (current: ViewportState) => ViewportState) => {
     pendingRef.current = update(pendingRef.current ?? stateRef.current);
@@ -65,6 +93,76 @@ export function CanvasViewport() {
     );
     centerAtScale(scale);
   }, [centerAtScale, contentSize.height, contentSize.width]);
+
+  const fitSelection = useCallback(() => {
+    const element = viewportRef.current;
+    if (!element || !selectionRect || selectionRect.width === 0 || selectionRect.height === 0) return;
+    const scale = Math.min(
+      (element.clientWidth - 160) / selectionRect.width,
+      (element.clientHeight - 130) / selectionRect.height,
+      1.5
+    );
+    const nextScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
+    queueViewport(() => ({
+      scale: nextScale,
+      offsetX: (element.clientWidth - selectionRect.width * nextScale) / 2 - selectionRect.x * nextScale,
+      offsetY: (element.clientHeight - selectionRect.height * nextScale) / 2 - selectionRect.y * nextScale
+    }));
+  }, [queueViewport, selectionRect]);
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent<unknown>): void => {
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      const decoded = decodePreviewToStudioMessage(event.data);
+      if (!decoded.valid) return;
+      const message = decoded.message;
+      if (message.type === "preview.ready") {
+        setPreviewReady(true);
+        return;
+      }
+      if (message.documentRevision !== session.revision) return;
+      if (message.type === "preview.nodePointerDown") {
+        session.selectNode(message.nodeId);
+        setSelectionRect(message.rect);
+      } else if (message.type === "preview.nodeBounds" && message.nodeId === session.selectedNodeId) {
+        setSelectionRect(message.rect);
+      } else if (message.type === "preview.renderError") {
+        setPreviewError(message.message);
+      } else if (message.type === "preview.contentOverflow") {
+        setPreviewContentHeight(Math.ceil(message.contentHeight));
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [session.revision, session.selectNode, session.selectedNodeId]);
+
+  useEffect(() => {
+    if (!previewReady || !session.document) return;
+    if (!initializedRef.current) {
+      post({
+        ...messageBase(nextRequestId("initialize")),
+        type: "preview.initialize",
+        document: session.document,
+        breakpoint,
+        ...(session.selectedNodeId ? { selectedNodeId: session.selectedNodeId } : {})
+      });
+      initializedRef.current = true;
+    } else {
+      post({ ...messageBase(nextRequestId("document")), type: "preview.setDocument", document: session.document });
+    }
+    setPreviewError(undefined);
+  }, [messageBase, nextRequestId, post, previewReady, session.document, session.revision]);
+
+  useEffect(() => {
+    if (!previewReady || !initializedRef.current) return;
+    post({ ...messageBase(nextRequestId("breakpoint")), type: "preview.setBreakpoint", breakpoint });
+  }, [breakpoint, messageBase, nextRequestId, post, previewReady]);
+
+  useEffect(() => {
+    if (!previewReady) return;
+    post({ ...messageBase(nextRequestId("selection")), type: "preview.setSelection", ...(session.selectedNodeId ? { nodeId: session.selectedNodeId } : {}) });
+    if (!session.selectedNodeId) setSelectionRect(undefined);
+  }, [messageBase, nextRequestId, post, previewReady, session.selectedNodeId]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -113,17 +211,30 @@ export function CanvasViewport() {
   }, []);
 
   const startPan = (event: ReactPointerEvent<HTMLDivElement>): void => {
-    if (event.button !== 1 && !(event.button === 0 && spacePressedRef.current)) return;
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    panningRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: stateRef.current.offsetX,
-      originY: stateRef.current.offsetY
-    };
-    setPanning(true);
+    if (event.button === 1 || (event.button === 0 && spacePressedRef.current)) {
+      event.preventDefault();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      panningRef.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        originX: stateRef.current.offsetX,
+        originY: stateRef.current.offsetY
+      };
+      setPanning(true);
+      return;
+    }
+    if (event.button !== 0 || !previewReady || !session.document) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const point = screenToCanvas(
+      { x: event.clientX - bounds.left, y: event.clientY - bounds.top },
+      stateRef.current
+    );
+    if (point.x < 0 || point.y < 0 || point.x > contentSize.width || point.y > contentSize.height) {
+      session.selectNode();
+      return;
+    }
+    post({ ...messageBase(nextRequestId("hit")), type: "preview.hitTest", x: point.x, y: point.y });
   };
 
   const movePan = (event: ReactPointerEvent<HTMLDivElement>): void => {
@@ -155,7 +266,10 @@ export function CanvasViewport() {
       <div className="canvas-toolbar">
         <div className="canvas-toolbar__group" aria-label="Responsive breakpoint">
           {(["desktop", "tablet", "mobile"] as const).map((value) => (
-            <button type="button" className={breakpoint === value ? "is-active" : ""} key={value} onClick={() => setBreakpoint(value)}>
+            <button type="button" className={breakpoint === value ? "is-active" : ""} key={value} onClick={() => {
+              setPreviewContentHeight(0);
+              setBreakpoint(value);
+            }}>
               {value[0]!.toUpperCase() + value.slice(1)}
             </button>
           ))}
@@ -163,6 +277,7 @@ export function CanvasViewport() {
         <div className="canvas-toolbar__group">
           <button type="button" onClick={() => centerAtScale(1)}>100%</button>
           <button type="button" onClick={fitPage}>Fit page</button>
+          <button type="button" disabled={!selectionRect} onClick={fitSelection}>Fit selection</button>
           <span className="canvas-zoom">{Math.round(viewport.scale * 100)}%</span>
         </div>
       </div>
@@ -179,14 +294,28 @@ export function CanvasViewport() {
         <div className="canvas-surface" style={transformStyle}>
           <div className="canvas-artboard-label">{contentSize.width} × {contentSize.height}</div>
           <iframe
+            ref={iframeRef}
             className="canvas-preview"
             title="Page preview"
             src={previewUrl}
             sandbox="allow-scripts"
             width={contentSize.width}
             height={contentSize.height}
+            onLoad={() => {
+              initializedRef.current = false;
+              setPreviewReady(false);
+            }}
           />
+          {selectionRect ? (
+            <div
+              className="canvas-selection"
+              style={{ left: selectionRect.x, top: selectionRect.y, width: selectionRect.width, height: selectionRect.height }}
+            >
+              <span>{session.selectedNodeId}</span>
+            </div>
+          ) : null}
         </div>
+        {previewError ? <div className="canvas-error" role="alert">{previewError}</div> : null}
         <div className="canvas-help">Trackpad to pan · Pinch to zoom · Space + drag</div>
       </div>
     </div>
