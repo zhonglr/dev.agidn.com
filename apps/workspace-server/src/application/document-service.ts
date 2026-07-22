@@ -3,7 +3,8 @@ import type {
   CommitCommandsResponse,
   GetDocumentResponse,
   NavigationRequest,
-  NavigationResponse
+  NavigationResponse,
+  RestoreRevisionRequest
 } from "@agidn/api-protocol";
 import type { RuleViolation } from "@agidn/rule-engine";
 import type { CommitResult, NavigationResult } from "@agidn/document-engine";
@@ -40,6 +41,10 @@ export class DocumentService implements DocumentServicePort {
 
   async redo(request: NavigationRequest): Promise<NavigationResponse> {
     return this.#mapNavigation(await this.store.redo(request.baseRevision, request.source ?? "human"));
+  }
+
+  async restore(request: RestoreRevisionRequest): Promise<NavigationResponse> {
+    return this.#mapNavigation(await this.store.restore(request.baseRevision, request.targetRevision, request.source ?? "human"));
   }
 
   #mapCommit(result: CommitResult): CommitCommandsResponse {

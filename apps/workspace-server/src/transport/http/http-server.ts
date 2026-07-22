@@ -9,6 +9,7 @@ import {
   decodeCommitCommandsRequest,
   decodeExportContextRequest,
   decodeNavigationRequest,
+  decodeRestoreRevisionRequest,
   type ProtocolErrorResponse,
   type TransportErrorResponse
 } from "@agidn/api-protocol";
@@ -82,6 +83,18 @@ async function route(request: IncomingMessage, response: ServerResponse, service
     return;
   }
 
+  if (path === "/v1/history/restore" && request.method === "POST") {
+    const decoded = decodeRestoreRevisionRequest(await readJsonBody(request));
+    if (!decoded.valid) {
+      sendJson(response, 400, protocolError(decoded.issues));
+      return;
+    }
+    const payload = await services.document.restore(decoded.value);
+    if (!checkNavigationResponse(payload)) throw new Error("DocumentService returned an invalid Restore response.");
+    sendJson(response, statusForApplicationResponse(payload), payload);
+    return;
+  }
+
   if (path === "/v1/export" && request.method === "POST") {
     const decoded = decodeExportContextRequest(await readJsonBody(request));
     if (!decoded.valid) {
@@ -94,7 +107,7 @@ async function route(request: IncomingMessage, response: ServerResponse, service
     return;
   }
 
-  const knownPath = ["/v1/document", "/v1/history", "/v1/catalog", "/v1/commands", "/v1/undo", "/v1/redo", "/v1/export"].includes(path);
+  const knownPath = ["/v1/document", "/v1/history", "/v1/history/restore", "/v1/catalog", "/v1/commands", "/v1/undo", "/v1/redo", "/v1/export"].includes(path);
   sendJson(
     response,
     knownPath ? 405 : 404,

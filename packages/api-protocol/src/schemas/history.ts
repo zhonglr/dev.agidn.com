@@ -22,7 +22,7 @@ export const HistoryEntrySchema = Type.Union([
   Type.Object(
     {
       ...historyBase,
-      kind: Type.Union([Type.Literal("undo"), Type.Literal("redo")]),
+      kind: Type.Union([Type.Literal("undo"), Type.Literal("redo"), Type.Literal("restore")]),
       targetRevision: RevisionNumberSchema
     },
     { additionalProperties: false }

@@ -5,6 +5,7 @@ import type {
   GetDocumentResponseSchema,
   NavigationRequestSchema,
   NavigationResponseSchema,
+  RestoreRevisionRequestSchema,
   ProtocolErrorResponseSchema,
   TransportErrorResponseSchema
 } from "./schemas/document.js";
@@ -17,6 +18,7 @@ export type CommitCommandsResponse = Static<typeof CommitCommandsResponseSchema>
 export type GetDocumentResponse = Static<typeof GetDocumentResponseSchema>;
 export type NavigationRequest = Static<typeof NavigationRequestSchema>;
 export type NavigationResponse = Static<typeof NavigationResponseSchema>;
+export type RestoreRevisionRequest = Static<typeof RestoreRevisionRequestSchema>;
 export type ProtocolErrorResponse = Static<typeof ProtocolErrorResponseSchema>;
 export type TransportErrorResponse = Static<typeof TransportErrorResponseSchema>;
 export type GetHistoryResponse = Static<typeof GetHistoryResponseSchema>;

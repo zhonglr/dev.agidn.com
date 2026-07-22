@@ -52,10 +52,19 @@ describe("Revision Store persistence", () => {
       });
       expect(replayed).toMatchObject({ ok: false, error: "DUPLICATE_COMMAND", currentRevision: 3 });
 
+      const restored = await second.documentService.restore({ protocolVersion: "1.0.0", baseRevision: 3, targetRevision: 0 });
+      expect(restored).toMatchObject({ ok: true, revision: { revision: 4 } });
+      if (!restored.ok) return;
+      expect(findNode(restored.revision.document, "text_hero")).not.toMatchObject({ role: "persisted-summary" });
+
+      const third = await createWorkspaceServerApplication(documentPath, { revisionStatePath: statePath });
+      expect(third.documentService.getCurrent()).toMatchObject({ ok: true, revision: { revision: 4 } });
+      expect(third.historyService.getHistory().entries.at(-1)).toMatchObject({ kind: "restore", targetRevision: 0 });
+
       const persisted = JSON.parse(await readFile(statePath, "utf8")) as { formatVersion?: unknown; revisions?: unknown[]; history?: unknown[] };
       expect(persisted).toMatchObject({ formatVersion: "1.0.0" });
-      expect(persisted.revisions).toHaveLength(4);
-      expect(persisted.history).toHaveLength(3);
+      expect(persisted.revisions).toHaveLength(5);
+      expect(persisted.history).toHaveLength(4);
       expect((await readdir(directory)).filter((name) => name.endsWith(".tmp"))).toEqual([]);
     } finally {
       await rm(directory, { recursive: true, force: true });

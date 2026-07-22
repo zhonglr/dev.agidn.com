@@ -138,6 +138,23 @@ describe("Workspace HTTP transport", () => {
       });
       expect(undoResponse.status).toBe(200);
       expect(await undoResponse.json()).toMatchObject({ ok: true, revision: { revision: 2 } });
+
+      const restoreResponse = await fetch(`${baseUrl}/v1/history/restore`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ protocolVersion: "1.0.0", baseRevision: 2, targetRevision: 1 })
+      });
+      expect(restoreResponse.status).toBe(200);
+      expect(await restoreResponse.json()).toMatchObject({ ok: true, revision: { revision: 3, document: { children: expect.any(Array) } } });
+      expect(store.getHistory().at(-1)).toMatchObject({ kind: "restore", targetRevision: 1 });
+
+      const missingRestoreResponse = await fetch(`${baseUrl}/v1/history/restore`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ protocolVersion: "1.0.0", baseRevision: 3, targetRevision: 99 })
+      });
+      expect(missingRestoreResponse.status).toBe(404);
+      expect(await missingRestoreResponse.json()).toMatchObject({ ok: false, error: "REVISION_NOT_FOUND", currentRevision: 3 });
     } finally {
       server.close();
       await once(server, "close");

@@ -3,7 +3,8 @@ import type {
   CommitCommandsResponse,
   GetDocumentResponse,
   NavigationRequest,
-  NavigationResponse
+  NavigationResponse,
+  RestoreRevisionRequest
 } from "@agidn/api-protocol";
 
 export interface DocumentServicePort {
@@ -11,4 +12,5 @@ export interface DocumentServicePort {
   commit(request: CommitCommandsRequest): Promise<CommitCommandsResponse>;
   undo(request: NavigationRequest): Promise<NavigationResponse>;
   redo(request: NavigationRequest): Promise<NavigationResponse>;
+  restore(request: RestoreRevisionRequest): Promise<NavigationResponse>;
 }

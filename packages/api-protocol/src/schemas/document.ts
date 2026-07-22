@@ -61,6 +61,16 @@ export const NavigationRequestSchema = Type.Object(
   { additionalProperties: false }
 );
 
+export const RestoreRevisionRequestSchema = Type.Object(
+  {
+    protocolVersion: ProtocolVersionSchema,
+    baseRevision: RevisionNumberSchema,
+    targetRevision: RevisionNumberSchema,
+    source: Type.Optional(ChangeSourceSchema)
+  },
+  { additionalProperties: false }
+);
+
 export const NavigationResponseSchema = Type.Union([
   Type.Object(
     { protocolVersion: ProtocolVersionSchema, ok: Type.Literal(true), revision: DocumentRevisionSchema },
@@ -73,7 +83,9 @@ export const NavigationResponseSchema = Type.Union([
       error: Type.Union([
         Type.Literal("REVISION_CONFLICT"),
         Type.Literal("NOTHING_TO_UNDO"),
-        Type.Literal("NOTHING_TO_REDO")
+        Type.Literal("NOTHING_TO_REDO"),
+        Type.Literal("REVISION_NOT_FOUND"),
+        Type.Literal("ALREADY_CURRENT")
       ]),
       currentRevision: RevisionNumberSchema
     },

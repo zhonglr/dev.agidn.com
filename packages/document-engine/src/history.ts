@@ -15,7 +15,7 @@ export interface CommitHistoryEntry extends HistoryEntryBase {
 }
 
 export interface NavigationHistoryEntry extends HistoryEntryBase {
-  kind: "undo" | "redo";
+  kind: "undo" | "redo" | "restore";
   targetRevision: RevisionNumber;
 }
 

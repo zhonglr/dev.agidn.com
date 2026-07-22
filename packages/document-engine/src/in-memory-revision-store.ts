@@ -197,6 +197,30 @@ export class InMemoryRevisionStore implements RevisionStore {
     return { accepted: true, revision: cloneRevision(revision) };
   }
 
+  restore(baseRevision: RevisionNumber, targetRevision: RevisionNumber, source: ChangeSource = "human"): NavigationResult {
+    if (baseRevision !== this.#current.revision) {
+      return { accepted: false, reason: "REVISION_CONFLICT", currentRevision: this.#current.revision };
+    }
+    if (targetRevision === this.#current.revision) {
+      return { accepted: false, reason: "ALREADY_CURRENT", currentRevision: this.#current.revision };
+    }
+    const target = this.#revisions.get(targetRevision);
+    if (!target) return { accepted: false, reason: "REVISION_NOT_FOUND", currentRevision: this.#current.revision };
+    const parentRevision = this.#current.revision;
+    this.#undoStack.push({ document: structuredClone(this.#current.document), originRevision: parentRevision });
+    this.#redoStack.length = 0;
+    const revision = this.#createRevision(target.document);
+    this.#history.push({
+      kind: "restore",
+      revision: revision.revision,
+      parentRevision,
+      createdAt: revision.createdAt,
+      source,
+      targetRevision
+    });
+    return { accepted: true, revision: cloneRevision(revision) };
+  }
+
   #readCommandId(input: unknown): string | undefined {
     return input !== null && typeof input === "object" && typeof (input as { commandId?: unknown }).commandId === "string"
       ? (input as { commandId: string }).commandId

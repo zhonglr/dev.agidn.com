@@ -18,4 +18,5 @@ export interface WorkspaceRevisionStorePort {
   commit(request: CommitRequest): CommitResult | Promise<CommitResult>;
   undo(baseRevision: RevisionNumber, source?: ChangeSource): NavigationResult | Promise<NavigationResult>;
   redo(baseRevision: RevisionNumber, source?: ChangeSource): NavigationResult | Promise<NavigationResult>;
+  restore(baseRevision: RevisionNumber, targetRevision: RevisionNumber, source?: ChangeSource): NavigationResult | Promise<NavigationResult>;
 }

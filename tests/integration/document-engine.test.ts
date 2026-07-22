@@ -116,6 +116,24 @@ describe("InMemoryRevisionStore", () => {
     expect(store.getHistory().map(({ kind }) => kind)).toEqual(["commit", "undo", "redo"]);
   });
 
+  it("restores an historical snapshot as a new undoable revision", async () => {
+    const project = await loadGoldenProject();
+    const store = new InMemoryRevisionStore(project.document, project);
+    expect(store.commit({ baseRevision: 0, commands: [await addCardCommand()] }).accepted).toBe(true);
+
+    const restored = store.restore(1, 0);
+    expect(restored.accepted).toBe(true);
+    if (!restored.accepted) return;
+    expect(restored.revision.revision).toBe(2);
+    expect(findNode(restored.revision.document, "pricing_card_enterprise")).toBeUndefined();
+    expect(store.getHistory().at(-1)).toMatchObject({ kind: "restore", revision: 2, parentRevision: 1, targetRevision: 0 });
+
+    const undone = store.undo(2);
+    expect(undone.accepted).toBe(true);
+    if (undone.accepted) expect(findNode(undone.revision.document, "pricing_card_enterprise")).toBeDefined();
+    expect(store.restore(3, 99)).toEqual({ accepted: false, reason: "REVISION_NOT_FOUND", currentRevision: 3 });
+  });
+
   it("returns detached snapshots that callers cannot mutate", async () => {
     const project = await loadGoldenProject();
     const store = new InMemoryRevisionStore(project.document, project);

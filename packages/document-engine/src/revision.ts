@@ -26,6 +26,7 @@ export interface RevisionStore {
   commit(request: CommitRequest): CommitResult;
   undo(baseRevision: RevisionNumber, source?: ChangeSource): NavigationResult;
   redo(baseRevision: RevisionNumber, source?: ChangeSource): NavigationResult;
+  restore(baseRevision: RevisionNumber, targetRevision: RevisionNumber, source?: ChangeSource): NavigationResult;
 }
 
 export function cloneRevision(revision: DocumentRevision): DocumentRevision {

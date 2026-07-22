@@ -6,10 +6,11 @@ import {
   GetDocumentResponseSchema,
   NavigationRequestSchema,
   NavigationResponseSchema,
+  RestoreRevisionRequestSchema,
   ProtocolErrorResponseSchema,
   TransportErrorResponseSchema
 } from "./schemas/document.js";
-import type { CommitCommandsRequest, NavigationRequest } from "./types.js";
+import type { CommitCommandsRequest, NavigationRequest, RestoreRevisionRequest } from "./types.js";
 import { GetHistoryResponseSchema } from "./schemas/history.js";
 import { GetCatalogResponseSchema } from "./schemas/catalog.js";
 import { ExportContextRequestSchema, ExportContextResponseSchema } from "./schemas/export.js";
@@ -41,6 +42,7 @@ export const decodeCommitCommandsRequest = decoder<CommitCommandsRequest>(TypeCo
 export const checkCommitCommandsResponse = checker(CommitCommandsResponseSchema);
 export const checkGetDocumentResponse = checker(GetDocumentResponseSchema);
 export const decodeNavigationRequest = decoder<NavigationRequest>(TypeCompiler.Compile(NavigationRequestSchema));
+export const decodeRestoreRevisionRequest = decoder<RestoreRevisionRequest>(TypeCompiler.Compile(RestoreRevisionRequestSchema));
 export const checkNavigationResponse = checker(NavigationResponseSchema);
 export const checkProtocolErrorResponse = checker(ProtocolErrorResponseSchema);
 export const checkTransportErrorResponse = checker(TransportErrorResponseSchema);

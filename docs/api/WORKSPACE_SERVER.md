@@ -55,7 +55,7 @@ pnpm workspace-server examples/golden-pricing/page.ui.json 4178
 
 ## GET `/v1/history`
 
-返回单调 Revision 事件流和当前导航能力。Commit 条目包含正式解析后的 Command 和 Patch；undo/redo 条目包含目标 Revision。
+返回单调 Revision 事件流和当前导航能力。Commit 条目包含正式解析后的 Command 和 Patch；undo/redo/restore 条目包含目标 Revision。
 
 ```json
 {
@@ -217,6 +217,21 @@ Revision 冲突：
 ## POST `/v1/redo`
 
 请求结构与 undo 相同。没有可重做状态时返回 422 和 `NOTHING_TO_REDO`。
+
+## POST `/v1/history/restore`
+
+把指定历史 Revision 的文档快照恢复为当前状态：
+
+```json
+{
+  "protocolVersion": "1.0.0",
+  "baseRevision": 8,
+  "targetRevision": 3,
+  "source": "human"
+}
+```
+
+恢复不会移动或覆盖既有 Revision，而是创建一个新的单调 Revision，并写入 `kind: "restore"`、`targetRevision: 3` 的 History 条目。恢复前的状态会进入 undo 栈，因此恢复操作本身也可以撤销。目标 Revision 不存在时返回 404 和 `REVISION_NOT_FOUND`；目标已经是当前 Revision 时返回 422 和 `ALREADY_CURRENT`。
 
 ## POST `/v1/export`
 

@@ -80,6 +80,10 @@ export class PersistentRevisionStore implements WorkspaceRevisionStorePort {
     return this.#mutate((candidate) => candidate.redo(baseRevision, source));
   }
 
+  restore(baseRevision: RevisionNumber, targetRevision: RevisionNumber, source: ChangeSource = "human"): Promise<NavigationResult> {
+    return this.#mutate((candidate) => candidate.restore(baseRevision, targetRevision, source));
+  }
+
   #mutate<Result extends CommitResult | NavigationResult>(operation: (candidate: InMemoryRevisionStore) => Result): Promise<Result> {
     const mutation = this.#mutationTail.then(async () => {
       const candidate = InMemoryRevisionStore.fromState(this.#store.exportState(), this.context, this.options);

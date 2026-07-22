@@ -6,7 +6,8 @@ import {
   checkGetHistoryResponse,
   decodeCommitCommandsRequest,
   decodeExportContextRequest,
-  decodeNavigationRequest
+  decodeNavigationRequest,
+  decodeRestoreRevisionRequest
 } from "@agidn/api-protocol";
 import { InMemoryRevisionStore } from "@agidn/document-engine";
 import { CatalogService } from "../../apps/workspace-server/src/application/catalog-service.js";
@@ -36,6 +37,12 @@ describe("Workspace API protocol", () => {
   it("strictly decodes navigation requests", () => {
     expect(decodeNavigationRequest({ protocolVersion: "1.0.0", baseRevision: 3 }).valid).toBe(true);
     expect(decodeNavigationRequest({ protocolVersion: "1.0.0", baseRevision: -1 }).valid).toBe(false);
+  });
+
+  it("strictly decodes historical restore requests", () => {
+    expect(decodeRestoreRevisionRequest({ protocolVersion: "1.0.0", baseRevision: 8, targetRevision: 2 }).valid).toBe(true);
+    expect(decodeRestoreRevisionRequest({ protocolVersion: "1.0.0", baseRevision: 8, targetRevision: -1 }).valid).toBe(false);
+    expect(decodeRestoreRevisionRequest({ protocolVersion: "1.0.0", baseRevision: 8, targetRevision: 2, directWrite: true }).valid).toBe(false);
   });
 
   it("strictly decodes Revision export requests without accepting client paths", () => {
