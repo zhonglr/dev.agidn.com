@@ -10,6 +10,7 @@
   "dependencies": {
     "@agidn/design-tokens": "workspace:*",
     "@agidn/document-schema": "workspace:*",
+    "@agidn/preview-protocol": "workspace:*",
     "@agidn/react-renderer": "workspace:*",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

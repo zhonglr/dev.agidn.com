@@ -36,6 +36,9 @@ importers:
       '@agidn/document-schema':
         specifier: workspace:*
         version: link:packages/document-schema
+      '@agidn/preview-protocol':
+        specifier: workspace:*
+        version: link:packages/preview-protocol
       '@agidn/react-renderer':
         specifier: workspace:*
         version: link:packages/react-renderer
@@ -78,6 +81,9 @@ importers:
       '@agidn/document-schema':
         specifier: workspace:*
         version: link:../../packages/document-schema
+      '@agidn/preview-protocol':
+        specifier: workspace:*
+        version: link:../../packages/preview-protocol
       '@agidn/react-renderer':
         specifier: workspace:*
         version: link:../../packages/react-renderer
@@ -103,6 +109,18 @@ importers:
 
   apps/studio:
     dependencies:
+      '@agidn/api-protocol':
+        specifier: workspace:*
+        version: link:../../packages/api-protocol
+      '@agidn/command-engine':
+        specifier: workspace:*
+        version: link:../../packages/command-engine
+      '@agidn/document-schema':
+        specifier: workspace:*
+        version: link:../../packages/document-schema
+      '@agidn/preview-protocol':
+        specifier: workspace:*
+        version: link:../../packages/preview-protocol
       '@agidn/studio-workbench':
         specifier: workspace:*
         version: link:../../packages/studio-workbench
@@ -158,6 +176,9 @@ importers:
       '@sinclair/typebox':
         specifier: ^0.34.38
         version: 0.34.52
+      tsx:
+        specifier: ^4.20.3
+        version: 4.23.1
 
   packages/api-protocol:
     dependencies:
@@ -228,6 +249,15 @@ importers:
 
   packages/document-schema:
     dependencies:
+      '@sinclair/typebox':
+        specifier: ^0.34.38
+        version: 0.34.52
+
+  packages/preview-protocol:
+    dependencies:
+      '@agidn/document-schema':
+        specifier: workspace:*
+        version: link:../document-schema
       '@sinclair/typebox':
         specifier: ^0.34.38
         version: 0.34.52

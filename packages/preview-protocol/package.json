@@ -1,0 +1,10 @@
+{
+  "name": "@agidn/preview-protocol",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@agidn/document-schema": "workspace:*",
+    "@sinclair/typebox": "^0.34.38"
+  }
+}

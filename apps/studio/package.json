@@ -8,6 +8,10 @@
     "build": "vite build"
   },
   "dependencies": {
+    "@agidn/api-protocol": "workspace:*",
+    "@agidn/command-engine": "workspace:*",
+    "@agidn/document-schema": "workspace:*",
+    "@agidn/preview-protocol": "workspace:*",
     "@agidn/studio-workbench": "workspace:*",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
