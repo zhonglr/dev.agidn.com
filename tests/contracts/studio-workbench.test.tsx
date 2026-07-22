@@ -87,6 +87,25 @@ describe("Studio Workbench", () => {
     });
   });
 
+  it("recreates a missing tab-group anchor after its final panel is closed", () => {
+    const onlyInspector: WorkbenchLayoutState = {
+      ...defaultLayout,
+      root: {
+        type: "split", id: "root", direction: "horizontal", sizes: [0.2, 0.6, 0.2],
+        children: [
+          { type: "tabs", id: "tabs.primary", activePanelId: "outline", panelIds: ["outline"] },
+          { type: "panel", id: "canvas-host", panelId: "canvas" },
+          { type: "tabs", id: "tabs.secondary", activePanelId: "inspector", panelIds: ["inspector"] }
+        ]
+      }
+    };
+    const closed = closePanel(onlyInspector, "inspector");
+    expect(findNode(closed.root, "tabs.secondary")).toBeUndefined();
+    const reopened = openPanel(closed, "inspector", "tabs.secondary");
+    expect(findNode(reopened.root, "tabs.secondary")).toMatchObject({ activePanelId: "inspector", panelIds: ["inspector"] });
+    expect(reopened.hiddenPanelIds).not.toContain("inspector");
+  });
+
   it("moves panels between tab groups and creates edge splits", () => {
     const tabbed = dockPanel(defaultLayout, "components", "canvas-host", "center");
     expect(findNode(tabbed.root, "tabs.dock.canvas-host")).toMatchObject({
@@ -97,15 +116,29 @@ describe("Studio Workbench", () => {
     expect(findNode(tabbed.root, "primary")).toMatchObject({ panelIds: ["outline"] });
 
     const split = dockPanel(defaultLayout, "components", "canvas-host", "left");
-    expect(findNode(split.root, "split.dock.canvas-host")).toMatchObject({
+    expect(split.root).toMatchObject({
       type: "split",
       direction: "horizontal",
-      sizes: [0.3, 0.7],
       children: [
+        { type: "tabs", panelIds: ["outline"] },
         { type: "panel", panelId: "components" },
         { type: "panel", panelId: "canvas" }
       ]
     });
+    if (split.root.type === "split") {
+      expect(split.root.sizes[0]).toBeCloseTo(0.25);
+      expect(split.root.sizes[1]).toBeCloseTo(0.225);
+      expect(split.root.sizes[2]).toBeCloseTo(0.525);
+    }
+  });
+
+  it("flattens repeated docking splits in the same direction", () => {
+    const first = dockPanel(defaultLayout, "components", "canvas-host", "left");
+    const second = dockPanel(first, "outline", "panel.dock.components", "left");
+    expect(second.root.type).toBe("split");
+    if (second.root.type !== "split") return;
+    expect(second.root.children.every((child) => child.type !== "split" || child.direction !== "horizontal")).toBe(true);
+    expect(second.root.sizes.reduce((sum, size) => sum + size, 0)).toBeCloseTo(1);
   });
 
   it("docks hidden panels and ignores invalid targets", () => {

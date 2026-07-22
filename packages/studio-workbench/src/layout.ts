@@ -100,6 +100,17 @@ function normalizeSizes(sizes: readonly number[], count: number): number[] {
   return sizes.map((size) => size / total);
 }
 
+function flattenSplit(node: SplitLayoutNode): SplitLayoutNode {
+  const sizes = normalizeSizes(node.sizes, node.children.length);
+  const flattened = node.children.flatMap((child, index) => {
+    const parentSize = sizes[index]!;
+    if (child.type !== "split" || child.direction !== node.direction) return [{ child, size: parentSize }];
+    const childSizes = normalizeSizes(child.sizes, child.children.length);
+    return child.children.map((grandchild, childIndex) => ({ child: grandchild, size: parentSize * childSizes[childIndex]! }));
+  });
+  return { ...node, children: flattened.map(({ child }) => child), sizes: normalizeSizes(flattened.map(({ size }) => size), flattened.length) };
+}
+
 function collectVisiblePanels(node: WorkbenchLayoutNode, result = new Set<string>()): Set<string> {
   if (node.type === "panel") result.add(node.panelId);
   else if (node.type === "tabs") node.panelIds.forEach((panelId) => result.add(panelId));
@@ -125,11 +136,11 @@ function normalizeNode(node: WorkbenchLayoutNode, availablePanels: ReadonlySet<s
   });
   if (retained.length === 0) return undefined;
   if (retained.length === 1) return retained[0]!.child;
-  return {
+  return flattenSplit({
     ...node,
     children: retained.map(({ child }) => child),
     sizes: normalizeSizes(retained.map(({ size }) => size ?? 0), retained.length)
-  };
+  });
 }
 
 export function normalizeWorkbenchLayout(
@@ -251,8 +262,32 @@ export function openPanel(layout: WorkbenchLayoutState, panelId: string, targetT
     inserted = true;
     return { ...node, panelIds: [...node.panelIds, panelId], activePanelId: panelId };
   });
-  if (!inserted) return layout;
-  return { ...layout, root, hiddenPanelIds: layout.hiddenPanelIds.filter((candidate) => candidate !== panelId) };
+  if (inserted) return { ...layout, root, hiddenPanelIds: layout.hiddenPanelIds.filter((candidate) => candidate !== panelId) };
+
+  const target: TabLayoutNode = { type: "tabs", id: targetTabGroupId, activePanelId: panelId, panelIds: [panelId] };
+  const lowerTarget = targetTabGroupId.toLowerCase();
+  const horizontal = lowerTarget.includes("primary") || lowerTarget.includes("secondary");
+  const before = lowerTarget.includes("primary");
+  const direction = horizontal ? "horizontal" : "vertical";
+  let rebuilt: WorkbenchLayoutNode;
+  if (layout.root.type === "split" && layout.root.direction === direction) {
+    const currentSizes = normalizeSizes(layout.root.sizes, layout.root.children.length).map((size) => size * 0.78);
+    rebuilt = flattenSplit({
+      ...layout.root,
+      children: before ? [target, ...layout.root.children] : [...layout.root.children, target],
+      sizes: before ? [0.22, ...currentSizes] : [...currentSizes, 0.22]
+    });
+  } else {
+    const ids = collectNodeIds(layout.root);
+    rebuilt = {
+      type: "split",
+      id: uniqueNodeId(ids, `split.restore.${targetTabGroupId}`),
+      direction,
+      sizes: before ? [0.22, 0.78] : [0.78, 0.22],
+      children: before ? [target, layout.root] : [layout.root, target]
+    };
+  }
+  return { ...layout, root: rebuilt, hiddenPanelIds: layout.hiddenPanelIds.filter((candidate) => candidate !== panelId) };
 }
 
 export function toggleMaximizedPanel(layout: WorkbenchLayoutState, panelId: string): WorkbenchLayoutState {
@@ -355,9 +390,10 @@ export function dockPanel(
     };
   }
 
+  const nextRoot = replaceNodeById(detachedRoot, target.id, replacement);
   return {
     ...layout,
-    root: replaceNodeById(detachedRoot, target.id, replacement),
+    root: nextRoot.type === "split" ? flattenSplit(nextRoot) : nextRoot,
     hiddenPanelIds: layout.hiddenPanelIds.filter((candidate) => candidate !== panelId)
   };
 }

@@ -5,7 +5,7 @@ export type PanelLocation = "primary" | "secondary" | "bottom" | "center";
 export interface PanelContribution {
   id: string;
   title: string;
-  icon?: string;
+  icon?: ReactNode;
   defaultLocation: PanelLocation;
   defaultSize?: number;
   minSize?: number;
