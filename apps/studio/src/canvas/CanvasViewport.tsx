@@ -5,10 +5,14 @@ import {
   type PreviewRect,
   type StudioToPreviewMessage
 } from "@agidn/preview-protocol";
+import type { GetCatalogResponse } from "@agidn/api-protocol";
+import type { PageDocument, PageNode } from "@agidn/document-schema";
 import { useStudioSession } from "../studio-session.js";
+import { NODE_DRAG_MIME, resolveMoveTarget, type MoveTarget } from "../structure-drag.js";
 import { screenToCanvas, zoomAtScreenPoint } from "./coordinates.js";
 
 type Breakpoint = "mobile" | "tablet" | "desktop";
+type PreviewStatus = "connecting" | "ready" | "error";
 
 interface ViewportState {
   scale: number;
@@ -25,6 +29,33 @@ const SIZE_BY_BREAKPOINT: Record<Breakpoint, { width: number; height: number }> 
 const MIN_SCALE = 0.15;
 const MAX_SCALE = 2;
 
+interface NodeLocation { node: PageNode; parent?: PageNode; slot?: string }
+
+function findLocation(document: PageDocument, nodeId: string): NodeLocation | undefined {
+  const visit = (nodes: readonly PageNode[], parent?: PageNode, slot?: string): NodeLocation | undefined => {
+    for (const node of nodes) {
+      if (node.id === nodeId) return { node, ...(parent ? { parent } : {}), ...(slot ? { slot } : {}) };
+      if (node.kind === "layout") { const found = visit(node.children, node); if (found) return found; }
+      else for (const [slotName, children] of Object.entries(node.slots ?? {})) { const found = visit(children, node, slotName); if (found) return found; }
+    }
+    return undefined;
+  };
+  return visit(document.children);
+}
+
+function targetForDrop(document: PageDocument, catalog: GetCatalogResponse, hitNodeId: string, componentRef: string): { parentId: string; slot?: string; beforeNodeId?: string } | undefined {
+  const location = findLocation(document, hitNodeId);
+  if (!location) return undefined;
+  if (location.node.kind === "layout") return { parentId: location.node.id };
+  const definition = catalog.components.components[location.node.componentRef];
+  for (const [slotName, slot] of Object.entries(definition?.slots ?? {})) {
+    const count = location.node.slots?.[slotName]?.length ?? 0;
+    if ((slot.accepts?.includes("*") || slot.accepts?.includes(componentRef)) && (slot.maxItems === undefined || count < slot.maxItems)) return { parentId: location.node.id, slot: slotName };
+  }
+  if (!location.parent) return undefined;
+  return { parentId: location.parent.id, ...(location.slot ? { slot: location.slot } : {}), beforeNodeId: location.node.id };
+}
+
 export function CanvasViewport() {
   const session = useStudioSession();
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -35,14 +66,21 @@ export function CanvasViewport() {
   const panningRef = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number } | undefined>(undefined);
   const spacePressedRef = useRef(false);
   const requestSequenceRef = useRef(0);
+  const pendingDropsRef = useRef(new Map<string, string>());
+  const moveRequestsRef = useRef(new Map<string, { sourceNodeId: string; commit: boolean }>());
+  const moveCandidateRef = useRef<{ sourceNodeId: string; target: MoveTarget } | undefined>(undefined);
+  const lastMoveRequestRef = useRef(0);
   const initializedRef = useRef(false);
   const [viewport, setViewport] = useState(stateRef.current);
   const [breakpoint, setBreakpoint] = useState<Breakpoint>("desktop");
   const [panning, setPanning] = useState(false);
   const [previewReady, setPreviewReady] = useState(false);
+  const [previewStatus, setPreviewStatus] = useState<PreviewStatus>("connecting");
+  const [frameAttempt, setFrameAttempt] = useState(0);
   const [selectionRect, setSelectionRect] = useState<PreviewRect>();
   const [previewError, setPreviewError] = useState<string>();
   const [previewContentHeight, setPreviewContentHeight] = useState(0);
+  const [movePreview, setMovePreview] = useState<{ rect: PreviewRect; position: "before" | "inside" | "after" }>();
   const baseSize = SIZE_BY_BREAKPOINT[breakpoint];
   const contentSize = { width: baseSize.width, height: Math.max(baseSize.height, previewContentHeight) };
   const previewUrl = import.meta.env.VITE_PREVIEW_URL ?? "http://127.0.0.1:4174/";
@@ -118,6 +156,7 @@ export function CanvasViewport() {
       const message = decoded.message;
       if (message.type === "preview.ready") {
         setPreviewReady(true);
+        setPreviewStatus("ready");
         return;
       }
       if (message.documentRevision !== session.revision) return;
@@ -126,6 +165,36 @@ export function CanvasViewport() {
         setSelectionRect(message.rect);
       } else if (message.type === "preview.nodeBounds" && message.nodeId === session.selectedNodeId) {
         setSelectionRect(message.rect);
+      } else if (message.type === "preview.dropIntent") {
+        const componentRef = pendingDropsRef.current.get(message.requestId);
+        pendingDropsRef.current.delete(message.requestId);
+        if (!componentRef || !session.document || !session.catalog) return;
+        const target = targetForDrop(session.document, session.catalog, message.nodeId, componentRef);
+        if (!target) {
+          setPreviewError("This component has no legal drop target at that position.");
+          return;
+        }
+        setSelectionRect(message.rect);
+        void session.insertComponent(componentRef, target);
+      } else if (message.type === "preview.moveIntent") {
+        const request = moveRequestsRef.current.get(message.requestId);
+        moveRequestsRef.current.delete(message.requestId);
+        if (!request || !session.document || !session.catalog) return;
+        const resolution = resolveMoveTarget(session.document, session.catalog, request.sourceNodeId, message.nodeId, message.pointerY, message.rect);
+        if (!resolution.valid) {
+          moveCandidateRef.current = undefined;
+          setMovePreview(undefined);
+          if (request.commit && !resolution.reason.includes("already at")) setPreviewError(resolution.reason);
+          return;
+        }
+        moveCandidateRef.current = { sourceNodeId: request.sourceNodeId, target: resolution.target };
+        setMovePreview({ rect: message.rect, position: resolution.position });
+        if (request.commit) {
+          void session.moveNode(request.sourceNodeId, resolution.target).finally(() => {
+            moveCandidateRef.current = undefined;
+            setMovePreview(undefined);
+          });
+        }
       } else if (message.type === "preview.renderError") {
         setPreviewError(message.message);
       } else if (message.type === "preview.contentOverflow") {
@@ -134,7 +203,16 @@ export function CanvasViewport() {
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [session.revision, session.selectNode, session.selectedNodeId]);
+  }, [session.catalog, session.document, session.insertComponent, session.revision, session.selectNode, session.selectedNodeId]);
+
+  useEffect(() => {
+    if (previewStatus !== "connecting") return;
+    const timeout = window.setTimeout(() => {
+      setPreviewStatus("error");
+      setPreviewError("Preview did not connect. Check Preview Host, then retry.");
+    }, 5000);
+    return () => window.clearTimeout(timeout);
+  }, [frameAttempt, previewStatus]);
 
   useEffect(() => {
     if (!previewReady || !session.document) return;
@@ -147,6 +225,7 @@ export function CanvasViewport() {
         ...(session.selectedNodeId ? { selectedNodeId: session.selectedNodeId } : {})
       });
       initializedRef.current = true;
+      setPreviewStatus("ready");
     } else {
       post({ ...messageBase(nextRequestId("document")), type: "preview.setDocument", document: session.document });
     }
@@ -224,7 +303,7 @@ export function CanvasViewport() {
       setPanning(true);
       return;
     }
-    if (event.button !== 0 || !previewReady || !session.document) return;
+    if (event.button !== 0 || previewStatus !== "ready" || !session.document) return;
     const bounds = event.currentTarget.getBoundingClientRect();
     const point = screenToCanvas(
       { x: event.clientX - bounds.left, y: event.clientY - bounds.top },
@@ -290,6 +369,41 @@ export function CanvasViewport() {
         onPointerMove={movePan}
         onPointerUp={endPan}
         onPointerCancel={endPan}
+        onDragOver={(event) => {
+          const isComponent = event.dataTransfer.types.includes("application/x-agidn-component");
+          const isNode = event.dataTransfer.types.includes(NODE_DRAG_MIME);
+          if (!isComponent && !isNode) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = isNode ? "move" : "copy";
+          if (!isNode || previewStatus !== "ready" || performance.now() - lastMoveRequestRef.current < 70) return;
+          const sourceNodeId = event.dataTransfer.getData(NODE_DRAG_MIME);
+          if (!sourceNodeId) return;
+          lastMoveRequestRef.current = performance.now();
+          const bounds = event.currentTarget.getBoundingClientRect();
+          const point = screenToCanvas({ x: event.clientX - bounds.left, y: event.clientY - bounds.top }, stateRef.current);
+          const requestId = nextRequestId("move_preview");
+          moveRequestsRef.current.set(requestId, { sourceNodeId, commit: false });
+          post({ ...messageBase(requestId), type: "preview.resolveMove", sourceNodeId, x: point.x, y: point.y });
+        }}
+        onDrop={(event) => {
+          const component = event.dataTransfer.getData("application/x-agidn-component");
+          const sourceNodeId = event.dataTransfer.getData(NODE_DRAG_MIME);
+          if (!component && !sourceNodeId) return;
+          event.preventDefault();
+          if (previewStatus !== "ready") { setPreviewError("Preview is not connected, so the drop target cannot be resolved."); return; }
+          const bounds = event.currentTarget.getBoundingClientRect();
+          const point = screenToCanvas({ x: event.clientX - bounds.left, y: event.clientY - bounds.top }, stateRef.current);
+          if (sourceNodeId) {
+            const requestId = nextRequestId("move_commit");
+            moveRequestsRef.current.set(requestId, { sourceNodeId, commit: true });
+            post({ ...messageBase(requestId), type: "preview.resolveMove", sourceNodeId, x: point.x, y: point.y });
+            return;
+          }
+          const requestId = nextRequestId("drop");
+          pendingDropsRef.current.set(requestId, component);
+          post({ ...messageBase(requestId), type: "preview.resolveDrop", componentRef: component, x: point.x, y: point.y });
+        }}
+        onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setMovePreview(undefined); }}
       >
         <div className="canvas-surface" style={transformStyle}>
           <div className="canvas-artboard-label">{contentSize.width} × {contentSize.height}</div>
@@ -298,24 +412,37 @@ export function CanvasViewport() {
             className="canvas-preview"
             title="Page preview"
             src={previewUrl}
+            key={frameAttempt}
             sandbox="allow-scripts"
             width={contentSize.width}
             height={contentSize.height}
             onLoad={() => {
               initializedRef.current = false;
               setPreviewReady(false);
+              setPreviewStatus("connecting");
+              setPreviewError(undefined);
             }}
           />
           {selectionRect ? (
             <div
               className="canvas-selection"
               style={{ left: selectionRect.x, top: selectionRect.y, width: selectionRect.width, height: selectionRect.height }}
+              draggable={Boolean(session.selectedNodeId)}
+              onDragStart={(event) => {
+                if (!session.selectedNodeId || spacePressedRef.current) { event.preventDefault(); return; }
+                event.dataTransfer.effectAllowed = "move";
+                event.dataTransfer.setData(NODE_DRAG_MIME, session.selectedNodeId);
+                event.dataTransfer.setData("text/plain", session.selectedNodeId);
+              }}
+              onDragEnd={() => { moveCandidateRef.current = undefined; setMovePreview(undefined); }}
             >
-              <span>{session.selectedNodeId}</span>
+              <span>{session.selectedNodeId} · drag to move</span>
             </div>
           ) : null}
+          {movePreview ? <div className={`canvas-move-preview canvas-move-preview--${movePreview.position}`} style={{ left: movePreview.rect.x, top: movePreview.position === "after" ? movePreview.rect.y + movePreview.rect.height : movePreview.rect.y, width: movePreview.rect.width, height: movePreview.position === "inside" ? movePreview.rect.height : 3 }} /> : null}
         </div>
-        {previewError ? <div className="canvas-error" role="alert">{previewError}</div> : null}
+        {previewStatus === "connecting" ? <div className="canvas-connection" role="status">Connecting to Preview…</div> : null}
+        {previewError ? <div className="canvas-error" role="alert"><span>{previewError}</span>{previewStatus === "error" ? <button type="button" onClick={() => { setPreviewError(undefined); setPreviewStatus("connecting"); setFrameAttempt((value) => value + 1); }}>Retry</button> : null}</div> : null}
         <div className="canvas-help">Trackpad to pan · Pinch to zoom · Space + drag</div>
       </div>
     </div>
