@@ -1,8 +1,8 @@
 # 项目 TODO
 
-> 最后更新：2026-07-22
+> 最后更新：2026-07-23
 
-本清单记录当前已经落地的能力、下一阶段工作和明确后置的功能。更详细的实现状态见 [`docs/development/CURRENT_STATUS.md`](./docs/development/CURRENT_STATUS.md)。
+本清单记录当前已经落地的能力、下一阶段工作和明确后置的功能。更详细的实现状态见 [`docs/development/CURRENT_STATUS.md`](./docs/development/CURRENT_STATUS.md)；已确认但尚未通过用户验收的问题见 [`docs/development/STUDIO_ISSUE_TRACKER.md`](./docs/development/STUDIO_ISSUE_TRACKER.md)。
 
 ## 已完成
 

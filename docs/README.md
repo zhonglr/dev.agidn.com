@@ -15,6 +15,7 @@
 ## 开发
 
 - [当前实现状态](./development/CURRENT_STATUS.md)：完成度、可运行能力和后续顺序。
+- [Studio 验收问题追踪](./development/STUDIO_ISSUE_TRACKER.md)：用户验收问题、优先级、根因、依赖和关闭条件。
 - [贡献指南](./development/CONTRIBUTING.md)：编码、文件拆分、依赖和测试规范。
 - [实施准备](./development/IMPLEMENTATION_READINESS.md)：M0～M6 路线与验收基线。
 
