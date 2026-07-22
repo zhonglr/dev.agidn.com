@@ -8,8 +8,11 @@
   },
   "include": [
     "apps/**/*.ts",
+    "apps/**/*.tsx",
     "packages/**/*.ts",
-    "examples/**/*.ts"
+    "packages/**/*.tsx",
+    "examples/**/*.ts",
+    "examples/**/*.tsx"
   ],
   "exclude": ["**/*.test.ts"]
 }
