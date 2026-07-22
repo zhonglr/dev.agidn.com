@@ -1,0 +1,9 @@
+{
+  "$expected": "RAW_COLOR_FORBIDDEN",
+  "commandId": "cmd_invalid_raw_color",
+  "protocolVersion": "1.0.0",
+  "type": "node.setProp",
+  "nodeId": "button_pro",
+  "property": "color",
+  "value": "#ff00ff"
+}

@@ -1,0 +1,13 @@
+{
+  "$expected": "UNKNOWN_COMPONENT",
+  "commandId": "cmd_invalid_unknown_component",
+  "protocolVersion": "1.0.0",
+  "type": "node.insert",
+  "targetParentId": "grid_plans",
+  "node": {
+    "id": "unregistered_plan",
+    "kind": "component",
+    "componentRef": "MagicPricingCard",
+    "props": {}
+  }
+}

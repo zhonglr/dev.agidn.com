@@ -1,0 +1,8 @@
+{
+  "$expected": "UNKNOWN_VARIANT",
+  "commandId": "cmd_invalid_variant",
+  "protocolVersion": "1.0.0",
+  "type": "node.setVariant",
+  "nodeId": "pricing_card_pro",
+  "variant": "neon"
+}

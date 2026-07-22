@@ -1,0 +1,15 @@
+{
+  "$expected": "INVALID_SLOT",
+  "commandId": "cmd_invalid_slot",
+  "protocolVersion": "1.0.0",
+  "type": "node.insert",
+  "targetParentId": "pricing_card_pro",
+  "targetSlot": "footer",
+  "node": {
+    "id": "text_invalid_slot",
+    "kind": "component",
+    "componentRef": "Text",
+    "variant": "body",
+    "props": { "text": "Not allowed here" }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "$expected": "INVALID_OVERLAY",
+  "commandId": "cmd_invalid_overlay",
+  "protocolVersion": "1.0.0",
+  "type": "node.insert",
+  "targetParentId": "grid_plans",
+  "node": {
+    "id": "overlay_invalid",
+    "kind": "layout",
+    "layout": "overlay",
+    "children": []
+  }
+}
