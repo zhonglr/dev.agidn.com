@@ -6,6 +6,11 @@ export interface RuntimeComponentProps {
   node: ComponentNode;
   slots: Readonly<Record<string, ReactNode[]>>;
   style: CSSProperties;
+  hostProps: {
+    "data-node-id": string;
+    "data-node-kind": "component";
+    "data-component-ref": string;
+  };
   onEvent: (event: "press" | "change" | "submit" | "open" | "close") => void;
 }
 
@@ -71,6 +76,7 @@ export function PageRenderer({ document, tokens, components, onAction }: PageRen
         className,
         style: layoutStyle(node, tokens),
         "data-node-id": node.id,
+        "data-node-kind": "layout" as const,
         "data-role": node.role
       };
       return node.layout === "section"
@@ -96,6 +102,7 @@ export function PageRenderer({ document, tokens, components, onAction }: PageRen
         node={node}
         slots={slots}
         style={componentStyle(node, tokens)}
+        hostProps={{ "data-node-id": node.id, "data-node-kind": "component", "data-component-ref": node.componentRef }}
         onEvent={onEvent}
       />
     );

@@ -18,6 +18,8 @@ describe("React Renderer", () => {
     expect(html).toContain("Simple pricing that scales with you");
     expect(html).toContain("Choose Pro");
     expect(html).toContain('data-document-id="page_pricing"');
+    expect(html).toContain('data-node-id="heading_hero"');
+    expect(html).toContain('data-component-ref="Heading"');
     expect(html).not.toContain("Missing component:");
   });
 });
