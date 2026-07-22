@@ -43,25 +43,32 @@
 
 ## 下一阶段
 
-### P0：补齐数据完整性
+### UI 启动策略
+
+UI 不等待所有 Workspace Server 实时能力和 Migration 完成。先补齐会直接影响编辑安全的引用验证，然后立即进入真实渲染和 Studio：
+
+```text
+P0 核心数据安全
+        ↓
+P1 React Renderer / Preview
+        ↓
+P2 最小可用 Studio
+        ↓
+P3 Migration、Validation API 与 WebSocket 完善
+```
+
+- [ ] P0 完成后立即启动 UI 基础，不等待 P3 全部完成。
+- [ ] P1 交付第一个可查看的真实 Golden Pricing Page。
+- [ ] P2 交付第一个可选择、编辑、撤销和导出的 Studio 页面。
+
+### P0：UI 前置数据安全
 
 - [ ] 验证所有 Action 引用是否存在。
 - [ ] 验证 Action arguments 是否符合注册定义。
 - [ ] 定义 Data Source 和 Binding Schema。
 - [ ] 验证 Data Source、Binding 和组件 Props 之间的引用关系。
-- [ ] 定义 PageDocument Schema migration。
-- [ ] 定义 Revision Store 格式 migration 和升级失败恢复策略。
-- [ ] 添加旧版本 fixture、迁移契约测试和幂等测试。
 
-### P1：完成 Workspace Server 实时能力
-
-- [ ] 增加独立 Validation Application Service 和 HTTP API。
-- [ ] 增加 Workspace 文件变化监听。
-- [ ] 定义版本化 WebSocket 消息协议。
-- [ ] 推送文件变化、Preview 状态和后台任务进度。
-- [ ] 处理断线重连、消息顺序和过期 Revision。
-
-### P2：真实渲染与隔离预览
+### P1：真实渲染与隔离预览
 
 - [ ] 为 15 个注册组件实现真实 React 组件。
 - [ ] 创建 `packages/react-renderer`。
@@ -72,7 +79,7 @@
 - [ ] 实现组件错误边界和 Preview 崩溃恢复。
 - [ ] 验证 Desktop、Tablet 和 Mobile 响应式渲染。
 
-### P3：最小可用 Studio
+### P2：最小可用 Studio
 
 - [ ] 创建 React + TypeScript + Vite Studio 应用。
 - [ ] 实现组件、Token 和页面结构资源面板。
@@ -83,6 +90,17 @@
 - [ ] 实现乐观 Command、服务端确认与失败回滚。
 - [ ] 实现 undo/redo、保存和导出 UI。
 - [ ] 添加 Studio 组件测试和完整编辑流程 E2E 测试。
+
+### P3：完善 Migration 与 Workspace Server
+
+- [ ] 定义 PageDocument Schema migration。
+- [ ] 定义 Revision Store 格式 migration 和升级失败恢复策略。
+- [ ] 添加旧版本 fixture、迁移契约测试和幂等测试。
+- [ ] 增加独立 Validation Application Service 和 HTTP API。
+- [ ] 增加 Workspace 文件变化监听。
+- [ ] 定义版本化 WebSocket 消息协议。
+- [ ] 推送文件变化、Preview 状态和后台任务进度。
+- [ ] 处理断线重连、消息顺序和过期 Revision。
 
 ### P4：工程自动化
 
