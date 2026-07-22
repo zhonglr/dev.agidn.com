@@ -32,6 +32,7 @@
     "@agidn/document-schema": "workspace:*",
     "@agidn/rule-engine": "workspace:*",
     "@agidn/react-renderer": "workspace:*",
+    "@agidn/studio-workbench": "workspace:*",
     "@types/node": "^24.0.14",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",

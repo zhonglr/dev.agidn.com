@@ -42,6 +42,9 @@ importers:
       '@agidn/rule-engine':
         specifier: workspace:*
         version: link:packages/rule-engine
+      '@agidn/studio-workbench':
+        specifier: workspace:*
+        version: link:packages/studio-workbench
       '@types/node':
         specifier: ^24.0.14
         version: 24.13.3
@@ -227,6 +230,15 @@ importers:
       '@agidn/document-schema':
         specifier: workspace:*
         version: link:../document-schema
+
+  packages/studio-workbench:
+    dependencies:
+      '@sinclair/typebox':
+        specifier: ^0.34.38
+        version: 0.34.52
+      react:
+        specifier: ^19.1.0
+        version: 19.2.8
 
 packages:
 
