@@ -121,7 +121,7 @@ pnpm install
 pnpm dev
 ```
 
-Studio 运行在 `http://127.0.0.1:4173/`，隔离 Preview Host 运行在 `http://127.0.0.1:4174/`。
+Studio 运行在 `http://127.0.0.1:4173/`，隔离 Preview Host 运行在 `http://127.0.0.1:4174/`，Workspace Server 运行在 `http://127.0.0.1:4178/`。Studio 已支持画布节点选中、Heading/Text 属性编辑、Revision 提交和 undo/redo。
 
 ## 当前最先完成的资产
 

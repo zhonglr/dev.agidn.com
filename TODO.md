@@ -75,8 +75,8 @@ P3 Migration、Validation API 与 WebSocket 完善
 - [x] 将 PageDocument、Token、Variant 和受控 Layout 确定性渲染为 React。
 - [x] 创建独立 Vite Preview Host。
 - [x] 使用 sandboxed iframe 隔离项目运行时代码。
-- [ ] 定义 Studio 与 Preview Host 的版本化 `postMessage` 协议。
-- [ ] 实现组件错误边界和 Preview 崩溃恢复。
+- [x] 定义 Studio 与 Preview Host 的版本化 `postMessage` 协议。
+- [x] 实现组件错误边界和 Preview 崩溃恢复。
 - [x] 验证 Desktop、Tablet 和 Mobile 响应式渲染。
 
 ### P2：专业 Studio Workbench 与首个编辑闭环
@@ -88,17 +88,18 @@ P3 Migration、Validation API 与 WebSocket 完善
 - [ ] 实现面板折叠、布局 migration 和完整键盘停靠命令。
 - [x] 建立 Panel、Command、Inspector、Route 和 Status Item 的内部 Contribution Registry。
 - [x] 实现 Activity Bar、Command Palette、快捷键冲突检测和 Status Bar。
-- [ ] 实现组件和页面结构面板；Token / Registry 全局管理使用独立页面或对话框。
+- [x] 实现组件和动态页面结构面板；Token / Registry 全局管理继续使用独立页面或对话框。
 - [x] 实现 Canvas Viewport，支持触控板双指平移、pinch 缩放、指针中心缩放、`100%` 和 Fit Page。
-- [ ] 接入真实节点选中后实现 Fit Selection。
-- [ ] 建立统一坐标转换服务，确保 iframe DOM、Selection Overlay、辅助线和拖放命中对齐。
-- [ ] 实现真实页面画布、节点选择与选中同步。
-- [ ] 先完成 Text / Heading Prop 修改的端到端编辑闭环。
+- [x] 接入真实节点选中后实现 Fit Selection。
+- [x] 建立统一坐标转换服务，确保 iframe DOM 与 Selection Overlay 对齐；辅助线和结构拖放继续复用该服务。
+- [x] 实现真实页面画布、节点选择与选中同步。
+- [x] 完成 Text / Heading Prop 修改、Revision 确认、undo/redo 的首个端到端编辑闭环。
 - [ ] 实现合法 Slot 拖放、插入、移动和排序。
 - [ ] 实现 Props、Variant、Token、布局和响应式属性面板。
 - [ ] 实现规则错误和修复建议展示。
 - [ ] 实现乐观 Command、服务端确认与失败回滚。
-- [ ] 实现 undo/redo、保存和导出 UI。
+- [x] 实现 undo/redo 和 Revision 保存状态 UI。
+- [ ] 实现导出 UI。
 - [ ] 添加 Workbench 布局恢复、画布手势/坐标、Studio 组件和完整编辑流程 E2E 测试。
 
 ### P3：完善 Migration 与 Workspace Server
