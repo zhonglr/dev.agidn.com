@@ -3,6 +3,7 @@ import {
   checkWorkbenchLayout,
   closePanel,
   CommandRegistry,
+  dockPanel,
   normalizeWorkbenchLayout,
   openPanel,
   PanelRegistry,
@@ -11,6 +12,12 @@ import {
   WORKBENCH_LAYOUT_VERSION,
   type WorkbenchLayoutState
 } from "@agidn/studio-workbench";
+
+function findNode(node: WorkbenchLayoutState["root"], id: string): WorkbenchLayoutState["root"] | undefined {
+  if (node.id === id) return node;
+  if (node.type !== "split") return undefined;
+  return node.children.map((child) => findNode(child, id)).find(Boolean);
+}
 
 const defaultLayout: WorkbenchLayoutState = {
   version: WORKBENCH_LAYOUT_VERSION,
@@ -78,6 +85,35 @@ describe("Studio Workbench", () => {
       activePanelId: "components",
       panelIds: ["outline", "components"]
     });
+  });
+
+  it("moves panels between tab groups and creates edge splits", () => {
+    const tabbed = dockPanel(defaultLayout, "components", "canvas-host", "center");
+    expect(findNode(tabbed.root, "tabs.dock.canvas-host")).toMatchObject({
+      type: "tabs",
+      activePanelId: "components",
+      panelIds: ["canvas", "components"]
+    });
+    expect(findNode(tabbed.root, "primary")).toMatchObject({ panelIds: ["outline"] });
+
+    const split = dockPanel(defaultLayout, "components", "canvas-host", "left");
+    expect(findNode(split.root, "split.dock.canvas-host")).toMatchObject({
+      type: "split",
+      direction: "horizontal",
+      sizes: [0.3, 0.7],
+      children: [
+        { type: "panel", panelId: "components" },
+        { type: "panel", panelId: "canvas" }
+      ]
+    });
+  });
+
+  it("docks hidden panels and ignores invalid targets", () => {
+    const closed = closePanel(defaultLayout, "components");
+    const docked = dockPanel(closed, "components", "canvas-host", "bottom");
+    expect(docked.hiddenPanelIds).not.toContain("components");
+    expect(findNode(docked.root, "split.dock.canvas-host")).toMatchObject({ direction: "vertical" });
+    expect(dockPanel(defaultLayout, "components", "missing", "center")).toBe(defaultLayout);
   });
 
   it("rejects duplicate commands and keybinding conflicts", () => {

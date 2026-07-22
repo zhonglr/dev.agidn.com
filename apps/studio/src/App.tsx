@@ -93,7 +93,7 @@ export function App() {
       </div>
       <footer className="statusbar">
         <div><span className="status-ok">✓</span><span>PageDocument 1.0.0</span><span>Revision 0</span></div>
-        <div><span>Desktop</span><span>60 checks</span><span>UTF-8</span><span>TypeScript</span></div>
+        <div><span>Desktop</span><span>71 checks</span><span>UTF-8</span><span>TypeScript</span></div>
       </footer>
       <CommandPalette commands={commands} open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </main>

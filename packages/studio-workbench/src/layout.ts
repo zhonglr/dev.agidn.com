@@ -33,6 +33,8 @@ export interface WorkbenchLayoutState {
   maximizedPanelId?: string;
 }
 
+export type DockPosition = "center" | "left" | "right" | "top" | "bottom";
+
 const IdentifierSchema = Type.String({ minLength: 1, pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]*$" });
 
 export const WorkbenchLayoutNodeSchema = Type.Recursive((Node) =>
@@ -268,4 +270,94 @@ export function findPanelTabGroup(node: WorkbenchLayoutNode, panelId: string): s
     }
   }
   return undefined;
+}
+
+function findNodeById(node: WorkbenchLayoutNode, nodeId: string): WorkbenchLayoutNode | undefined {
+  if (node.id === nodeId) return node;
+  if (node.type !== "split") return undefined;
+  for (const child of node.children) {
+    const result = findNodeById(child, nodeId);
+    if (result) return result;
+  }
+  return undefined;
+}
+
+function replaceNodeById(
+  node: WorkbenchLayoutNode,
+  nodeId: string,
+  replacement: WorkbenchLayoutNode
+): WorkbenchLayoutNode {
+  if (node.id === nodeId) return replacement;
+  if (node.type !== "split") return node;
+  return { ...node, children: node.children.map((child) => replaceNodeById(child, nodeId, replacement)) };
+}
+
+function collectNodeIds(node: WorkbenchLayoutNode, result = new Set<string>()): Set<string> {
+  result.add(node.id);
+  if (node.type === "split") node.children.forEach((child) => collectNodeIds(child, result));
+  return result;
+}
+
+function uniqueNodeId(existing: Set<string>, preferred: string): string {
+  let candidate = preferred;
+  let suffix = 2;
+  while (existing.has(candidate)) candidate = `${preferred}.${suffix++}`;
+  existing.add(candidate);
+  return candidate;
+}
+
+/** Moves a visible or hidden panel into a leaf node using IDE-style center or edge docking. */
+export function dockPanel(
+  layout: WorkbenchLayoutState,
+  panelId: string,
+  targetNodeId: string,
+  position: DockPosition
+): WorkbenchLayoutState {
+  const originalTarget = findNodeById(layout.root, targetNodeId);
+  if (!originalTarget || originalTarget.type === "split") return layout;
+
+  if (containsPanel(originalTarget, panelId)) {
+    if (position === "center" && originalTarget.type === "tabs") {
+      return setActivePanel(layout, originalTarget.id, panelId);
+    }
+    if (originalTarget.type === "panel" || originalTarget.panelIds.length === 1) return layout;
+  }
+
+  const detachedRoot = removePanelFromNode(layout.root, panelId);
+  if (!detachedRoot) return layout;
+  const target = findNodeById(detachedRoot, targetNodeId);
+  if (!target || target.type === "split") return layout;
+
+  const existingIds = collectNodeIds(detachedRoot);
+  let replacement: WorkbenchLayoutNode;
+  if (position === "center") {
+    replacement = target.type === "tabs"
+      ? { ...target, panelIds: [...target.panelIds, panelId], activePanelId: panelId }
+      : {
+          type: "tabs",
+          id: uniqueNodeId(existingIds, `tabs.dock.${target.id}`),
+          activePanelId: panelId,
+          panelIds: [target.panelId, panelId]
+        };
+  } else {
+    const before = position === "left" || position === "top";
+    const panelNode: PanelLayoutNode = {
+      type: "panel",
+      id: uniqueNodeId(existingIds, `panel.dock.${panelId}`),
+      panelId
+    };
+    replacement = {
+      type: "split",
+      id: uniqueNodeId(existingIds, `split.dock.${target.id}`),
+      direction: position === "left" || position === "right" ? "horizontal" : "vertical",
+      sizes: before ? [0.3, 0.7] : [0.7, 0.3],
+      children: before ? [panelNode, target] : [target, panelNode]
+    };
+  }
+
+  return {
+    ...layout,
+    root: replaceNodeById(detachedRoot, target.id, replacement),
+    hiddenPanelIds: layout.hiddenPanelIds.filter((candidate) => candidate !== panelId)
+  };
 }
