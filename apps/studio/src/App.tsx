@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  CommandRegistry, openPanel, PanelRegistry, Tooltip, TooltipProvider, Workbench,
+  closePanel, CommandRegistry, openPanel, PanelRegistry, Tooltip, TooltipProvider, Workbench,
   type PanelContribution, type PanelLocation, type WorkbenchLayoutState
 } from "@agidn/studio-workbench";
 import type { ExportContextResponse } from "@agidn/api-protocol";
@@ -11,6 +11,7 @@ import { ComponentsPanel, HistoryPanel, InspectorPanel, PageOutlinePanel, Proble
 import { DEFAULT_WORKBENCH_LAYOUT, PANEL_TARGETS } from "./workbench-layout.js";
 import { useWorkbenchLayout } from "./use-workbench-layout.js";
 import { StudioSessionProvider, useStudioSession } from "./studio-session.js";
+import { I18nProvider, useI18n, type StudioLocale } from "./i18n.js";
 
 type ThemeChoice = "system" | "dark" | "light";
 
@@ -52,10 +53,11 @@ function ExportDialog({ onClose }: { onClose: () => void }) {
 
 function SettingsDialog({ theme, onThemeChange, onClose }: { theme: ThemeChoice; onThemeChange: (theme: ThemeChoice) => void; onClose: () => void }) {
   const session = useStudioSession();
+  const { locale, setLocale, t } = useI18n();
   const components = Object.values(session.catalog?.components.components ?? {});
   const tokens = Object.entries(session.catalog?.tokens.tokens ?? {});
-  return <Modal title="Studio settings" onClose={onClose}><div className="settings-content">
-    <section><h3>Theme</h3><label className="settings-select"><span>Editor appearance</span><select value={theme} onChange={(event) => onThemeChange(event.target.value as ThemeChoice)}><option value="system">Follow system</option><option value="dark">Dark</option><option value="light">Light</option></select></label><p>Changes Studio chrome only; page Preview remains unchanged.</p></section>
+  return <Modal title={t("settings")} onClose={onClose}><div className="settings-content">
+    <section><h3>Language &amp; appearance</h3><label className="settings-select"><span>{t("locale")}</span><select value={locale} onChange={(event) => setLocale(event.target.value as StudioLocale)}><option value="en-US">English</option><option value="zh-CN">简体中文</option></select></label><label className="settings-select"><span>{t("editorAppearance")}</span><select value={theme} onChange={(event) => onThemeChange(event.target.value as ThemeChoice)}><option value="system">Follow system</option><option value="dark">Dark</option><option value="light">Light</option></select></label><p>Language can also be distributed through <code>VITE_STUDIO_LOCALE</code> or runtime Studio configuration.</p></section>
     <section><h3>Workspace</h3><div className="settings-status"><i className={session.status === "error" ? "is-error" : "is-online"} /><div><strong>{session.status === "error" ? "Connection needs attention" : "Connected"}</strong><span>Workspace API · Revision {session.revision}</span></div></div></section>
     <section><h3>Token Browser <small>Read-only</small></h3><div className="settings-browser">{tokens.map(([name, token]) => <div key={name}><code>{name}</code><span>{token.type} · {token.value}</span></div>)}</div></section>
     <section><h3>Component Registry <small>Read-only</small></h3><div className="settings-browser">{components.map((component) => <div key={component.name}><strong>{component.name}</strong><span>{component.source} · {component.variants.length} variants</span></div>)}</div></section>
@@ -64,7 +66,9 @@ function SettingsDialog({ theme, onThemeChange, onClose }: { theme: ThemeChoice;
 
 function StudioApp() {
   const session = useStudioSession();
-  const panels = useMemo(() => new PanelRegistry(panelContributions), []);
+  const { locale, t } = useI18n();
+  const localizedContributions = useMemo(() => panelContributions.map((panel) => ({ ...panel, title: panel.id === "page-outline" ? t("pageOutline") : panel.id === "components" ? t("components") : panel.id === "canvas" ? t("canvas") : panel.id === "inspector" ? t("inspector") : panel.id === "problems" ? t("problems") : t("history") })), [locale, t]);
+  const panels = useMemo(() => new PanelRegistry(localizedContributions), [localizedContributions]);
   const { layout, setLayout, resetLayout } = useWorkbenchLayout(DEFAULT_WORKBENCH_LAYOUT, panels);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -82,23 +86,31 @@ function StudioApp() {
     const panel = panels.get(panelId); if (!panel) return;
     setLayout((current) => openPanel(current, panelId, targetFor(panel.defaultLocation)));
   }, [panels, setLayout]);
+  const toggleRegisteredPanel = useCallback((panelId: string) => {
+    const panel = panels.get(panelId); if (!panel) return;
+    setLayout((current) => current.hiddenPanelIds.includes(panelId) ? openPanel(current, panelId, targetFor(panel.defaultLocation)) : closePanel(current, panelId));
+  }, [panels, setLayout]);
   const commands = useMemo(() => new CommandRegistry([
     { id: "workbench.commandPalette", title: "Show Command Palette", category: "Workbench", keybinding: "⌘⇧P", execute: () => setPaletteOpen(true) },
     { id: "workbench.resetLayout", title: "Reset Workbench Layout", category: "Workbench", execute: resetLayout },
     { id: "studio.settings", title: "Open Studio Settings", category: "Studio", execute: () => setSettingsOpen(true) },
     { id: "studio.export", title: "Export Current Revision", category: "Document", execute: () => setExportOpen(true) },
-    ...panelContributions.map((panel) => ({ id: `workbench.open.${panel.id}`, title: `Open ${panel.title}`, category: "View", execute: () => openRegisteredPanel(panel.id) }))
-  ]), [openRegisteredPanel, resetLayout]);
+    ...localizedContributions.map((panel) => ({ id: `workbench.open.${panel.id}`, title: `Open ${panel.title}`, category: "View", execute: () => openRegisteredPanel(panel.id) }))
+  ]), [localizedContributions, openRegisteredPanel, resetLayout]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => { if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "p") { event.preventDefault(); setPaletteOpen(true); } };
     window.addEventListener("keydown", onKeyDown); return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
   const updateLayout = useCallback((next: WorkbenchLayoutState) => setLayout(next), [setLayout]);
+  const panelButton = (panel: PanelContribution, side: "left" | "right" | "top") => <Tooltip content={panel.title} side={side} key={panel.id}><button type="button" className={!layout.hiddenPanelIds.includes(panel.id) ? "is-open" : ""} aria-pressed={!layout.hiddenPanelIds.includes(panel.id)} aria-label={`Toggle ${panel.title}`} onClick={() => toggleRegisteredPanel(panel.id)}>{panel.icon}</button></Tooltip>;
+  const primaryPanels = localizedContributions.filter(({ defaultLocation }) => defaultLocation === "primary");
+  const secondaryPanels = localizedContributions.filter(({ defaultLocation }) => defaultLocation === "secondary");
+  const bottomPanels = localizedContributions.filter(({ defaultLocation }) => defaultLocation === "bottom");
 
   return <main className="studio-shell">
     <header className="titlebar">
-      <div className="titlebar__identity"><div className="app-mark">A</div><div className="titlebar__project"><strong>AGIDN Studio</strong><span>/</span><span>Acme Pricing</span></div></div>
+      <div className="titlebar__identity"><div className="app-mark">A</div><nav className="main-menu" aria-label="Application menu"><details><summary>{t("file")}</summary><div><button type="button" onClick={() => setExportOpen(true)}>{t("exportRevision")}</button></div></details><details><summary>{t("edit")}</summary><div><button type="button" disabled={!session.canUndo} onClick={() => void session.undo()}>{t("undo")}</button><button type="button" disabled={!session.canRedo} onClick={() => void session.redo()}>{t("redo")}</button></div></details><details><summary>{t("view")}</summary><div>{localizedContributions.filter(({ id }) => id !== "canvas").map((panel) => <button type="button" key={panel.id} onClick={() => toggleRegisteredPanel(panel.id)}>{panel.title}</button>)}<button type="button" onClick={resetLayout}>{t("resetLayout")}</button></div></details></nav><div className="titlebar__project"><strong>AGIDN Studio</strong><span>/</span><span>Acme Pricing</span></div></div>
       <div className="titlebar__center"><button type="button" onClick={() => setPaletteOpen(true)}><span>Search commands and files</span><kbd>⌘⇧P</kbd></button></div>
       <div className="titlebar__actions">
         <Tooltip content={!session.canUndo ? "Nothing to undo" : "Undo"}><button type="button" aria-label="Undo" disabled={!session.canUndo || session.status === "saving"} onClick={() => void session.undo()}><Icon name="undo" /></button></Tooltip>
@@ -107,7 +119,7 @@ function StudioApp() {
         <button type="button" className="export-button" onClick={() => setExportOpen(true)}><Icon name="export" />Export</button>
       </div>
     </header>
-    <div className="studio-body"><nav className="activity-bar" aria-label="Workbench panels"><div className="activity-bar__top">{panels.list().filter(({ id }) => id !== "canvas").map((panel) => <Tooltip content={panel.title} side="right" key={panel.id}><button type="button" aria-label={`Open ${panel.title}`} onClick={() => openRegisteredPanel(panel.id)}>{panel.icon}</button></Tooltip>)}</div><div className="activity-bar__bottom"><Tooltip content="Commands" side="right"><button type="button" aria-label="Open command palette" onClick={() => setPaletteOpen(true)}><Icon name="commands" /></button></Tooltip><Tooltip content="Settings" side="right"><button type="button" aria-label="Open settings" onClick={() => setSettingsOpen(true)}><Icon name="settings" /></button></Tooltip></div></nav><section className="studio-workbench" aria-label="Studio workbench"><Workbench layout={layout} panels={panels} onLayoutChange={updateLayout} /></section></div>
+    <div className="studio-body"><nav className="activity-bar activity-bar--left" aria-label="Project tool windows"><div className="activity-bar__top">{primaryPanels.map((panel) => panelButton(panel, "right"))}</div><div className="activity-bar__bottom"><Tooltip content={t("commands")} side="right"><button type="button" aria-label="Open command palette" onClick={() => setPaletteOpen(true)}><Icon name="commands" /></button></Tooltip><Tooltip content={t("settings")} side="right"><button type="button" aria-label="Open settings" onClick={() => setSettingsOpen(true)}><Icon name="settings" /></button></Tooltip></div></nav><section className="studio-workbench" aria-label="Studio workbench"><Workbench layout={layout} panels={panels} onLayoutChange={updateLayout} /></section><nav className="activity-bar activity-bar--right" aria-label="Content tool windows"><div className="activity-bar__top">{secondaryPanels.map((panel) => panelButton(panel, "left"))}</div></nav><nav className="tool-window-bar tool-window-bar--bottom" aria-label="Status tool windows">{bottomPanels.map((panel) => panelButton(panel, "top"))}</nav></div>
     <footer className="statusbar"><div><span className={session.status === "error" ? "status-error" : "status-ok"}>{session.status === "error" ? "!" : "✓"}</span><span>PageDocument 1.0.0</span><span>Revision {session.revision}</span></div><div><span>{session.selectedNodeId ?? "No selection"}</span><span>UTF-8</span><span>TypeScript</span></div></footer>
     <CommandPalette commands={commands} open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     {exportOpen ? <ExportDialog onClose={() => setExportOpen(false)} /> : null}
@@ -115,4 +127,4 @@ function StudioApp() {
   </main>;
 }
 
-export function App() { return <StudioSessionProvider><TooltipProvider><StudioApp /></TooltipProvider></StudioSessionProvider>; }
+export function App() { return <I18nProvider><StudioSessionProvider><TooltipProvider><StudioApp /></TooltipProvider></StudioSessionProvider></I18nProvider>; }

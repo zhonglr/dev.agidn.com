@@ -66,7 +66,7 @@ function DockOverlay({ targetNodeId, draggingPanelId, activeDockTargetId, onDock
   if (!draggingPanelId) return null;
   const active = activeDockTargetId === targetNodeId;
   return (
-    <div className={`wb-dock-overlay${active ? " is-active" : ""}`} aria-label="Dock panel" onDragEnter={(event) => { event.preventDefault(); onDockTargetChange(targetNodeId); }} onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; }} onDragLeave={(event) => { const rect = event.currentTarget.getBoundingClientRect(); if (event.clientX <= rect.left || event.clientX >= rect.right || event.clientY <= rect.top || event.clientY >= rect.bottom) { setHoveredPosition(undefined); onDockTargetChange(); } }}>
+    <div className={`wb-dock-overlay${active ? " is-active" : ""}`} aria-label="Dock panel" onDragEnter={(event) => { event.preventDefault(); onDockTargetChange(targetNodeId); }} onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; if (!active) onDockTargetChange(targetNodeId); }} onDragLeave={(event) => { const rect = event.currentTarget.getBoundingClientRect(); if (event.clientX <= rect.left || event.clientX >= rect.right || event.clientY <= rect.top || event.clientY >= rect.bottom) { setHoveredPosition(undefined); onDockTargetChange(); } }}>
       {active && hoveredPosition ? <div className={`wb-dock-preview wb-dock-preview--${hoveredPosition}`} /> : null}
       {active ? <div className="wb-dock-compass">{DOCK_POSITIONS.map((position) => (
         <button

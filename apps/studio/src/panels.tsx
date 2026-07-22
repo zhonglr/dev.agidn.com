@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import type { GetCatalogResponse } from "@agidn/api-protocol";
 import type { PageNode } from "@agidn/document-schema";
 import { useStudioSession } from "./studio-session.js";
-import { NODE_DRAG_MIME, resolveMoveTarget, resolveSiblingMove } from "./structure-drag.js";
+import { COMPONENT_DRAG_MIME, NODE_DRAG_MIME, resolveInsertTarget, resolveMoveTarget, resolveSiblingMove, SAVED_COMPONENT_DRAG_MIME } from "./structure-drag.js";
+import { displayLabel, humanizeIdentifier } from "./display-label.js";
+import { useI18n } from "./i18n.js";
 
 function childNodes(node: PageNode): PageNode[] {
   return node.kind === "layout" ? [...node.children] : Object.values(node.slots ?? {}).flat();
@@ -35,7 +37,9 @@ function collectOutline(nodes: readonly PageNode[], expanded: ReadonlySet<string
 }
 
 export function PageOutlinePanel() {
-  const { document, catalog, selectedNodeId, selectNode, insertComponent, moveNode } = useStudioSession();
+  const session = useStudioSession();
+  const { document, catalog, selectedNodeId, selectNode, insertComponent, insertSavedComponent, moveNode } = session;
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [rootExpanded, setRootExpanded] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
@@ -101,7 +105,7 @@ export function PageOutlinePanel() {
 
   return (
     <div className="tool-panel outline-panel">
-      <label className="tool-search"><span>Search</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Filter page…" /></label>
+      <label className="tool-search"><span>{t("search")}</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("filterPage")} /></label>
       <div className="tree" role="tree" aria-label="Page structure" ref={treeRef}>
         <div role="treeitem" tabIndex={0} data-tree-root aria-selected={!selectedNodeId} aria-expanded={rootExpanded} className={`tree-row tree-row--root${!selectedNodeId ? " is-selected" : ""}`} onClick={() => selectNode()} onKeyDown={(event) => handleKey(event)}>
           <button type="button" className="tree-disclosure" aria-label={rootExpanded ? "Collapse page" : "Expand page"} onClick={(event) => { event.stopPropagation(); setRootExpanded((value) => !value); }}>{rootExpanded ? "▾" : "▸"}</button>
@@ -111,10 +115,19 @@ export function PageOutlinePanel() {
           const children = childNodes(node);
           const isExpanded = normalizedQuery ? true : expanded.has(node.id);
           return (
-            <div role="treeitem" tabIndex={-1} draggable data-node-id={node.id} aria-level={depth + 1} aria-selected={selectedNodeId === node.id} aria-expanded={children.length ? isExpanded : undefined} aria-description="Drag to move. Alt plus Up or Down reorders within the current group." className={`tree-row${selectedNodeId === node.id ? " is-selected" : ""}${dropIndicator?.nodeId === node.id ? ` is-drop-${dropIndicator.position}` : ""}`} style={{ paddingLeft: 6 + depth * 14 }} key={node.id} onClick={() => selectNode(node.id)} onKeyDown={(event) => handleKey(event, node, parentId)} onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData(NODE_DRAG_MIME, node.id); event.dataTransfer.setData("text/plain", node.id); selectNode(node.id); }} onDragEnd={() => setDropIndicator(undefined)} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropIndicator(undefined); }} onDragOver={(event) => {
-              const component = event.dataTransfer.types.includes("application/x-agidn-component");
-              const sourceNodeId = event.dataTransfer.getData(NODE_DRAG_MIME);
-              if (component && node.kind === "layout") { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; return; }
+            <div role="treeitem" tabIndex={-1} draggable data-node-id={node.id} aria-level={depth + 1} aria-selected={selectedNodeId === node.id} aria-expanded={children.length ? isExpanded : undefined} aria-description="Drag to move. Alt plus Up or Down reorders within the current group." className={`tree-row${selectedNodeId === node.id ? " is-selected" : ""}${dropIndicator?.nodeId === node.id ? ` is-drop-${dropIndicator.position}` : ""}`} style={{ paddingLeft: 6 + depth * 14, "--tree-depth": depth } as CSSProperties} key={node.id} onClick={() => selectNode(node.id)} onKeyDown={(event) => handleKey(event, node, parentId)} onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData(NODE_DRAG_MIME, node.id); event.dataTransfer.setData("text/plain", node.id); session.beginNodeDrag(node.id); selectNode(node.id); }} onDragEnd={() => { session.endNodeDrag(); setDropIndicator(undefined); }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropIndicator(undefined); }} onDragOver={(event) => {
+              const insertPayload = session.activeInsertDrag;
+              const sourceNodeId = session.activeNodeDragId ?? event.dataTransfer.getData(NODE_DRAG_MIME);
+              if (insertPayload && document && catalog) {
+                event.preventDefault(); event.dataTransfer.dropEffect = "copy";
+                const saved = insertPayload.type === "saved" ? session.savedComponents.find(({ id }) => id === insertPayload.id) : undefined;
+                const source = insertPayload.type === "component" ? { kind: "component" as const, componentRef: insertPayload.id } : saved?.node.kind === "component" ? { kind: "component" as const, componentRef: saved.node.componentRef } : { kind: "layout" as const };
+                const rect = event.currentTarget.getBoundingClientRect();
+                const resolution = resolveInsertTarget(document, catalog, source, node.id, event.clientY, { y: rect.top, height: rect.height });
+                setDropIndicator(resolution.valid ? { nodeId: node.id, position: resolution.position } : undefined);
+                setDragMessage(resolution.valid ? undefined : resolution.reason);
+                return;
+              }
               if (!sourceNodeId || !document || !catalog) return;
               event.preventDefault(); event.dataTransfer.dropEffect = "move";
               const rect = event.currentTarget.getBoundingClientRect();
@@ -122,9 +135,19 @@ export function PageOutlinePanel() {
               setDropIndicator(resolution.valid ? { nodeId: node.id, position: resolution.position } : undefined);
               setDragMessage(resolution.valid ? undefined : resolution.reason);
             }} onDrop={(event) => {
-              const component = event.dataTransfer.getData("application/x-agidn-component");
-              const sourceNodeId = event.dataTransfer.getData(NODE_DRAG_MIME);
-              if (component && node.kind === "layout") { event.preventDefault(); void insertComponent(component, { parentId: node.id }); return; }
+              const insertPayload = session.activeInsertDrag;
+              const sourceNodeId = session.activeNodeDragId ?? event.dataTransfer.getData(NODE_DRAG_MIME);
+              if (insertPayload && document && catalog) {
+                event.preventDefault();
+                const saved = insertPayload.type === "saved" ? session.savedComponents.find(({ id }) => id === insertPayload.id) : undefined;
+                const source = insertPayload.type === "component" ? { kind: "component" as const, componentRef: insertPayload.id } : saved?.node.kind === "component" ? { kind: "component" as const, componentRef: saved.node.componentRef } : { kind: "layout" as const };
+                const rect = event.currentTarget.getBoundingClientRect();
+                const resolution = resolveInsertTarget(document, catalog, source, node.id, event.clientY, { y: rect.top, height: rect.height });
+                setDropIndicator(undefined);
+                if (resolution.valid) void (insertPayload.type === "component" ? insertComponent(insertPayload.id, resolution.target) : insertSavedComponent(insertPayload.id, resolution.target));
+                else setDragMessage(resolution.reason);
+                return;
+              }
               if (!sourceNodeId || !document || !catalog) return;
               event.preventDefault();
               const rect = event.currentTarget.getBoundingClientRect();
@@ -148,27 +171,40 @@ export function PageOutlinePanel() {
 
 export function ComponentsPanel() {
   const session = useStudioSession();
+  const { locale, t } = useI18n();
   const [query, setQuery] = useState("");
   const definitions = Object.values(session.catalog?.components.components ?? {});
-  const filtered = definitions.filter((component) => [component.name, component.source, ...component.roles].join(" ").toLowerCase().includes(query.trim().toLowerCase()));
+  const filtered = definitions.filter((component) => [component.name, displayLabel(component.displayName, component.name, locale), component.source, ...component.roles].join(" ").toLowerCase().includes(query.trim().toLowerCase()));
+  const groups = useMemo(() => {
+    const result = new Map<string, typeof filtered>();
+    for (const component of filtered) {
+      const key = component.category ?? "other";
+      const values = result.get(key) ?? [];
+      values.push(component); result.set(key, values);
+    }
+    return [...result.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [filtered]);
   return (
     <div className="tool-panel component-panel">
-      <label className="tool-search"><span>Search</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find component…" /></label>
-      <p className="tool-section-title">Registered components</p>
-      {filtered.length ? <div className="component-grid">
-        {filtered.map((component) => <button type="button" draggable title={`${component.name} · Click or drag to insert`} key={component.name} disabled={session.status === "saving"} onClick={() => void session.insertComponent(component.name)} onDragStart={(event) => { event.dataTransfer.effectAllowed = "copy"; event.dataTransfer.setData("application/x-agidn-component", component.name); }}><span>{component.name.slice(0, 2)}</span><b title={component.name}>{component.name}</b></button>)}
-      </div> : <div className="tool-empty">No components match “{query}”. <button type="button" onClick={() => setQuery("")}>Clear search</button></div>}
+      <label className="tool-search"><span>{t("search")}</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("findComponent")} /></label>
+      <p className="tool-section-title">{t("registeredComponents")}</p>
+      {groups.length ? groups.map(([category, components]) => <section className="component-group" key={category}><h3>{displayLabel(components[0]?.categoryDisplayName, category, locale)}</h3><div className="component-grid">
+        {components.map((component) => { const label = displayLabel(component.displayName, component.name, locale); return <button type="button" draggable title={`${label} · ${t("dragToInsert")}`} key={component.name} disabled={session.status === "saving"} onClick={() => void session.insertComponent(component.name)} onDragStart={(event) => { session.beginInsertDrag({ type: "component", id: component.name }); event.dataTransfer.effectAllowed = "copy"; event.dataTransfer.setData(COMPONENT_DRAG_MIME, component.name); }} onDragEnd={session.endInsertDrag}><span>{label.slice(0, 2)}</span><b>{label}</b></button>; })}
+      </div></section>) : <div className="tool-empty">No components match “{query}”. <button type="button" onClick={() => setQuery("")}>Clear search</button></div>}
+      <p className="tool-section-title">{t("savedComponents")}</p>
+      {session.savedComponents.length ? <div className="saved-component-list">{session.savedComponents.map((saved) => <div key={saved.id}><button type="button" draggable onClick={() => void session.insertSavedComponent(saved.id)} onDragStart={(event) => { session.beginInsertDrag({ type: "saved", id: saved.id }); event.dataTransfer.effectAllowed = "copy"; event.dataTransfer.setData(SAVED_COMPONENT_DRAG_MIME, saved.id); }} onDragEnd={session.endInsertDrag}><span>◆</span><b>{saved.displayName}</b></button><button type="button" className="saved-component-remove" aria-label={`${t("remove")} ${saved.displayName}`} onClick={() => session.removeSavedComponent(saved.id)}>×</button></div>)}</div> : <p className="component-empty-note">{t("noSavedComponents")}</p>}
     </div>
   );
 }
 
 function PropField({ nodeId, name, definition, value }: { nodeId: string; name: string; definition: GetCatalogResponse["components"]["components"][string]["props"][string]; value: unknown }) {
   const session = useStudioSession();
+  const { locale } = useI18n();
   const [draft, setDraft] = useState(value === undefined ? "" : String(value));
   useEffect(() => setDraft(value === undefined ? "" : String(value)), [nodeId, value]);
   const commitDraft = (): void => { const next = definition.type === "number" ? Number(draft) : draft; if (!Object.is(next, value)) void session.setProp(nodeId, name, next); };
-  return <label><span>{name}{definition.required ? " *" : ""}</span>{definition.type === "enum" ? (
-    <select value={draft} disabled={session.status === "saving"} onChange={(event) => { setDraft(event.target.value); void session.setProp(nodeId, name, definition.values?.find((candidate) => String(candidate) === event.target.value) ?? event.target.value); }}>{definition.values?.map((option) => <option key={String(option)} value={String(option)}>{String(option)}</option>)}</select>
+  return <label><span>{displayLabel(definition.displayName, name, locale)}{definition.required ? " *" : ""}</span>{definition.type === "enum" ? (
+    <select value={draft} disabled={session.status === "saving"} onChange={(event) => { setDraft(event.target.value); void session.setProp(nodeId, name, definition.values?.find((candidate) => String(candidate) === event.target.value) ?? event.target.value); }}>{definition.values?.map((option) => <option key={String(option)} value={String(option)}>{displayLabel(definition.valueDisplayNames?.[String(option)], String(option), locale)}</option>)}</select>
   ) : definition.type === "boolean" ? (
     <input type="checkbox" checked={value === true} disabled={session.status === "saving"} onChange={(event) => void session.setProp(nodeId, name, event.target.checked)} />
   ) : (
@@ -178,28 +214,32 @@ function PropField({ nodeId, name, definition, value }: { nodeId: string; name: 
 
 export function InspectorPanel() {
   const session = useStudioSession();
+  const { locale, t } = useI18n();
   const node = session.selectedNode;
   const [contentOpen, setContentOpen] = useState(true);
   const [appearanceOpen, setAppearanceOpen] = useState(true);
-  if (!node) return <div className="tool-panel inspector inspector-empty"><span className="selection-icon">N</span><strong>Select a node</strong><p>Choose an element on the canvas or in Page Outline to inspect it.</p></div>;
-  const title = node.kind === "component" ? node.componentRef : node.layout;
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [savedName, setSavedName] = useState("");
+  if (!node) return <div className="tool-panel inspector inspector-empty"><span className="selection-icon">N</span><strong>{t("selectNode")}</strong><p>{t("selectNodeHelp")}</p></div>;
   const definition = node.kind === "component" ? session.catalog?.components.components[node.componentRef] : undefined;
+  const title = node.kind === "component" ? displayLabel(definition?.displayName, node.componentRef, locale) : displayLabel(undefined, node.layout, locale);
   return (
     <div className="tool-panel inspector">
-      <div className="selection-summary"><span className="selection-icon">{title[0]?.toUpperCase()}</span><div><strong>{title}</strong><small>{node.id}</small></div></div>
+      <div className="selection-summary"><span className="selection-icon">{title[0]?.toUpperCase()}</span><div><strong>{title}</strong><small>{node.kind === "component" ? "Component" : "Layout"}</small></div></div>
       {node.kind === "component" && definition ? <>
         <div className="inspector-section">
-          <button type="button" className="inspector-section__title" aria-expanded={contentOpen} onClick={() => setContentOpen((value) => !value)}><span>{contentOpen ? "▾" : "▸"}</span>Content</button>
+          <button type="button" className="inspector-section__title" aria-expanded={contentOpen} onClick={() => setContentOpen((value) => !value)}><span>{contentOpen ? "▾" : "▸"}</span>{t("content")}</button>
           {contentOpen ? Object.entries(definition.props).map(([name, prop]) => <PropField nodeId={node.id} name={name} definition={prop} value={node.props?.[name]} key={name} />) : null}
           {contentOpen && Object.keys(definition.props).length === 0 ? <p className="inspector-muted">This component has no registered props.</p> : null}
         </div>
         <div className="inspector-section">
-          <button type="button" className="inspector-section__title" aria-expanded={appearanceOpen} onClick={() => setAppearanceOpen((value) => !value)}><span>{appearanceOpen ? "▾" : "▸"}</span>Appearance</button>
-          {appearanceOpen && definition.variants.length ? <label><span>Variant</span><select value={node.variant ?? definition.variants[0]} disabled={session.status === "saving"} onChange={(event) => void session.setVariant(node.id, event.target.value)}>{definition.variants.map((variant) => <option key={variant}>{variant}</option>)}</select></label> : null}
-          {appearanceOpen ? Object.entries(node.tokens ?? {}).map(([name, token]) => <div className="readonly-field" key={name}><span>{name}</span><output title="Token assignments are read-only in this release">{token}</output></div>) : null}
+          <button type="button" className="inspector-section__title" aria-expanded={appearanceOpen} onClick={() => setAppearanceOpen((value) => !value)}><span>{appearanceOpen ? "▾" : "▸"}</span>{t("appearance")}</button>
+          {appearanceOpen && definition.variants.length ? <label><span>{t("variant")}</span><select value={node.variant ?? definition.variants[0]} disabled={session.status === "saving"} onChange={(event) => void session.setVariant(node.id, event.target.value)}>{definition.variants.map((variant) => <option key={variant} value={variant}>{displayLabel(definition.variantDisplayNames?.[variant], variant, locale)}</option>)}</select></label> : null}
+          {appearanceOpen ? Object.entries(node.tokens ?? {}).map(([name, token]) => <div className="readonly-field" key={name}><span>{displayLabel(undefined, name, locale)}</span><output title="Token assignments are read-only in this release">{displayLabel(undefined, token, locale)}</output></div>) : null}
         </div>
         <div className="inspector-note">Fields and validation are provided by Component Registry. Token assignments are currently read-only.</div>
       </> : <div className="inspector-note">Layout properties are currently read-only. This is shown as information rather than an editable control.</div>}
+      <div className="inspector-save">{saveOpen ? <><input autoFocus value={savedName} onChange={(event) => setSavedName(event.target.value)} placeholder={title} /><button type="button" disabled={!savedName.trim()} onClick={() => { if (session.saveSelectedComponent(savedName || title)) { setSaveOpen(false); setSavedName(""); } }}>{t("save")}</button><button type="button" onClick={() => setSaveOpen(false)}>{t("cancel")}</button></> : <button type="button" onClick={() => { setSavedName(title); setSaveOpen(true); }}>{t("saveReusable")}</button>}</div>
       {session.error ? <div className="inspector-error" role="alert">{session.error}</div> : null}
     </div>
   );
@@ -214,9 +254,21 @@ export function ProblemsPanel() {
 }
 
 export function HistoryPanel() {
-  const { history, revision } = useStudioSession();
+  const session = useStudioSession();
+  const { t } = useI18n();
+  const [pendingRevision, setPendingRevision] = useState<number>();
+  const restore = async (): Promise<void> => {
+    if (pendingRevision === undefined) return;
+    if (await session.restoreRevision(pendingRevision)) setPendingRevision(undefined);
+  };
+  const summary = (entry: (typeof session.history)[number]): string => entry.kind === "commit"
+    ? entry.commands.map((command) => humanizeIdentifier(command.type)).join(", ")
+    : entry.kind === "restore" ? t("restoredRevision", { revision: entry.targetRevision })
+      : t(entry.kind === "undo" ? "undoToRevision" : "redoToRevision", { revision: entry.targetRevision });
   return <div className="bottom-panel history-list">
-    {history.length === 0 ? <div><span className="history-dot" /><strong>Revision {revision}</strong><small>Golden Pricing Page loaded</small><time>workspace</time></div> : null}
-    {[...history].reverse().map((entry) => <div key={entry.revision}><span className="history-dot" /><strong>Revision {entry.revision}</strong><small>{entry.kind === "commit" ? entry.commands.map((command) => command.type).join(", ") : entry.kind}</small><time>{entry.source}</time></div>)}
+    {pendingRevision !== undefined ? <div className="history-confirm" role="alert"><div><strong>{t("restoreRevision", { revision: pendingRevision })}</strong><small>{t("restoreCreatesRevision", { revision: session.revision + 1 })}</small></div><button type="button" onClick={() => setPendingRevision(undefined)}>{t("cancel")}</button><button type="button" className="is-primary" disabled={session.status === "saving"} onClick={() => void restore()}>{session.status === "saving" ? t("restoring") : t("restore")}</button></div> : null}
+    {[...session.history].reverse().map((entry) => <div className={entry.revision === session.revision ? "is-current" : ""} key={entry.revision}><span className="history-dot" /><strong>{t("revision", { revision: entry.revision })}</strong><small>{summary(entry)}</small><time>{entry.revision === session.revision ? t("current") : entry.source}</time>{entry.revision !== session.revision ? <button type="button" className="history-restore" onClick={() => setPendingRevision(entry.revision)}>{t("restore")}</button> : null}</div>)}
+    <div className={session.revision === 0 ? "is-current" : ""}><span className="history-dot" /><strong>{t("revision", { revision: 0 })}</strong><small>{t("initialDocument")}</small><time>{session.revision === 0 ? t("current") : t("workspace")}</time>{session.revision !== 0 ? <button type="button" className="history-restore" onClick={() => setPendingRevision(0)}>{t("restore")}</button> : null}</div>
+    {session.error ? <div className="history-error" role="alert">{session.error}</div> : null}
   </div>;
 }

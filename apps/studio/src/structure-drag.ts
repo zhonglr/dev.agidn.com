@@ -2,12 +2,17 @@ import type { GetCatalogResponse } from "@agidn/api-protocol";
 import type { PageDocument, PageNode } from "@agidn/document-schema";
 
 export const NODE_DRAG_MIME = "application/x-agidn-node";
+export const COMPONENT_DRAG_MIME = "application/x-agidn-component";
+export const SAVED_COMPONENT_DRAG_MIME = "application/x-agidn-saved-component";
 
 export interface MoveTarget {
   parentId: string;
   slot?: string;
   beforeNodeId?: string;
 }
+
+export interface InsertSource { kind: PageNode["kind"]; componentRef?: string }
+export type InsertResolution = { valid: true; target: MoveTarget; position: "before" | "inside" | "after" } | { valid: false; reason: string };
 
 export type MoveResolution = { valid: true; target: MoveTarget; position: "before" | "inside" | "after" } | { valid: false; reason: string };
 
@@ -51,6 +56,41 @@ function findLocation(document: PageDocument, nodeId: string): NodeLocation | un
     return undefined;
   };
   return visit(document.children, document);
+}
+
+function slotForInsert(catalog: GetCatalogResponse, target: PageNode, source: InsertSource): string | undefined {
+  if (target.kind !== "component" || source.kind !== "component" || !source.componentRef) return undefined;
+  const definition = catalog.components.components[target.componentRef];
+  for (const [slotName, slot] of Object.entries(definition?.slots ?? {})) {
+    const accepts = slot.accepts ?? ["*"];
+    const count = target.slots?.[slotName]?.length ?? 0;
+    if ((accepts.includes("*") || accepts.includes(source.componentRef)) && (slot.maxItems === undefined || count < slot.maxItems)) return slotName;
+  }
+  return undefined;
+}
+
+export function resolveInsertTarget(
+  document: PageDocument,
+  catalog: GetCatalogResponse,
+  source: InsertSource,
+  hitNodeId: string,
+  pointerY?: number,
+  hitRect?: { y: number; height: number }
+): InsertResolution {
+  const hit = findLocation(document, hitNodeId);
+  if (!hit) return { valid: false, reason: "The drop target no longer exists." };
+  const ratio = hitRect && pointerY !== undefined && hitRect.height > 0 ? (pointerY - hitRect.y) / hitRect.height : 0.5;
+  const slot = ratio >= 0.25 && ratio <= 0.75 ? slotForInsert(catalog, hit.node, source) : undefined;
+  if (slot) return { valid: true, target: { parentId: hit.node.id, slot }, position: "inside" };
+  if (hit.node.kind === "layout" && ratio >= 0.25 && ratio <= 0.75) {
+    return { valid: true, target: { parentId: hit.node.id }, position: "inside" };
+  }
+  const beforeNodeId = ratio < 0.5 ? hit.node.id : hit.collection[hit.index + 1]?.id;
+  return {
+    valid: true,
+    target: { parentId: hit.parent.id, ...(hit.slot ? { slot: hit.slot } : {}), ...(beforeNodeId ? { beforeNodeId } : {}) },
+    position: ratio < 0.5 ? "before" : "after"
+  };
 }
 
 function collectionKey(parent: PageDocument | PageNode, slot?: string): string {

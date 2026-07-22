@@ -87,7 +87,7 @@ export function PreviewApp() {
         const nodeId = target.dataset.nodeId;
         const nodeKind = target.dataset.nodeKind === "layout" ? "layout" : "component";
         if (message.type === "preview.resolveDrop") {
-          post({ type: "preview.dropIntent", requestId: message.requestId, documentRevision: stateRef.current.revision, nodeId, nodeKind, rect: rectFor(target) });
+          post({ type: "preview.dropIntent", requestId: message.requestId, documentRevision: stateRef.current.revision, nodeId, nodeKind, rect: rectFor(target), pointerY: message.y });
         } else if (message.type === "preview.resolveMove") {
           post({ type: "preview.moveIntent", requestId: message.requestId, documentRevision: stateRef.current.revision, sourceNodeId: message.sourceNodeId, nodeId, nodeKind, rect: rectFor(target), pointerY: message.y });
         } else {

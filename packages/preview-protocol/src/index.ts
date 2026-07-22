@@ -61,7 +61,8 @@ export const PreviewToStudioMessageSchema = Type.Union([
     type: Type.Literal("preview.dropIntent"),
     nodeId: identifier,
     nodeKind: Type.Union([Type.Literal("layout"), Type.Literal("component")]),
-    rect
+    rect,
+    pointerY: Type.Number()
   })),
   message(previewBase, Type.Object({
     type: Type.Literal("preview.moveIntent"),
