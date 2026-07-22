@@ -8,7 +8,7 @@ import type {
 
 export interface DocumentServicePort {
   getCurrent(): GetDocumentResponse;
-  commit(request: CommitCommandsRequest): CommitCommandsResponse;
-  undo(request: NavigationRequest): NavigationResponse;
-  redo(request: NavigationRequest): NavigationResponse;
+  commit(request: CommitCommandsRequest): Promise<CommitCommandsResponse>;
+  undo(request: NavigationRequest): Promise<NavigationResponse>;
+  redo(request: NavigationRequest): Promise<NavigationResponse>;
 }

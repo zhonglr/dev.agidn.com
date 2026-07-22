@@ -75,6 +75,9 @@ importers:
       '@agidn/document-engine':
         specifier: workspace:*
         version: link:../../packages/document-engine
+      '@agidn/document-schema':
+        specifier: workspace:*
+        version: link:../../packages/document-schema
       '@agidn/rule-engine':
         specifier: workspace:*
         version: link:../../packages/rule-engine
@@ -142,6 +145,9 @@ importers:
       '@agidn/rule-engine':
         specifier: workspace:*
         version: link:../rule-engine
+      '@sinclair/typebox':
+        specifier: ^0.34.38
+        version: 0.34.52
 
   packages/document-schema:
     dependencies:

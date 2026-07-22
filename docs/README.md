@@ -20,6 +20,7 @@
 ## API
 
 - [Workspace Server API](./api/WORKSPACE_SERVER.md)：本地 HTTP API 协议和示例。
+- [Revision Store](./api/REVISION_STORE.md)：版本化持久化格式、恢复与原子写入保证。
 
 ## ADR
 

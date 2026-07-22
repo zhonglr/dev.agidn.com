@@ -12,6 +12,8 @@ pnpm workspace-server examples/golden-pricing/page.ui.json 4178
 
 默认监听 `127.0.0.1:4178`。
 
+首次启动会在 PageDocument 同目录创建 `.revision-store/<document-name>.revisions.json`。后续启动会恢复完整 Revision、Command/Patch history 和 undo/redo 状态，详见 [Revision Store 持久化格式](./REVISION_STORE.md)。
+
 ## 通用规则
 
 - 请求和响应使用 `application/json`。
@@ -31,7 +33,7 @@ pnpm workspace-server examples/golden-pricing/page.ui.json 4178
 | 409 | `baseRevision` 已过期 |
 | 413 | 请求体超过限制 |
 | 422 | Command、Rule 或导航操作被拒绝 |
-| 500 | Transport 或 Application 返回无效结果 |
+| 500 | Transport、Application 或持久化失败 |
 
 ## GET `/v1/document`
 
@@ -147,6 +149,6 @@ Revision 冲突：
 
 ## 当前限制
 
-- Revision 仅保存在内存中，进程重启后恢复到页面文件初始状态。
 - 暂无 History、Catalog、Export 和 WebSocket Endpoint。
+- 暂无 Revision Store 格式迁移和外部 PageDocument 文件变更协调。
 - 当前仅监听本机回环地址。

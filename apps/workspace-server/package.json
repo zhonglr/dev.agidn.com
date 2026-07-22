@@ -11,6 +11,7 @@
     "@agidn/design-tokens": "workspace:*",
     "@agidn/document-codec": "workspace:*",
     "@agidn/document-engine": "workspace:*",
+    "@agidn/document-schema": "workspace:*",
     "@agidn/rule-engine": "workspace:*"
   }
 }

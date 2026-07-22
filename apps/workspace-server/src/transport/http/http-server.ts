@@ -45,7 +45,7 @@ async function route(request: IncomingMessage, response: ServerResponse, service
       sendJson(response, 400, protocolError(decoded.issues));
       return;
     }
-    const payload = service.commit(decoded.value);
+    const payload = await service.commit(decoded.value);
     if (!checkCommitCommandsResponse(payload)) throw new Error("DocumentService returned an invalid Commit response.");
     sendJson(response, statusForApplicationResponse(payload), payload);
     return;
@@ -57,7 +57,7 @@ async function route(request: IncomingMessage, response: ServerResponse, service
       sendJson(response, 400, protocolError(decoded.issues));
       return;
     }
-    const payload = path === "/v1/undo" ? service.undo(decoded.value) : service.redo(decoded.value);
+    const payload = await (path === "/v1/undo" ? service.undo(decoded.value) : service.redo(decoded.value));
     if (!checkNavigationResponse(payload)) throw new Error("DocumentService returned an invalid Navigation response.");
     sendJson(response, statusForApplicationResponse(payload), payload);
     return;

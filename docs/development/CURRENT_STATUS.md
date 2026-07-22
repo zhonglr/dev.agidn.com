@@ -4,9 +4,9 @@
 
 ## 当前结论
 
-项目已经完成可运行的无界面内核和内存版 Workspace Server。现在可以验证 PageDocument、应用受控 Command、提交 Revision、撤销/重做、导出 Schema Context Package，并通过 HTTP 调用同一应用服务。
+项目已经完成可运行的无界面内核和具备本地持久化的 Workspace Server。现在可以验证 PageDocument、应用受控 Command、提交 Revision、撤销/重做、导出 Schema Context Package，并通过 HTTP 调用同一应用服务。Revision、Command/Patch history 和 undo/redo 状态会在服务重启后恢复。
 
-当前还没有 React Renderer、Preview Host 和可视化 Studio。Workspace Server 重启后也不会恢复内存中的 Revision。
+当前还没有 React Renderer、Preview Host 和可视化 Studio。
 
 ## 已完成功能
 
@@ -24,8 +24,9 @@
 | Context Exporter | 七文件导出、引用裁剪、稳定 JSON 和 SHA-256 内容 Hash |
 | CLI | `validate`、`apply`、`export` |
 | Workspace Server | 查询文档、提交 Commands、undo 和 redo 的 HTTP API |
+| Revision Store | `1.0.0` 持久化格式、运行时校验、原子文件替换、串行写入和服务重启恢复 |
 | API Protocol | 版本化请求/响应 Schema、400/409/422 错误边界 |
-| Tests | 45 项契约、规则、事务、模块边界和 HTTP 集成测试 |
+| Tests | 49 项契约、规则、事务、模块边界、持久化恢复和 HTTP 集成测试 |
 
 ## 已支持 Command
 
@@ -74,7 +75,6 @@ pnpm workspace-server examples/golden-pricing/page.ui.json 4178
 
 ## 尚未完成
 
-- Revision、Command/Patch 历史和 undo/redo 状态持久化。
 - Schema migration 和旧版本升级路径。
 - Action/Data Source 的完整引用验证。
 - 真实 React 组件实现；当前 15 个组件只有注册定义。
@@ -90,7 +90,7 @@ pnpm workspace-server examples/golden-pricing/page.ui.json 4178
 | --- | --- |
 | M0 领域资产 | 部分完成 |
 | M1 无界面内核 | 大部分完成 |
-| M2 Workspace Server | 内存版 API 已完成，持久化未完成 |
+| M2 Workspace Server | 核心 API 和本地 Revision 持久化已完成，扩展 API 未完成 |
 | M3 React Renderer / Preview | 未开始 |
 | M4 Studio | 未开始 |
 | M5 完整导出闭环 | 核心导出器已完成，Revision 导出 API 未完成 |
@@ -98,8 +98,6 @@ pnpm workspace-server examples/golden-pricing/page.ui.json 4178
 
 ## 下一步顺序
 
-1. 为 Revision Store 定义持久化端口和版本化存储格式。
-2. 实现原子文件写入和服务重启恢复测试。
-3. 增加 History、Catalog 和 Export Application Service/API。
-4. 补齐 Action/Data Source 引用验证和 Schema migration。
-5. 进入真实 React Renderer 与 Preview Host。
+1. 增加 History、Catalog 和 Export Application Service/API。
+2. 补齐 Action/Data Source 引用验证和 Schema migration。
+3. 进入真实 React Renderer 与 Preview Host。

@@ -35,7 +35,7 @@ describe("Workspace API protocol", () => {
     const project = await loadGoldenProject();
     const service = new DocumentService(new InMemoryRevisionStore(project.document, project));
     const current = service.getCurrent();
-    const committed = service.commit({
+    const committed = await service.commit({
       protocolVersion: "1.0.0",
       baseRevision: 0,
       commands: [{

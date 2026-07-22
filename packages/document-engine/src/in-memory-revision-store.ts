@@ -1,25 +1,21 @@
 import { applyCommand, type DocumentCommand, type DocumentPatch } from "@agidn/command-engine";
 import type { PageDocument } from "@agidn/document-schema";
 import { validateDocument, type RuleContext } from "@agidn/rule-engine";
-import { InvalidInitialDocumentError } from "./errors.js";
+import { InvalidInitialDocumentError, InvalidRevisionStoreStateError } from "./errors.js";
 import type { HistoryEntry } from "./history.js";
 import type { NavigationResult } from "./navigation.js";
-import { cloneRevision, type ChangeSource, type DocumentRevision, type RevisionNumber, type RevisionStoreOptions } from "./revision.js";
+import { cloneRevision, type ChangeSource, type DocumentRevision, type RevisionNumber, type RevisionStore, type RevisionStoreOptions } from "./revision.js";
+import { checkRevisionStoreState, REVISION_STORE_FORMAT_VERSION, type RevisionCheckpoint, type RevisionStoreState } from "./revision-store-state.js";
 import type { CommitRequest, CommitResult } from "./transaction.js";
 
-interface Checkpoint {
-  document: PageDocument;
-  originRevision: RevisionNumber;
-}
-
-export class InMemoryRevisionStore {
+export class InMemoryRevisionStore implements RevisionStore {
   readonly #context: RuleContext;
   readonly #clock: () => Date;
   readonly #revisions = new Map<RevisionNumber, DocumentRevision>();
   readonly #history: HistoryEntry[] = [];
   readonly #seenCommandIds = new Set<string>();
-  readonly #undoStack: Checkpoint[] = [];
-  readonly #redoStack: Checkpoint[] = [];
+  readonly #undoStack: RevisionCheckpoint[] = [];
+  readonly #redoStack: RevisionCheckpoint[] = [];
   #current: DocumentRevision;
 
   constructor(initialDocument: PageDocument, context: RuleContext, options: RevisionStoreOptions = {}) {
@@ -33,6 +29,47 @@ export class InMemoryRevisionStore {
       createdAt: this.#clock().toISOString()
     };
     this.#revisions.set(0, cloneRevision(this.#current));
+  }
+
+  static fromState(stateInput: unknown, context: RuleContext, options: RevisionStoreOptions = {}): InMemoryRevisionStore {
+    const checked = checkRevisionStoreState(stateInput);
+    if (!checked.valid) throw new InvalidRevisionStoreStateError(checked.issues);
+    const state = checked.state;
+    const initial = state.revisions[0];
+    if (!initial) throw new InvalidRevisionStoreStateError([{ path: "/revisions", message: "Revision 0 is required." }]);
+
+    const store = new InMemoryRevisionStore(initial.document, context, options);
+    for (const [index, entry] of state.revisions.entries()) {
+      const validation = validateDocument(entry.document, context);
+      if (!validation.valid) {
+        throw new InvalidRevisionStoreStateError(validation.violations.map(({ message }) => ({
+          path: `/revisions/${index}/document`,
+          message
+        })));
+      }
+    }
+    for (const [stackName, checkpoints] of [["undoStack", state.undoStack], ["redoStack", state.redoStack]] as const) {
+      for (const [index, checkpoint] of checkpoints.entries()) {
+        const validation = validateDocument(checkpoint.document, context);
+        if (!validation.valid) {
+          throw new InvalidRevisionStoreStateError(validation.violations.map(({ message }) => ({
+            path: `/${stackName}/${index}/document`,
+            message
+          })));
+        }
+      }
+    }
+
+    store.#revisions.clear();
+    state.revisions.forEach((entry) => store.#revisions.set(entry.revision, cloneRevision(entry)));
+    store.#history.push(...structuredClone(state.history));
+    store.#undoStack.push(...structuredClone(state.undoStack));
+    store.#redoStack.push(...structuredClone(state.redoStack));
+    state.history.forEach((entry) => {
+      if (entry.kind === "commit") entry.commands.forEach(({ commandId }) => store.#seenCommandIds.add(commandId));
+    });
+    store.#current = cloneRevision(state.revisions[state.revisions.length - 1] ?? initial);
+    return store;
   }
 
   get currentRevision(): RevisionNumber {
@@ -58,6 +95,16 @@ export class InMemoryRevisionStore {
 
   getHistory(): HistoryEntry[] {
     return structuredClone(this.#history);
+  }
+
+  exportState(): RevisionStoreState {
+    return {
+      formatVersion: REVISION_STORE_FORMAT_VERSION,
+      revisions: [...this.#revisions.values()].map(cloneRevision),
+      history: structuredClone(this.#history),
+      undoStack: structuredClone(this.#undoStack),
+      redoStack: structuredClone(this.#redoStack)
+    };
   }
 
   commit(request: CommitRequest): CommitResult {

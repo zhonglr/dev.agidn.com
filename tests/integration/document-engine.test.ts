@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { findNode } from "@agidn/document-schema";
-import { InMemoryRevisionStore } from "@agidn/document-engine";
+import { InMemoryRevisionStore, InvalidRevisionStoreStateError } from "@agidn/document-engine";
 import { loadGoldenProject } from "../helpers.js";
 
 async function addCardCommand() {
@@ -124,5 +124,14 @@ describe("InMemoryRevisionStore", () => {
 
     expect(store.getCurrent().document.children.length).toBeGreaterThan(0);
     expect(store.getRevision(0)?.document.children.length).toBeGreaterThan(0);
+  });
+
+  it("rejects structurally valid state with a broken revision sequence", async () => {
+    const project = await loadGoldenProject();
+    const store = new InMemoryRevisionStore(project.document, project);
+    const state = store.exportState();
+    state.revisions[0]!.revision = 2;
+
+    expect(() => InMemoryRevisionStore.fromState(state, project)).toThrow(InvalidRevisionStoreStateError);
   });
 });
