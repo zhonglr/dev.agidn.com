@@ -1,0 +1,7 @@
+{
+  "name": "@agidn/document-codec",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": { "@agidn/document-schema": "workspace:*" }
+}

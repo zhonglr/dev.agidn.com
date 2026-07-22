@@ -1,0 +1,13 @@
+{
+  "name": "@agidn/context-exporter",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@agidn/component-registry": "workspace:*",
+    "@agidn/design-tokens": "workspace:*",
+    "@agidn/document-codec": "workspace:*",
+    "@agidn/document-schema": "workspace:*",
+    "@agidn/rule-engine": "workspace:*"
+  }
+}

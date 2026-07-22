@@ -1,0 +1,6 @@
+{
+  "name": "@agidn/component-registry",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts"
+}

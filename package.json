@@ -1,0 +1,40 @@
+{
+  "name": "agidn-ui-builder",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.13.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "ui": "tsx apps/workspace-server/src/cli.ts",
+    "workspace-server": "tsx apps/workspace-server/src/server.ts"
+  },
+  "devDependencies": {
+    "@agidn/api-protocol": "workspace:*",
+    "@agidn/command-engine": "workspace:*",
+    "@agidn/component-registry": "workspace:*",
+    "@agidn/context-exporter": "workspace:*",
+    "@agidn/design-tokens": "workspace:*",
+    "@agidn/document-codec": "workspace:*",
+    "@agidn/document-engine": "workspace:*",
+    "@agidn/document-schema": "workspace:*",
+    "@agidn/rule-engine": "workspace:*",
+    "@types/node": "^24.0.14",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "^0.34.38"
+  }
+}

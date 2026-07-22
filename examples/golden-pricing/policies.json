@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0",
+  "breakpoints": { "mobile": 0, "tablet": 768, "desktop": 1200 },
+  "containerWidths": ["sm", "md", "lg", "full"],
+  "spacingTokens": ["spacing.xs", "spacing.sm", "spacing.md", "spacing.lg", "spacing.xl", "spacing.section"],
+  "alignments": ["start", "center", "end", "stretch"],
+  "gridColumns": [1, 2, 3, 4, 6, 12],
+  "maxLayoutDepth": 8,
+  "overlay": {
+    "purposes": ["badge", "decoration", "content-overlay"],
+    "boundaries": ["parent", "viewport"]
+  }
+}

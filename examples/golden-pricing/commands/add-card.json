@@ -1,0 +1,20 @@
+{
+  "commandId": "cmd_add_enterprise_card",
+  "protocolVersion": "1.0.0",
+  "type": "node.insert",
+  "targetParentId": "grid_plans",
+  "node": {
+    "id": "pricing_card_enterprise",
+    "kind": "component",
+    "role": "pricing-plan",
+    "componentRef": "PricingCard",
+    "variant": "default",
+    "props": { "planName": "Enterprise", "price": "Custom", "featured": false },
+    "tokens": { "surfaceColor": "color.surface.default", "radius": "radius.card" },
+    "slots": {
+      "description": [{ "id": "text_enterprise_description", "kind": "component", "componentRef": "Text", "variant": "muted", "props": { "text": "For complex organizations." } }],
+      "features": [{ "id": "text_enterprise_feature", "kind": "component", "componentRef": "Text", "variant": "body", "props": { "text": "Dedicated support and custom controls" } }],
+      "action": [{ "id": "button_enterprise", "kind": "component", "role": "primary-action", "componentRef": "Button", "variant": "secondary", "props": { "label": "Contact sales", "iconOnly": false }, "interactions": [{ "event": "press", "actionRef": "billing.selectPlan", "arguments": { "planId": "enterprise" } }] }]
+    }
+  }
+}

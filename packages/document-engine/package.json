@@ -1,0 +1,11 @@
+{
+  "name": "@agidn/document-engine",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@agidn/command-engine": "workspace:*",
+    "@agidn/document-schema": "workspace:*",
+    "@agidn/rule-engine": "workspace:*"
+  }
+}

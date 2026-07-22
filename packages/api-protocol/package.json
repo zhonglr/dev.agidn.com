@@ -1,0 +1,11 @@
+{
+  "name": "@agidn/api-protocol",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@agidn/command-engine": "workspace:*",
+    "@agidn/document-schema": "workspace:*",
+    "@sinclair/typebox": "^0.34.38"
+  }
+}
