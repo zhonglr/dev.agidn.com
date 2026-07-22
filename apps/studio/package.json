@@ -1,16 +1,14 @@
 {
-  "name": "@agidn/preview-host",
+  "name": "@agidn/studio",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1 --port 4174 --strictPort",
+    "dev": "vite --host 127.0.0.1 --port 4173 --strictPort",
     "build": "vite build"
   },
   "dependencies": {
-    "@agidn/design-tokens": "workspace:*",
-    "@agidn/document-schema": "workspace:*",
-    "@agidn/react-renderer": "workspace:*",
+    "@agidn/studio-workbench": "workspace:*",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

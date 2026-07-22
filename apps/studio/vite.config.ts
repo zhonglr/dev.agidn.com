@@ -8,6 +8,6 @@ const root = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   root,
   plugins: [react()],
-  server: { port: 4174, strictPort: true, fs: { allow: [resolve(root, "../..")] } },
-  build: { outDir: resolve(root, "../../dist/preview-host"), emptyOutDir: true }
+  server: { port: 4173, strictPort: true, fs: { allow: [resolve(root, "../..")] } },
+  build: { outDir: resolve(root, "../../dist/studio"), emptyOutDir: true }
 });
