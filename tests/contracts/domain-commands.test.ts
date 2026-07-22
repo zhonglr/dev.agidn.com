@@ -115,6 +115,20 @@ describe("domain commands", async () => {
     expect(result.violations[0]?.code).toBe("INVALID_LAYOUT_NESTING");
   });
 
+  it("reorders top-level page children through the page document target", () => {
+    const result = applyCommand(project.document, {
+      commandId: "cmd_move_top_level",
+      protocolVersion: "1.0.0",
+      type: "node.move",
+      nodeId: "section_faq",
+      targetParentId: "page_pricing",
+      beforeNodeId: "section_hero"
+    }, project);
+    expect(result.accepted).toBe(true);
+    if (!result.accepted) return;
+    expect(result.document.children.map(({ id }) => id)).toEqual(["section_header", "section_faq", "section_hero", "section_pricing"]);
+  });
+
   it("does not retain caller-owned Command objects in the resulting document", () => {
     const command: DocumentCommand = {
       commandId: "cmd_insert_detached",

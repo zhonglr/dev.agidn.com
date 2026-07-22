@@ -52,7 +52,11 @@ export function PreviewApp() {
   }, [post]);
 
   useEffect(() => {
-    post({ type: "preview.ready", requestId: "preview_ready", documentRevision: stateRef.current.revision });
+    // Re-announce while mounted so a parent cannot permanently miss readiness
+    // when the iframe message races its load event.
+    const announceReady = (): void => post({ type: "preview.ready", requestId: "preview_ready", documentRevision: stateRef.current.revision });
+    announceReady();
+    const readyInterval = window.setInterval(announceReady, 500);
     const onMessage = (event: MessageEvent<unknown>): void => {
       if (event.source !== window.parent) return;
       const decoded = decodeStudioToPreviewMessage(event.data);
@@ -77,24 +81,25 @@ export function PreviewApp() {
           return message.nodeId ? { ...rest, selectedNodeId: message.nodeId } : rest;
         });
         if (message.nodeId) requestAnimationFrame(() => postBounds(message.nodeId!, message.requestId));
-      } else if (message.type === "preview.hitTest") {
+      } else if (message.type === "preview.hitTest" || message.type === "preview.resolveDrop" || message.type === "preview.resolveMove") {
         const target = document.elementFromPoint(message.x - window.scrollX, message.y - window.scrollY)?.closest<HTMLElement>("[data-node-id]");
         if (!target?.dataset.nodeId) return;
         const nodeId = target.dataset.nodeId;
         const nodeKind = target.dataset.nodeKind === "layout" ? "layout" : "component";
-        post({
-          type: "preview.nodePointerDown",
-          requestId: message.requestId,
-          documentRevision: stateRef.current.revision,
-          nodeId,
-          nodeKind,
-          ...(target.dataset.componentRef ? { componentRef: target.dataset.componentRef } : {}),
-          rect: rectFor(target)
-        });
+        if (message.type === "preview.resolveDrop") {
+          post({ type: "preview.dropIntent", requestId: message.requestId, documentRevision: stateRef.current.revision, nodeId, nodeKind, rect: rectFor(target) });
+        } else if (message.type === "preview.resolveMove") {
+          post({ type: "preview.moveIntent", requestId: message.requestId, documentRevision: stateRef.current.revision, sourceNodeId: message.sourceNodeId, nodeId, nodeKind, rect: rectFor(target), pointerY: message.y });
+        } else {
+          post({ type: "preview.nodePointerDown", requestId: message.requestId, documentRevision: stateRef.current.revision, nodeId, nodeKind, ...(target.dataset.componentRef ? { componentRef: target.dataset.componentRef } : {}), rect: rectFor(target) });
+        }
       }
     };
     window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
+    return () => {
+      window.clearInterval(readyInterval);
+      window.removeEventListener("message", onMessage);
+    };
   }, [post, postBounds]);
 
   useEffect(() => {

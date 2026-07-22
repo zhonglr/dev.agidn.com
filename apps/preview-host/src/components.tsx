@@ -33,7 +33,7 @@ const Text = ({ node, style, hostProps }: RuntimeComponentProps) => (
 );
 
 const Image = ({ node, style, hostProps }: RuntimeComponentProps) => (
-  <div {...hostProps} className="ui-image-frame" style={style}>
+  <div {...hostProps} className={`ui-image-frame ui-image-frame--${node.variant ?? "default"}`} style={style}>
     <img className="ui-image" src={text(node, "src")} alt={text(node, "alt")} />
   </div>
 );
@@ -53,7 +53,7 @@ const Card = ({ node, slots, style, hostProps }: RuntimeComponentProps) => (
 );
 
 const Navigation = ({ node, slots, style, hostProps }: RuntimeComponentProps) => (
-  <nav {...hostProps} className="ui-navigation" style={style} aria-label={text(node, "label", "Navigation")}>
+  <nav {...hostProps} className={`ui-navigation ui-navigation--${node.variant ?? "header"}`} style={style} aria-label={text(node, "label", "Navigation")}>
     <a className="ui-brand" href="/">Acme<span>.</span></a>
     <div className="ui-navigation__items">{content(slots, "items")}</div>
     <a className="ui-navigation__login" href="/login">Log in</a>

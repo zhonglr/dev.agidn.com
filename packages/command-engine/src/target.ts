@@ -1,13 +1,17 @@
-import type { PageNode } from "@agidn/document-schema";
+import type { PageDocument, PageNode } from "@agidn/document-schema";
 import type { HandlerContext, RejectedHandlerResult } from "./handler.js";
 import { handlerRejection } from "./handler.js";
 import { childCollection, findNodeLocation } from "./tree.js";
 
 export type TargetResult =
-  | { accepted: true; parent: PageNode; collection: PageNode[] }
+  | { accepted: true; parent: PageDocument | PageNode; collection: PageNode[] }
   | RejectedHandlerResult;
 
 export function resolveTarget(context: HandlerContext, targetParentId: string, targetSlot?: string): TargetResult {
+  if (context.document.id === targetParentId) {
+    if (targetSlot) return handlerRejection("INVALID_SLOT", "Page root does not expose named slots.", context.document.id);
+    return { accepted: true, parent: context.document, collection: context.document.children };
+  }
   const parent = findNodeLocation(context.document, targetParentId)?.node;
   if (!parent) return handlerRejection("SCHEMA_INVALID", `Target parent '${targetParentId}' does not exist.`);
   if (parent.kind === "layout") {

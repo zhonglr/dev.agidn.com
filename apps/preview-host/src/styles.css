@@ -37,6 +37,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .ui-navigation__items { display: flex; align-items: center; gap: 28px; }
 .ui-navigation__login { justify-self: end; font-size: 14px; font-weight: 650; text-decoration: none; }
 .ui-link { font-size: 14px; font-weight: 550; color: #52525b; text-decoration: none; transition: color .18s ease; }
+.ui-link--default { color: #3f3f46; }
+.ui-link--muted { color: #85858f; }
 .ui-link:hover { color: #5b5bd6; }
 
 .ui-heading { margin: 0; letter-spacing: -.04em; text-wrap: balance; }
@@ -44,18 +46,28 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .ui-heading--section { font-size: clamp(32px, 5vw, 48px); line-height: 1.1; }
 .ui-heading--title { font-size: 28px; line-height: 1.2; }
 .ui-text { margin: 0; line-height: 1.65; }
+.ui-text--body { color: #3f3f46; font-weight: 400; }
 .ui-text--muted { color: #71717a; }
+.ui-text--emphasis { color: #27272a; font-weight: 650; }
 [data-role="hero"] .ui-text { max-width: 610px; font-size: 19px; text-align: center; }
 
-.ui-image-frame { width: min(100%, 760px); margin-top: 28px; min-height: 310px; overflow: hidden; border: 1px solid #dfdff0; border-radius: 22px; background: linear-gradient(145deg, #20202a, #383850); box-shadow: 0 34px 90px rgba(36, 34, 70, .2); }
+.ui-image-frame { width: min(100%, 760px); margin-top: 28px; min-height: 310px; overflow: hidden; border: 1px solid #dfdff0; border-radius: 6px; background: linear-gradient(145deg, #20202a, #383850); box-shadow: 0 34px 90px rgba(36, 34, 70, .2); }
+.ui-image-frame--default { border-radius: 6px; box-shadow: none; }
+.ui-image-frame--rounded { border-radius: 22px; box-shadow: 0 34px 90px rgba(36, 34, 70, .2); }
 .ui-image { display: block; width: 100%; min-height: 310px; object-fit: cover; }
 .ui-icon { display: inline-grid; place-items: center; width: 27px; height: 27px; border-radius: 999px; font-size: 14px; font-weight: 800; }
+.ui-icon--default { color: #52525b; background: #f0f0f3; }
 .ui-icon--success { color: #166534; background: #dcfce7; }
+.ui-icon--danger { color: #991b1b; background: #fee2e2; }
 
 .ui-pricing-card { position: relative; display: flex; min-height: 430px; flex-direction: column; padding: 32px; border: 1px solid #e4e4e9; border-radius: 18px; background: #fff; }
+.ui-pricing-card--default { border-color: #e4e4e9; background: #fff; }
 .ui-pricing-card--featured { border-color: #7777e8; outline: 3px solid rgba(91, 91, 214, .1); transform: translateY(-8px); }
 .ui-pricing-card__badge { position: absolute; top: 22px; right: 22px; }
 .ui-badge { display: inline-flex; padding: 5px 9px; border-radius: 99px; background: #ecebff; color: #4b4bb8; font-size: 11px; font-weight: 750; letter-spacing: .02em; }
+.ui-badge--default { background: #f0f0f3; color: #52525b; }
+.ui-badge--accent { background: #ecebff; color: #4b4bb8; }
+.ui-badge--success { background: #dcfce7; color: #166534; }
 .ui-pricing-card__eyebrow { margin: 0 0 20px; color: #555560; font-size: 14px; font-weight: 720; }
 .ui-pricing-card__price { margin: 0; font-size: 45px; font-weight: 760; letter-spacing: -.045em; }
 .ui-pricing-card__price span { margin-left: 5px; color: #8a8a95; font-size: 13px; font-weight: 500; letter-spacing: 0; }
@@ -66,6 +78,18 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .ui-button { width: 100%; min-height: 46px; border: 1px solid #d4d4dc; border-radius: 10px; background: #fff; color: #25252b; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: transform .16s ease, box-shadow .16s ease; }
 .ui-button:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(30, 30, 55, .1); }
 .ui-button--primary { border-color: #5b5bd6; background: #5b5bd6; color: #fff; }
+.ui-button--secondary { border-color: #d4d4dc; background: #fff; color: #25252b; }
+.ui-button--danger { border-color: #b91c1c; background: #b91c1c; color: #fff; }
+.ui-button--ghost { border-color: transparent; background: transparent; color: #4b4bb8; box-shadow: none; }
+
+.ui-card { border: 1px solid transparent; border-radius: 14px; background: #fff; padding: 20px; }
+.ui-card--default { border-color: transparent; }
+.ui-card--outlined { border-color: #d4d4dc; }
+.ui-card--elevated { border-color: transparent; box-shadow: 0 16px 40px rgba(30, 30, 55, .14); }
+
+.ui-navigation--header { background: transparent; color: #18181b; }
+.ui-navigation--footer { height: auto; min-height: 72px; border-radius: 12px; background: #18181b; padding: 0 20px; color: #f7f7f8; }
+.ui-navigation--footer .ui-link { color: #d4d4dc; }
 
 .ui-faq { border-bottom: 1px solid #e4e4e9; padding: 20px 2px; }
 .ui-faq summary { display: flex; justify-content: space-between; font-size: 17px; font-weight: 680; cursor: pointer; list-style: none; }

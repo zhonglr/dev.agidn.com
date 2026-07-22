@@ -42,7 +42,9 @@ export const StudioToPreviewMessageSchema = Type.Union([
   message(studioBase, Type.Object({ type: Type.Literal("preview.setDocument"), document: PageDocumentSchema })),
   message(studioBase, Type.Object({ type: Type.Literal("preview.setBreakpoint"), breakpoint })),
   message(studioBase, Type.Object({ type: Type.Literal("preview.setSelection"), nodeId: Type.Optional(identifier) })),
-  message(studioBase, Type.Object({ type: Type.Literal("preview.hitTest"), x: Type.Number(), y: Type.Number() }))
+  message(studioBase, Type.Object({ type: Type.Literal("preview.hitTest"), x: Type.Number(), y: Type.Number() })),
+  message(studioBase, Type.Object({ type: Type.Literal("preview.resolveDrop"), componentRef: identifier, x: Type.Number(), y: Type.Number() })),
+  message(studioBase, Type.Object({ type: Type.Literal("preview.resolveMove"), sourceNodeId: identifier, x: Type.Number(), y: Type.Number() }))
 ]);
 
 export const PreviewToStudioMessageSchema = Type.Union([
@@ -55,6 +57,20 @@ export const PreviewToStudioMessageSchema = Type.Union([
     rect
   })),
   message(previewBase, Type.Object({ type: Type.Literal("preview.nodeBounds"), nodeId: identifier, rect })),
+  message(previewBase, Type.Object({
+    type: Type.Literal("preview.dropIntent"),
+    nodeId: identifier,
+    nodeKind: Type.Union([Type.Literal("layout"), Type.Literal("component")]),
+    rect
+  })),
+  message(previewBase, Type.Object({
+    type: Type.Literal("preview.moveIntent"),
+    sourceNodeId: identifier,
+    nodeId: identifier,
+    nodeKind: Type.Union([Type.Literal("layout"), Type.Literal("component")]),
+    rect,
+    pointerY: Type.Number()
+  })),
   message(previewBase, Type.Object({ type: Type.Literal("preview.renderError"), message: Type.String({ minLength: 1 }), nodeId: Type.Optional(identifier) })),
   message(previewBase, Type.Object({
     type: Type.Literal("preview.contentOverflow"),
