@@ -20,6 +20,8 @@ export interface ContextMenuItemDescriptor {
   keyboard?: string;
   icon?: ReactNode;
   isDisabled?: boolean;
+  /** Shows a checkmark for toggle items; the menu still closes and runs execute on activation. */
+  isSelected?: boolean;
   execute?: () => unknown | Promise<unknown>;
   children?: readonly ContextMenuItemDescriptor[];
 }

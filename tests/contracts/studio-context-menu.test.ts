@@ -76,6 +76,7 @@ describe("Studio context menu contributions", () => {
     ]);
 
     expect(facade).toContain("@react-spectrum/s2/Menu");
+    expect(facade).toContain("@react-spectrum/s2/Popover");
     expect(facade).toContain("<SubmenuTrigger");
     expect(facade).toContain("<MenuSection");
     expect(panels).toContain("onContextMenu=");

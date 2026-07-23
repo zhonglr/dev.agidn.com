@@ -1,19 +1,17 @@
-import { ActionButton as SpectrumActionButton } from "@react-spectrum/s2/ActionButton";
 import {
-  Header,
-  Heading,
   Keyboard,
   Menu,
   MenuItem,
   MenuSection,
-  MenuTrigger,
   SubmenuTrigger,
   Text
 } from "@react-spectrum/s2/Menu";
+import { Popover } from "@react-spectrum/s2/Popover";
 import {
   createContext,
   useCallback,
   useContext,
+  useMemo,
   useRef,
   useState,
   type MouseEvent,
@@ -95,6 +93,28 @@ function renderItem(item: ContextMenuItemDescriptor, close: () => void): ReactNo
   );
 }
 
+function collectSelectedKeys(items: readonly ContextMenuItemDescriptor[], result: string[] = []): string[] {
+  for (const item of items) {
+    if (item.isSelected) result.push(item.id);
+    if (item.children?.length) collectSelectedKeys(item.children, result);
+  }
+  return result;
+}
+
+function menuItems(
+  sections: readonly ContextMenuSectionDescriptor[],
+  close: () => void
+): ReactNode {
+  if (sections.length === 1) {
+    return sections[0]!.items.map((item) => renderItem(item, close));
+  }
+  return sections.map((section) => (
+    <MenuSection id={section.id} key={section.id} aria-label={section.label}>
+      {section.items.map((item) => renderItem(item, close))}
+    </MenuSection>
+  ));
+}
+
 export function ContextMenuProvider({
   registry,
   children
@@ -105,6 +125,7 @@ export function ContextMenuProvider({
   const [state, setState] = useState<ContextMenuState>();
   const stateRef = useRef(state);
   stateRef.current = state;
+  const anchorRef = useRef<HTMLSpanElement>(null);
 
   const closeContextMenu = useCallback(() => {
     const returnFocusTo = stateRef.current?.returnFocusTo;
@@ -150,38 +171,50 @@ export function ContextMenuProvider({
     [openContextMenuAt]
   );
 
+  const selectedKeys = useMemo(
+    () => (state ? collectSelectedKeys(state.sections.flatMap((section) => section.items)) : []),
+    [state]
+  );
+
   return (
     <ContextMenuContext.Provider value={{ openContextMenu, openContextMenuAt, closeContextMenu }}>
       {children}
       {state ? (
-        <MenuTrigger
-          isOpen
-          direction="bottom"
-          align="start"
-          onOpenChange={(isOpen) => {
-            if (!isOpen) closeContextMenu();
-          }}
-        >
-          <SpectrumActionButton
-            aria-label={state.label}
-            size="S"
-            isQuiet
-            UNSAFE_className="context-menu-anchor"
-            UNSAFE_style={{ position: "fixed", left: state.x, top: state.y }}
+        <>
+          <span
+            ref={anchorRef}
+            aria-hidden="true"
+            className="context-menu-anchor"
+            style={{ position: "fixed", left: state.x, top: state.y }}
+          />
+          <Popover
+            triggerRef={anchorRef}
+            isOpen
+            placement="bottom start"
+            offset={2}
+            crossOffset={0}
+            shouldFlip
+            hideArrow
+            onOpenChange={(isOpen) => {
+              if (!isOpen) closeContextMenu();
+            }}
           >
-            <span aria-hidden="true">⋯</span>
-          </SpectrumActionButton>
-          <Menu aria-label={state.label} size="S">
-            {state.sections.map((section) => (
-              <MenuSection id={section.id} key={section.id}>
-                <Header>
-                  <Heading>{section.label}</Heading>
-                </Header>
-                {section.items.map((item) => renderItem(item, closeContextMenu))}
-              </MenuSection>
-            ))}
-          </Menu>
-        </MenuTrigger>
+            <Menu
+              aria-label={state.label}
+              size="S"
+              autoFocus
+              {...(selectedKeys.length
+                ? {
+                    selectionMode: "multiple" as const,
+                    selectedKeys,
+                    onSelectionChange: () => undefined
+                  }
+                : {})}
+            >
+              {menuItems(state.sections, closeContextMenu)}
+            </Menu>
+          </Popover>
+        </>
       ) : null}
     </ContextMenuContext.Provider>
   );
