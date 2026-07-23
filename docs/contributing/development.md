@@ -64,6 +64,7 @@ transport / infrastructure
 - Schema、静态类型、业务执行、传输和 Adapter 分开。
 - `index.ts` 只公开稳定 API，不承载业务逻辑。
 - 跨 package 使用 `@agidn/*` 和 `workspace:*`，禁止跨 package 相对路径。
+- Studio、Preview Host 和前端共享包还必须遵循[前端开发规范](./frontend.md)。
 
 ## TypeScript 约定
 

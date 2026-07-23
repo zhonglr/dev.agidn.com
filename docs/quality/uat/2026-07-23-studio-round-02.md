@@ -226,3 +226,16 @@
 | 2026-07-23 | 用户进行第二轮 UAT | 确认已有节点移动、Tree 拖动、Tooltip 时序、variant 视觉覆盖和 Dock 提示仍不合格 |
 | 2026-07-23 | 逐项核对 Canvas、Outline、Session、Preview Protocol、Preview CSS 与 Workbench Overlay | 建立 STUDIO-R2-001～005；重开 STUDIO-003、004、008，并将 Dock Overlay 从布局归一化问题中拆分为独立 Issue |
 | 2026-07-23 | 完成第二轮五项开发修复 | 接通 Canvas / Outline 已有节点移动，建立受控 Tooltip，补齐 variant 视觉覆盖，重做 Dock compass 与几何预览；全仓类型检查、21 个测试文件 85 项测试、Studio / Preview / 全仓生产构建通过。当前环境无可用浏览器实例，五项进入 Ready for Verification。 |
+
+## 8. Amendment：稳定 Issue 映射
+
+2026-07-23 整理质量记录时确认，`STUDIO-R2-*` 是本轮验收发现项编号，不应继续作为跨轮次稳定 Issue ID。历史编号保留不改写，当前状态使用以下映射：
+
+| 本轮发现项 | 稳定 Issue |
+| --- | --- |
+| STUDIO-R2-001、STUDIO-R2-002 | [STUDIO-004](../issues.md#studio-004组件插入移动与-slot-拖放链路不完整) |
+| STUDIO-R2-003 | [STUDIO-008](../issues.md#studio-008图标语义不清且尺寸不一致) |
+| STUDIO-R2-004 | [STUDIO-003](../issues.md#studio-003inspector-控件与-preview-更新链路不可靠) |
+| STUDIO-R2-005 | [STUDIO-018](../issues.md#studio-018dock-compass-难发现且目标命中区域过小) |
+
+本 amendment 只补充标识映射，不改变第二轮 `Not accepted` 的历史结论。

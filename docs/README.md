@@ -11,6 +11,7 @@
 ## 产品与架构
 
 - [产品设计](./product/ai-low-code-designer.md)：产品定位、核心能力和 MVP 验收标准。
+- [Studio Authoring Model](./product/studio-authoring-model.md)：多页面根节点与 Editor Tab、自定义组件专注工作台、变量/Slot 及默认双面板布局。
 - [Logic / Integration Editor 产品设计](./product/logic-integration-editor.md)：前端事件连接业务 Action 与后端 Operation 的产品范围、首个闭环和验收标准。
 - [系统架构](./architecture/system-overview.md)：模块职责、依赖边界和核心数据流。
 - [Logic / Integration Editor 架构](./architecture/logic-integration-editor.md)：Integration Schema、运行时、编辑器、Revision、安全边界和分阶段实施设计。
@@ -24,13 +25,14 @@
 - [Workspace Server API](./api/workspace-server.md)：HTTP 端点、状态码和示例。
 - [Revision Store](./api/revision-store.md)：持久化格式、恢复与原子写入保证。
 - [开发贡献指南](./contributing/development.md)：环境、依赖、编码、测试和提交要求。
+- [前端开发规范](./contributing/frontend.md)：Studio 的结构、组件、状态、样式、可访问性和验收要求。
 - [文档贡献规范](./contributing/documentation.md)：文档分类、命名、格式、生命周期和检查规则。
 
 ## 质量与验收
 
 - [质量记录](./quality/README.md)：统一说明 Issue、UAT、Verification 的职责、创建触发条件和当前索引。
 - [Studio Issue 台账](./quality/issues.md)：`STUDIO-*` 当前状态、根因、验收条件和关闭证据。
-- [Studio UAT Round 02](./quality/uat/2026-07-23-studio-round-02.md) / [Round 03](./quality/uat/2026-07-23-studio-round-03.md)：固定基线上的人工验收记录。
+- [Studio UAT Round 02](./quality/uat/2026-07-23-studio-round-02.md)：当前最近一份满足固定基线要求的人工验收记录；第三、四批反馈已进入 Issue 台账，尚未开始正式 Round 03。
 - [Studio UI Gate 00](./quality/verification/2026-07-23-studio-ui-gate-00.md) / [Gate 01](./quality/verification/2026-07-23-studio-ui-gate-01.md)：Spectrum 迁移与包体积专项验证。
 
 ## 模板与历史

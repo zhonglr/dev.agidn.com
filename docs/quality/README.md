@@ -10,7 +10,7 @@
 | 记录 | 回答的问题 | 创建触发条件 | 不创建的情况 |
 | --- | --- | --- | --- |
 | [Issue](./issues.md) | 这个具体问题现在是什么状态？ | 问题可以复现，并且需要跨提交跟踪、独立优先级、独立验收或后续复验 | 当场修正且无需独立回归；仅有猜测；尚未形成问题的产品想法 |
-| [UAT](./uat/2026-07-23-studio-round-03.md) | 用户在这个固定版本上能否完成任务？ | 已确定基线 commit、验收人、环境和用户场景，且本次结论会影响接受或发布判断 | 开发者随手冒烟测试；只有自动化命令；没有固定验收基线 |
+| [UAT](./uat/2026-07-23-studio-round-02.md) | 用户在这个固定版本上能否完成任务？ | 已确定基线 commit、验收人、环境和用户场景，且本次结论会影响接受或发布判断 | 开发者随手冒烟测试；只有自动化命令；没有固定验收基线 |
 | [Verification](./verification/2026-07-23-studio-ui-gate-01.md) | 某项技术门槛是否达标？ | 预先存在明确技术问题、通过阈值、可重复方法和需要保留的证据 | 普通常规测试；没有阈值的探索；用户任务验收 |
 
 无法判断时先问：记录的结论会不会随修复变化？会变化的是 Issue；只描述固定时间和固定 commit 上发生过什么的是 UAT 或 Verification。
@@ -46,7 +46,8 @@
 | --- | --- | --- | --- |
 | 2026-07-23 | Studio Round 01 | Not accepted | [C01 UAT](../project/cycles/c01.md#10-uat) |
 | 2026-07-23 | Studio Round 02 | Not accepted；5 项待复验 | [查看](./uat/2026-07-23-studio-round-02.md) |
-| 2026-07-23 | Studio Round 03 | Development complete；待人工验收 | [查看](./uat/2026-07-23-studio-round-03.md) |
+
+第三批用户反馈曾被误记为 Round 03 UAT，但该记录没有固定基线、验收人、环境和接受结论，现已改为[归档整改摘要](../archive/2026-07-23-studio-feedback-batch-03-remediation.md)，并将当前状态归并到 [Studio Issue 台账](./issues.md)。第四批创意与问题反馈也直接进入 Issue 与 [Studio Authoring Model](../product/studio-authoring-model.md)，不建立无基线 UAT。`Round 03` 保留给下一次满足上述条件的正式人工验收。
 
 ## 4. Verification 触发条件
 

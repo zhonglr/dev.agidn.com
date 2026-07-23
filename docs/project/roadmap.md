@@ -6,6 +6,8 @@
 
 前端事件到后端 Operation 的新增产品范围与计划架构分别见 [Logic / Integration Editor 产品设计](../product/logic-integration-editor.md) 和 [Logic / Integration Editor 架构](../architecture/logic-integration-editor.md)。相关内容当前均为计划，不表示已经实现。
 
+Studio 的多页面项目、自定义组件专注工作台、变量/Slot 和默认双面板布局见 [Studio Authoring Model](../product/studio-authoring-model.md)。当前本地自定义组件代码是原型基线，不等于项目级资产闭环已完成。
+
 ## 已完成
 
 ### 项目与领域基础
@@ -96,7 +98,14 @@ P3 Migration、Validation API 与 WebSocket 完善
 - [x] 建立统一坐标转换服务，确保 iframe DOM 与 Selection Overlay 对齐；辅助线和结构拖放继续复用该服务。
 - [x] 实现真实页面画布、节点选择与选中同步。
 - [x] 完成 Text / Heading Prop 修改、Revision 确认、undo/redo 的首个端到端编辑闭环。
-- [x] 实现合法 Slot 拖放、插入位置提示、移动和排序；等待第三轮真实浏览器 UAT。
+- [x] 实现合法 Slot 拖放、插入位置提示、移动和排序；等待下一次正式真实浏览器 UAT。
+- [x] 修复 50%～200% 缩放下拖动蓝色边框的坐标与尺寸偏差，确保 Preview rect 只转换一次；等待真实浏览器复验。
+- [x] 将 Components 卡片固定为只可拖入；单击、双击和聚焦不得修改文档或创建 Revision。
+- [x] 将默认布局改为“左侧栏、Page Outline、Components、Editor、Inspector、右侧栏”，Outline 与 Components 同时显示且默认等宽。
+- [x] 实现 Studio 本地多页面根、新建页面入口、每页 Editor Tab、页面切换编辑和刷新恢复。
+- [x] 为自定义组件专注工作台补齐同构结构树、命名 Slot、变量/Slot 配置和本地资产复用。
+- [x] 实现按页面、节点、组件、Canvas 和组件专注目标解析的 Spectrum 右键菜单与可扩展贡献 Registry；等待完整浏览器矩阵复验。
+- [ ] 将多页面与自定义组件资产升级为 Workspace Server 项目 Schema，纳入正式 Revision、History、Catalog 和导出闭环。
 - [ ] 实现 Props、Variant、Token、布局和响应式属性面板。
 - [ ] 实现规则错误和修复建议展示。
 - [ ] 实现乐观 Command、服务端确认与失败回滚。
@@ -118,7 +127,8 @@ P3 Migration、Validation API 与 WebSocket 完善
 ### P4：工程自动化
 
 - [x] 建立文档目录、命名、生命周期规范和内部链接自动检查。
-- [ ] 配置 ESLint 和 Formatter。
+- [x] 配置 ESLint、Stylelint 和 Prettier。
+- [ ] 建立独立的全仓 Prettier 格式基线并启用 `format:check`。
 - [ ] 配置 CI 的 typecheck、test 和 build 检查。
 - [ ] 自动检查 Commit 规范。
 - [ ] 增加浏览器兼容性和 Preview 冒烟测试。
@@ -147,12 +157,12 @@ P3 Migration、Validation API 与 WebSocket 完善
 
 ## 当前里程碑
 
-| 阶段 | 状态 |
-| --- | --- |
-| M0 领域资产 | 部分完成 |
-| M1 无界面内核 | 大部分完成 |
-| M2 Workspace Server | 核心 HTTP 与持久化完成，实时能力待完成 |
-| M3 React Renderer / Preview | Renderer、Preview Host、iframe 隔离与版本化通信已完成 |
-| M4 Studio | Workbench 与编辑闭环代码基线已完成，第三轮 UAT 待验收 |
-| M5 Context Package 导出闭环 | 已完成 |
-| M6 MCP | 后置，未开始 |
+| 阶段                        | 状态                                                     |
+| --------------------------- | -------------------------------------------------------- |
+| M0 领域资产                 | 部分完成                                                 |
+| M1 无界面内核               | 大部分完成                                               |
+| M2 Workspace Server         | 核心 HTTP 与持久化完成，实时能力待完成                   |
+| M3 React Renderer / Preview | Renderer、Preview Host、iframe 隔离与版本化通信已完成    |
+| M4 Studio                   | Workbench 与编辑闭环代码基线已完成，正式 Round 03 待组织 |
+| M5 Context Package 导出闭环 | 已完成                                                   |
+| M6 MCP                      | 后置，未开始                                             |
