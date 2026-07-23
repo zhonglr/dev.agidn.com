@@ -10,8 +10,13 @@ import {
   resizeSplit,
   Workbench,
   WORKBENCH_LAYOUT_VERSION,
-  type WorkbenchLayoutState
+  type WorkbenchLayoutState,
+  type WorkbenchToggleButtonProps
 } from "@agidn/studio-workbench";
+import {
+  DEFAULT_WORKBENCH_LAYOUT,
+  PANEL_TARGETS
+} from "../../apps/studio/src/workbench-layout.js";
 
 function findNode(node: WorkbenchLayoutState["root"], id: string): WorkbenchLayoutState["root"] | undefined {
   if (node.id === id) return node;
@@ -35,6 +40,17 @@ const defaultLayout: WorkbenchLayoutState = {
 };
 
 describe("Studio Workbench", () => {
+  it("shows Outline and Components as equal-width adjacent default regions", () => {
+    expect(DEFAULT_WORKBENCH_LAYOUT.root.type).toBe("split");
+    if (DEFAULT_WORKBENCH_LAYOUT.root.type !== "split") return;
+    expect(DEFAULT_WORKBENCH_LAYOUT.root.sizes.slice(0, 2)).toEqual([0.16, 0.16]);
+    expect(DEFAULT_WORKBENCH_LAYOUT.root.children.slice(0, 2)).toMatchObject([
+      { type: "tabs", id: "tabs.primary", panelIds: ["page-outline"] },
+      { type: "tabs", id: "tabs.components", panelIds: ["components"] }
+    ]);
+    expect(PANEL_TARGETS.components).toBe("tabs.components");
+  });
+
   it("validates the versioned layout contract and rejects unknown fields", () => {
     expect(checkWorkbenchLayout(defaultLayout)).toEqual({ valid: true, layout: defaultLayout });
     expect(checkWorkbenchLayout({ ...defaultLayout, rawCss: "grid-template-columns: 200px 1fr" }).valid).toBe(false);
@@ -91,7 +107,10 @@ describe("Studio Workbench", () => {
     const onlyInspector: WorkbenchLayoutState = {
       ...defaultLayout,
       root: {
-        type: "split", id: "root", direction: "horizontal", sizes: [0.2, 0.6, 0.2],
+        type: "split",
+        id: "root",
+        direction: "horizontal",
+        sizes: [0.2, 0.6, 0.2],
         children: [
           { type: "tabs", id: "tabs.primary", activePanelId: "outline", panelIds: ["outline"] },
           { type: "panel", id: "canvas-host", panelId: "canvas" },
@@ -102,7 +121,10 @@ describe("Studio Workbench", () => {
     const closed = closePanel(onlyInspector, "inspector");
     expect(findNode(closed.root, "tabs.secondary")).toBeUndefined();
     const reopened = openPanel(closed, "inspector", "tabs.secondary");
-    expect(findNode(reopened.root, "tabs.secondary")).toMatchObject({ activePanelId: "inspector", panelIds: ["inspector"] });
+    expect(findNode(reopened.root, "tabs.secondary")).toMatchObject({
+      activePanelId: "inspector",
+      panelIds: ["inspector"]
+    });
     expect(reopened.hiddenPanelIds).not.toContain("inspector");
   });
 
@@ -137,7 +159,9 @@ describe("Studio Workbench", () => {
     const second = dockPanel(first, "outline", "panel.dock.components", "left");
     expect(second.root.type).toBe("split");
     if (second.root.type !== "split") return;
-    expect(second.root.children.every((child) => child.type !== "split" || child.direction !== "horizontal")).toBe(true);
+    expect(second.root.children.every((child) => child.type !== "split" || child.direction !== "horizontal")).toBe(
+      true
+    );
     expect(second.root.sizes.reduce((sum, size) => sum + size, 0)).toBeCloseTo(1);
   });
 
@@ -153,44 +177,165 @@ describe("Studio Workbench", () => {
     const commands = new CommandRegistry([
       { id: "workbench.open", title: "Open", keybinding: "Ctrl+P", execute: () => undefined }
     ]);
-    expect(() => commands.register({ id: "workbench.other", title: "Other", keybinding: "ctrl+p", execute: () => undefined })).toThrow(/conflicts/);
-    expect(() => commands.register({ id: "workbench.open", title: "Duplicate", execute: () => undefined })).toThrow(/already registered/);
+    expect(() =>
+      commands.register({ id: "workbench.other", title: "Other", keybinding: "ctrl+p", execute: () => undefined })
+    ).toThrow(/conflicts/);
+    expect(() => commands.register({ id: "workbench.open", title: "Duplicate", execute: () => undefined })).toThrow(
+      /already registered/
+    );
   });
 
   it("renders registered panels, tabs and accessible separators", () => {
     const panels = new PanelRegistry([
-      { id: "outline", title: "Outline", defaultLocation: "primary", canClose: true, canMove: true, canDock: true, render: () => <p>Outline panel</p> },
-      { id: "components", title: "Components", defaultLocation: "primary", canClose: true, canMove: true, canDock: true, render: () => <p>Components panel</p> },
-      { id: "canvas", title: "Canvas", defaultLocation: "center", canClose: false, canMove: true, canDock: false, render: () => <p>Canvas panel</p> }
+      {
+        id: "outline",
+        title: "Outline",
+        defaultLocation: "primary",
+        canClose: true,
+        canMove: true,
+        canDock: true,
+        render: () => <p>Outline panel</p>
+      },
+      {
+        id: "components",
+        title: "Components",
+        defaultLocation: "primary",
+        canClose: true,
+        canMove: true,
+        canDock: true,
+        render: () => <p>Components panel</p>
+      },
+      {
+        id: "canvas",
+        title: "Canvas",
+        presentation: "editor",
+        defaultLocation: "center",
+        canClose: false,
+        canMove: true,
+        canDock: false,
+        renderHeader: () => <span>pricing.ui</span>,
+        render: () => <p>Canvas panel</p>
+      }
     ]);
-    const html = renderToStaticMarkup(<Workbench layout={defaultLayout} panels={panels} onLayoutChange={() => undefined} />);
+    const html = renderToStaticMarkup(
+      <Workbench layout={defaultLayout} panels={panels} onLayoutChange={() => undefined} />
+    );
     expect(html).toContain("Outline panel");
     expect(html).toContain("Canvas panel");
     expect(html).toContain('role="separator"');
     expect(html).toContain('role="tablist"');
+    expect(html).toContain('data-panel-presentation="editor"');
+    expect(html).toContain('class="wb-editor__tab"');
+    expect(html).toContain("pricing.ui");
   });
 
   it("accepts localized accessibility and action messages from the host", () => {
     const panels = new PanelRegistry([
-      { id: "outline", title: "大纲", defaultLocation: "primary", canClose: true, canMove: true, canDock: true, render: () => <p>大纲内容</p> },
-      { id: "components", title: "组件", defaultLocation: "primary", canClose: true, canMove: true, canDock: true, render: () => <p>组件内容</p> },
-      { id: "canvas", title: "画布", defaultLocation: "center", canClose: false, canMove: true, canDock: false, render: () => <p>画布内容</p> }
+      {
+        id: "outline",
+        title: "大纲",
+        defaultLocation: "primary",
+        canClose: true,
+        canMove: true,
+        canDock: true,
+        render: () => <p>大纲内容</p>
+      },
+      {
+        id: "components",
+        title: "组件",
+        defaultLocation: "primary",
+        canClose: true,
+        canMove: true,
+        canDock: true,
+        render: () => <p>组件内容</p>
+      },
+      {
+        id: "canvas",
+        title: "画布",
+        defaultLocation: "center",
+        canClose: false,
+        canMove: true,
+        canDock: false,
+        render: () => <p>画布内容</p>
+      }
     ]);
-    const html = renderToStaticMarkup(<Workbench
-      layout={defaultLayout}
-      panels={panels}
-      messages={{
-        panelTabs: "面板标签页",
-        maximizePanel: "最大化面板",
-        maximizePanelLabel: (panel) => `最大化${panel}`,
-        closePanel: (panel) => `关闭${panel}`,
-        resizePanels: "调整面板大小"
-      }}
-      onLayoutChange={() => undefined}
-    />);
+    const html = renderToStaticMarkup(
+      <Workbench
+        layout={defaultLayout}
+        panels={panels}
+        messages={{
+          panelTabs: "面板标签页",
+          maximizePanel: "最大化面板",
+          maximizePanelLabel: (panel) => `最大化${panel}`,
+          closePanel: (panel) => `关闭${panel}`,
+          resizePanels: "调整面板大小"
+        }}
+        onLayoutChange={() => undefined}
+      />
+    );
     expect(html).toContain('aria-label="面板标签页"');
     expect(html).toContain('aria-label="调整面板大小"');
     expect(html).toContain('aria-label="最大化大纲"');
     expect(html).toContain('aria-label="关闭组件"');
+  });
+
+  it("lets the host render persistent panel modes with ToggleButton semantics", () => {
+    const panels = new PanelRegistry([
+      {
+        id: "outline",
+        title: "Outline",
+        defaultLocation: "primary",
+        canClose: true,
+        canMove: true,
+        canDock: true,
+        render: () => <p>Outline panel</p>
+      },
+      {
+        id: "components",
+        title: "Components",
+        defaultLocation: "primary",
+        canClose: true,
+        canMove: true,
+        canDock: true,
+        render: () => <p>Components panel</p>
+      },
+      {
+        id: "canvas",
+        title: "Canvas",
+        defaultLocation: "center",
+        canClose: false,
+        canMove: true,
+        canDock: false,
+        render: () => <p>Canvas panel</p>
+      }
+    ]);
+    const renderToggleButton = ({ children, isSelected, onChange, ...props }: WorkbenchToggleButtonProps) => (
+      <button {...props} type="button" data-host-toggle aria-pressed={isSelected} onClick={() => onChange(!isSelected)}>
+        {children}
+      </button>
+    );
+
+    const normal = renderToStaticMarkup(
+      <Workbench
+        layout={defaultLayout}
+        panels={panels}
+        renderToggleButton={renderToggleButton}
+        onLayoutChange={() => undefined}
+      />
+    );
+    const maximized = renderToStaticMarkup(
+      <Workbench
+        layout={{ ...defaultLayout, maximizedPanelId: "canvas" }}
+        panels={panels}
+        renderToggleButton={renderToggleButton}
+        onLayoutChange={() => undefined}
+      />
+    );
+
+    expect(normal).toContain("data-host-toggle");
+    expect(normal).toContain('aria-controls="workbench-panel-canvas"');
+    expect(normal).toContain('aria-pressed="false"');
+    expect(maximized).toContain('aria-pressed="true"');
+    expect(maximized).toContain('aria-label="Restore workbench layout"');
   });
 });
