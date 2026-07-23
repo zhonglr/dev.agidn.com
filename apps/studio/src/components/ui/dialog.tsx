@@ -1,9 +1,6 @@
 import { ButtonGroup } from "@react-spectrum/s2/ButtonGroup";
 import { Content } from "@react-spectrum/s2/Content";
-import {
-  Dialog as SpectrumDialog,
-  DialogContainer as SpectrumDialogContainer
-} from "@react-spectrum/s2/Dialog";
+import { Dialog as SpectrumDialog, DialogContainer as SpectrumDialogContainer } from "@react-spectrum/s2/Dialog";
 import { Heading } from "@react-spectrum/s2/Heading";
 import type { ReactNode } from "react";
 

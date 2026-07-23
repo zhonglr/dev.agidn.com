@@ -14,7 +14,8 @@ import { previewComponentRegistry } from "./components.js";
 import { PreviewErrorBoundary } from "./PreviewErrorBoundary.js";
 
 const checked = checkPageDocument(pageSource);
-if (!checked.valid) throw new Error(`Invalid preview document: ${checked.issues.map(({ message }) => message).join("; ")}`);
+if (!checked.valid)
+  throw new Error(`Invalid preview document: ${checked.issues.map(({ message }) => message).join("; ")}`);
 const initialDocument: PageDocument = checked.document;
 
 type WithoutPreviewEnvelope<T> = T extends unknown ? Omit<T, "source" | "protocolVersion"> : never;
@@ -24,11 +25,14 @@ interface PreviewState {
   document: PageDocument;
   revision: number;
   breakpoint: PreviewBreakpoint;
+  initialized: boolean;
   selectedNodeId?: string;
 }
 
 function nodeElement(nodeId: string): HTMLElement | undefined {
-  return [...document.querySelectorAll<HTMLElement>("[data-node-id]")].find((element) => element.dataset.nodeId === nodeId);
+  return [...document.querySelectorAll<HTMLElement>("[data-node-id]")].find(
+    (element) => element.dataset.nodeId === nodeId
+  );
 }
 
 function rectFor(element: Element) {
@@ -37,7 +41,12 @@ function rectFor(element: Element) {
 }
 
 export function PreviewApp() {
-  const [state, setState] = useState<PreviewState>({ document: initialDocument, revision: 0, breakpoint: "desktop" });
+  const [state, setState] = useState<PreviewState>({
+    document: initialDocument,
+    revision: 0,
+    breakpoint: "desktop",
+    initialized: false
+  });
   const stateRef = useRef(state);
   stateRef.current = state;
 
@@ -45,16 +54,26 @@ export function PreviewApp() {
     window.parent.postMessage({ ...message, source: "agidn.preview", protocolVersion: PREVIEW_PROTOCOL_VERSION }, "*");
   }, []);
 
-  const postBounds = useCallback((nodeId: string, requestId: string): void => {
-    const element = nodeElement(nodeId);
-    if (!element) return;
-    post({ type: "preview.nodeBounds", requestId, documentRevision: stateRef.current.revision, nodeId, rect: rectFor(element) });
-  }, [post]);
+  const postBounds = useCallback(
+    (nodeId: string, requestId: string): void => {
+      const element = nodeElement(nodeId);
+      if (!element) return;
+      post({
+        type: "preview.nodeBounds",
+        requestId,
+        documentRevision: stateRef.current.revision,
+        nodeId,
+        rect: rectFor(element)
+      });
+    },
+    [post]
+  );
 
   useEffect(() => {
     // Re-announce while mounted so a parent cannot permanently miss readiness
     // when the iframe message races its load event.
-    const announceReady = (): void => post({ type: "preview.ready", requestId: "preview_ready", documentRevision: stateRef.current.revision });
+    const announceReady = (): void =>
+      post({ type: "preview.ready", requestId: "preview_ready", documentRevision: stateRef.current.revision });
     announceReady();
     const readyInterval = window.setInterval(announceReady, 500);
     const onMessage = (event: MessageEvent<unknown>): void => {
@@ -62,17 +81,26 @@ export function PreviewApp() {
       const decoded = decodeStudioToPreviewMessage(event.data);
       if (!decoded.valid) return;
       const message = decoded.message;
-      if (message.documentRevision < stateRef.current.revision) return;
+      const replacesDocument =
+        (message.type === "preview.initialize" || message.type === "preview.setDocument") &&
+        message.document.id !== stateRef.current.document.id;
+      if (!replacesDocument && message.documentRevision < stateRef.current.revision) return;
 
       if (message.type === "preview.initialize") {
         setState({
           document: message.document,
           revision: message.documentRevision,
           breakpoint: message.breakpoint,
+          initialized: true,
           ...(message.selectedNodeId ? { selectedNodeId: message.selectedNodeId } : {})
         });
       } else if (message.type === "preview.setDocument") {
-        setState((current) => ({ ...current, document: message.document, revision: message.documentRevision }));
+        setState((current) => ({
+          ...current,
+          document: message.document,
+          revision: message.documentRevision,
+          initialized: true
+        }));
       } else if (message.type === "preview.setBreakpoint") {
         setState((current) => ({ ...current, breakpoint: message.breakpoint }));
       } else if (message.type === "preview.setSelection") {
@@ -81,17 +109,48 @@ export function PreviewApp() {
           return message.nodeId ? { ...rest, selectedNodeId: message.nodeId } : rest;
         });
         if (message.nodeId) requestAnimationFrame(() => postBounds(message.nodeId!, message.requestId));
-      } else if (message.type === "preview.hitTest" || message.type === "preview.resolveDrop" || message.type === "preview.resolveMove") {
-        const target = document.elementFromPoint(message.x - window.scrollX, message.y - window.scrollY)?.closest<HTMLElement>("[data-node-id]");
+      } else if (
+        message.type === "preview.hitTest" ||
+        message.type === "preview.resolveDrop" ||
+        message.type === "preview.resolveMove"
+      ) {
+        const target = document
+          .elementFromPoint(message.x - window.scrollX, message.y - window.scrollY)
+          ?.closest<HTMLElement>("[data-node-id]");
         if (!target?.dataset.nodeId) return;
         const nodeId = target.dataset.nodeId;
         const nodeKind = target.dataset.nodeKind === "layout" ? "layout" : "component";
         if (message.type === "preview.resolveDrop") {
-          post({ type: "preview.dropIntent", requestId: message.requestId, documentRevision: stateRef.current.revision, nodeId, nodeKind, rect: rectFor(target), pointerY: message.y });
+          post({
+            type: "preview.dropIntent",
+            requestId: message.requestId,
+            documentRevision: stateRef.current.revision,
+            nodeId,
+            nodeKind,
+            rect: rectFor(target),
+            pointerY: message.y
+          });
         } else if (message.type === "preview.resolveMove") {
-          post({ type: "preview.moveIntent", requestId: message.requestId, documentRevision: stateRef.current.revision, sourceNodeId: message.sourceNodeId, nodeId, nodeKind, rect: rectFor(target), pointerY: message.y });
+          post({
+            type: "preview.moveIntent",
+            requestId: message.requestId,
+            documentRevision: stateRef.current.revision,
+            sourceNodeId: message.sourceNodeId,
+            nodeId,
+            nodeKind,
+            rect: rectFor(target),
+            pointerY: message.y
+          });
         } else {
-          post({ type: "preview.nodePointerDown", requestId: message.requestId, documentRevision: stateRef.current.revision, nodeId, nodeKind, ...(target.dataset.componentRef ? { componentRef: target.dataset.componentRef } : {}), rect: rectFor(target) });
+          post({
+            type: "preview.nodePointerDown",
+            requestId: message.requestId,
+            documentRevision: stateRef.current.revision,
+            nodeId,
+            nodeKind,
+            ...(target.dataset.componentRef ? { componentRef: target.dataset.componentRef } : {}),
+            rect: rectFor(target)
+          });
         }
       }
     };
@@ -103,6 +162,7 @@ export function PreviewApp() {
   }, [post, postBounds]);
 
   useEffect(() => {
+    if (!state.initialized) return;
     document.documentElement.dataset.breakpoint = state.breakpoint;
     const nodeId = state.selectedNodeId;
     if (!nodeId) return;
@@ -119,19 +179,28 @@ export function PreviewApp() {
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
-  }, [postBounds, state.revision, state.selectedNodeId]);
+  }, [postBounds, state.breakpoint, state.initialized, state.revision, state.selectedNodeId]);
 
   useEffect(() => {
+    if (!state.initialized) return;
     const update = (): void => {
       const root = document.documentElement;
+      const page = document.querySelector<HTMLElement>(".agidn-page");
+      const pageTop = page?.getBoundingClientRect().top ?? 0;
+      const contentHeight = page
+        ? Math.max(
+            0,
+            ...[...page.children].map((child) => child.getBoundingClientRect().bottom - pageTop)
+          )
+        : root.scrollHeight;
       post({
         type: "preview.contentOverflow",
         requestId: `overflow_${state.revision}`,
         documentRevision: state.revision,
         horizontal: root.scrollWidth > root.clientWidth,
-        vertical: root.scrollHeight > root.clientHeight,
+        vertical: contentHeight > root.clientHeight,
         contentWidth: root.scrollWidth,
-        contentHeight: root.scrollHeight
+        contentHeight
       });
     };
     const frame = requestAnimationFrame(update);
@@ -142,17 +211,23 @@ export function PreviewApp() {
       cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, [post, state.breakpoint, state.document, state.revision]);
+  }, [post, state.breakpoint, state.document, state.initialized, state.revision]);
+
+  if (!state.initialized) {
+    return <div className="preview-pending" aria-hidden="true" />;
+  }
 
   return (
     <PreviewErrorBoundary
-      key={state.revision}
-      onError={(error) => post({
-        type: "preview.renderError",
-        requestId: `render_${state.revision}`,
-        documentRevision: state.revision,
-        message: error.message
-      })}
+      resetKey={`${state.document.id}:${state.revision}`}
+      onError={(error) =>
+        post({
+          type: "preview.renderError",
+          requestId: `render_${state.revision}`,
+          documentRevision: state.revision,
+          message: error.message
+        })
+      }
     >
       <PageRenderer
         document={state.document}

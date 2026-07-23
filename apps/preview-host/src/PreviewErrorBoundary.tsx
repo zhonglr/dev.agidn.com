@@ -3,14 +3,15 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 interface PreviewErrorBoundaryProps {
   children: ReactNode;
   onError: (error: Error) => void;
+  resetKey: string;
 }
 
 interface PreviewErrorBoundaryState {
-  error?: Error;
+  error: Error | null;
 }
 
 export class PreviewErrorBoundary extends Component<PreviewErrorBoundaryProps, PreviewErrorBoundaryState> {
-  override state: PreviewErrorBoundaryState = {};
+  override state: PreviewErrorBoundaryState = { error: null };
 
   static getDerivedStateFromError(error: Error): PreviewErrorBoundaryState {
     return { error };
@@ -18,6 +19,12 @@ export class PreviewErrorBoundary extends Component<PreviewErrorBoundaryProps, P
 
   override componentDidCatch(error: Error, _info: ErrorInfo): void {
     this.props.onError(error);
+  }
+
+  override componentDidUpdate(previousProps: PreviewErrorBoundaryProps): void {
+    if (this.state.error && previousProps.resetKey !== this.props.resetKey) {
+      this.setState({ error: null });
+    }
   }
 
   override render(): ReactNode {

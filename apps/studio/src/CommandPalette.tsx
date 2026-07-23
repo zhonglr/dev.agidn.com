@@ -25,11 +25,18 @@ export default function CommandPalette({ commands, locale, colorScheme, open, on
   if (!open) return null;
   return (
     <StudioUiProvider locale={locale} colorScheme={colorScheme} boundary="overlay">
-      <div className="command-backdrop" role="presentation" onMouseDown={onClose}>
-        <section className="command-palette" role="dialog" aria-modal="true" aria-label={t("commandPalette.label")} onMouseDown={(event) => event.stopPropagation()}>
+      <div
+        className="command-backdrop"
+        role="presentation"
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) onClose();
+        }}
+      >
+        <section className="command-palette" role="dialog" aria-modal="true" aria-label={t("commandPalette.label")}>
           <div className="command-search">
             <SearchField
               label={t("commandPalette.label")}
+              size="M"
               isLabelHidden
               autoFocus
               value={query}

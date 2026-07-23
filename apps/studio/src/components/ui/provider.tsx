@@ -10,12 +10,7 @@ export interface StudioUiProviderProps {
   boundary?: "application" | "overlay";
 }
 
-export function StudioUiProvider({
-  children,
-  locale,
-  colorScheme,
-  boundary = "application"
-}: StudioUiProviderProps) {
+export function StudioUiProvider({ children, locale, colorScheme, boundary = "application" }: StudioUiProviderProps) {
   return (
     <SpectrumProvider
       locale={locale}

@@ -1,7 +1,7 @@
 import { Button as SpectrumButton } from "@react-spectrum/s2/Button";
 import type { ReactNode } from "react";
 
-export type ButtonVariant = "primary" | "secondary" | "danger" | "quiet";
+export type ButtonVariant = "primary" | "secondary" | "danger";
 
 export interface ButtonProps {
   children: ReactNode;
@@ -11,14 +11,15 @@ export interface ButtonProps {
   isPending?: boolean;
   autoFocus?: boolean;
   onPress?: () => void;
+  onHoverStart?: () => void;
+  onFocus?: () => void;
   "aria-label"?: string;
 }
 
 const APPEARANCE = {
   primary: { variant: "accent", fillStyle: "fill" },
   secondary: { variant: "secondary", fillStyle: "fill" },
-  danger: { variant: "negative", fillStyle: "fill" },
-  quiet: { variant: "primary", fillStyle: "outline" }
+  danger: { variant: "negative", fillStyle: "fill" }
 } as const;
 
 export function Button({
@@ -29,6 +30,8 @@ export function Button({
   isPending,
   autoFocus,
   onPress,
+  onHoverStart,
+  onFocus,
   "aria-label": ariaLabel
 }: ButtonProps) {
   const appearance = APPEARANCE[variant];
@@ -37,6 +40,8 @@ export function Button({
     ...(isPending === undefined ? {} : { isPending }),
     ...(autoFocus === undefined ? {} : { autoFocus }),
     ...(onPress === undefined ? {} : { onPress }),
+    ...(onHoverStart === undefined ? {} : { onHoverStart }),
+    ...(onFocus === undefined ? {} : { onFocus }),
     ...(ariaLabel === undefined ? {} : { "aria-label": ariaLabel })
   };
   return (
@@ -44,6 +49,7 @@ export function Button({
       {...optionalProps}
       variant={appearance.variant}
       fillStyle={appearance.fillStyle}
+      size="S"
       type={type}
     >
       {children}

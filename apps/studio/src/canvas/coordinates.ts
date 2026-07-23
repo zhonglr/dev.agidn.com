@@ -14,6 +14,11 @@ export interface CanvasTransform {
   offsetY: number;
 }
 
+export interface ViewportSize {
+  width: number;
+  height: number;
+}
+
 export function screenToCanvas(point: Point, transform: CanvasTransform): Point {
   return {
     x: (point.x - transform.offsetX) / transform.scale,
@@ -34,6 +39,28 @@ export function previewRectToScreen(rect: Rect, transform: CanvasTransform): Rec
     ...origin,
     width: rect.width * transform.scale,
     height: rect.height * transform.scale
+  };
+}
+
+export function centerRectInViewportIfNeeded(
+  rect: Rect,
+  transform: CanvasTransform,
+  viewport: ViewportSize,
+  padding = 32
+): CanvasTransform {
+  const screenRect = previewRectToScreen(rect, transform);
+  const isVisible =
+    screenRect.x >= padding &&
+    screenRect.y >= padding &&
+    screenRect.x + screenRect.width <= viewport.width - padding &&
+    screenRect.y + screenRect.height <= viewport.height - padding;
+
+  if (isVisible) return transform;
+
+  return {
+    ...transform,
+    offsetX: viewport.width / 2 - (rect.x + rect.width / 2) * transform.scale,
+    offsetY: viewport.height / 2 - (rect.y + rect.height / 2) * transform.scale
   };
 }
 

@@ -43,17 +43,21 @@ export function Select({
     ...(errorMessage === undefined ? {} : { errorMessage }),
     ...(isDisabled === undefined ? {} : { isDisabled }),
     ...(isRequired === undefined ? {} : { isRequired }),
-    ...(onSelectionChange === undefined ? {} : {
-      onSelectionChange: (key: React.Key | null) => {
-        if (key !== null) onSelectionChange(String(key));
-      }
-    })
+    ...(onSelectionChange === undefined
+      ? {}
+      : {
+          onSelectionChange: (key: React.Key | null) => {
+            if (key !== null) onSelectionChange(String(key));
+          }
+        })
   };
 
   return (
-    <SpectrumPicker {...optionalProps} label={label} labelPosition="side" size="S">
+    <SpectrumPicker {...optionalProps} label={label} labelPosition="side" size="S" UNSAFE_style={{ width: "100%" }}>
       {options.map((option) => (
-        <PickerItem id={option.id} key={option.id}>{option.label}</PickerItem>
+        <PickerItem id={option.id} key={option.id}>
+          {option.label}
+        </PickerItem>
       ))}
     </SpectrumPicker>
   );

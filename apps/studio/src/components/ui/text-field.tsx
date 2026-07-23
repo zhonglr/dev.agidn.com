@@ -18,6 +18,7 @@ export interface TextFieldProps {
   autoFocus?: boolean;
   onChange?: (value: string) => void;
   onBlur?: () => void;
+  onSubmit?: () => void;
 }
 
 export function TextField({
@@ -36,7 +37,8 @@ export function TextField({
   autoComplete,
   autoFocus,
   onChange,
-  onBlur
+  onBlur,
+  onSubmit
 }: TextFieldProps) {
   if (value !== undefined && defaultValue !== undefined) {
     throw new Error("TextField cannot be both controlled and uncontrolled.");
@@ -57,7 +59,14 @@ export function TextField({
     ...(autoComplete === undefined ? {} : { autoComplete }),
     ...(autoFocus === undefined ? {} : { autoFocus }),
     ...(onChange === undefined ? {} : { onChange }),
-    ...(onBlur === undefined ? {} : { onBlur })
+    ...(onBlur === undefined ? {} : { onBlur }),
+    ...(onSubmit === undefined
+      ? {}
+      : {
+          onKeyDown: (event: React.KeyboardEvent) => {
+            if (event.key === "Enter") onSubmit();
+          }
+        })
   };
   return (
     <SpectrumTextField
@@ -65,6 +74,8 @@ export function TextField({
       label={label}
       type={type}
       labelPosition="top"
+      size="S"
+      UNSAFE_style={{ width: "100%" }}
     />
   );
 }

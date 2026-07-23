@@ -6,6 +6,7 @@ export interface PanelContribution {
   id: string;
   title: string;
   icon?: ReactNode;
+  presentation?: "editor" | "tool-window";
   defaultLocation: PanelLocation;
   defaultSize?: number;
   minSize?: number;
@@ -13,6 +14,7 @@ export interface PanelContribution {
   canClose: boolean;
   canMove: boolean;
   canDock: boolean;
+  renderHeader?: () => ReactNode;
   render: () => ReactNode;
 }
 

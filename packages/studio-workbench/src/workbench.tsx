@@ -27,7 +27,18 @@ export interface WorkbenchProps {
   panels: PanelRegistry;
   onLayoutChange: (layout: WorkbenchLayoutState) => void;
   messages?: Partial<WorkbenchMessages>;
+  renderToggleButton?: WorkbenchToggleButtonRenderer;
 }
+
+export interface WorkbenchToggleButtonProps {
+  children: ReactNode;
+  isSelected: boolean;
+  "aria-controls": string;
+  "aria-label": string;
+  onChange: (isSelected: boolean) => void;
+}
+
+export type WorkbenchToggleButtonRenderer = (props: WorkbenchToggleButtonProps) => ReactNode;
 
 export interface WorkbenchMessages {
   panelUnavailable: (panelId: string) => string;
@@ -61,6 +72,7 @@ interface DockingProps {
   messages: WorkbenchMessages;
   draggingPanelId: string | undefined;
   activeDockTargetId: string | undefined;
+  renderToggleButton: WorkbenchToggleButtonRenderer | undefined;
   onPanelDragStart: (panelId: string, event: ReactDragEvent<HTMLElement>) => void;
   onPanelDragEnd: () => void;
   onDockTargetChange: (targetNodeId?: string) => void;
@@ -69,13 +81,60 @@ interface DockingProps {
 
 function panelBody(panelId: string, panels: PanelRegistry, messages: WorkbenchMessages): ReactNode {
   const contribution = panels.get(panelId);
-  return contribution ? contribution.render() : <div className="wb-missing-panel">{messages.panelUnavailable(panelId)}</div>;
+  return contribution ? (
+    contribution.render()
+  ) : (
+    <div className="wb-missing-panel">{messages.panelUnavailable(panelId)}</div>
+  );
 }
 
 const DOCK_POSITIONS: readonly DockPosition[] = ["top", "right", "bottom", "left", "center"];
 
 function ActionIcon({ restore = false, close = false }: { restore?: boolean; close?: boolean }) {
-  return <svg className="wb-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.35" aria-hidden="true">{close ? <path d="m4 4 8 8M12 4l-8 8" /> : restore ? <><rect x="3" y="5" width="8" height="8" rx="1" /><path d="M5 5V3h8v8h-2" /></> : <rect x="3" y="3" width="10" height="10" rx="1" />}</svg>;
+  return (
+    <svg
+      className="wb-icon"
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.35"
+      aria-hidden="true"
+    >
+      {close ? (
+        <path d="m4 4 8 8M12 4l-8 8" />
+      ) : restore ? (
+        <>
+          <rect x="3" y="5" width="8" height="8" rx="1" />
+          <path d="M5 5V3h8v8h-2" />
+        </>
+      ) : (
+        <rect x="3" y="3" width="10" height="10" rx="1" />
+      )}
+    </svg>
+  );
+}
+
+function PanelModeToggle({
+  renderToggleButton,
+  ...props
+}: WorkbenchToggleButtonProps & {
+  renderToggleButton: WorkbenchToggleButtonRenderer | undefined;
+}) {
+  if (renderToggleButton) return renderToggleButton(props);
+  return (
+    <button
+      type="button"
+      className="wb-panel__action"
+      aria-controls={props["aria-controls"]}
+      aria-label={props["aria-label"]}
+      aria-pressed={props.isSelected}
+      onClick={() => props.onChange(!props.isSelected)}
+    >
+      {props.children}
+    </button>
+  );
 }
 
 function minimumFor(node: WorkbenchLayoutNode, axis: "horizontal" | "vertical", panels: PanelRegistry): number {
@@ -86,45 +145,112 @@ function minimumFor(node: WorkbenchLayoutNode, axis: "horizontal" | "vertical", 
 }
 
 function DockGlyph({ position }: { position: DockPosition }) {
-  if (position === "center") return <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" rx="1" /><path d="M3 6h10" /></svg>;
+  if (position === "center")
+    return (
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <rect x="3" y="3" width="10" height="10" rx="1" />
+        <path d="M3 6h10" />
+      </svg>
+    );
   const rotation = position === "right" ? 180 : position === "top" ? 90 : position === "bottom" ? -90 : 0;
-  return <svg viewBox="0 0 16 16" aria-hidden="true" style={{ transform: `rotate(${rotation}deg)` }}><rect x="2.5" y="3" width="11" height="10" rx="1" /><path d="M6 3v10" /></svg>;
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true" style={{ transform: `rotate(${rotation}deg)` }}>
+      <rect x="2.5" y="3" width="11" height="10" rx="1" />
+      <path d="M6 3v10" />
+    </svg>
+  );
 }
 
-function DockOverlay({ targetNodeId, draggingPanelId, activeDockTargetId, onDockTargetChange, onPanelDock, messages, panels }: Pick<DockingProps, "draggingPanelId" | "activeDockTargetId" | "onDockTargetChange" | "onPanelDock" | "messages"> & { targetNodeId: string; panels: PanelRegistry }) {
+function DockOverlay({
+  targetNodeId,
+  draggingPanelId,
+  activeDockTargetId,
+  onDockTargetChange,
+  onPanelDock,
+  messages,
+  panels
+}: Pick<DockingProps, "draggingPanelId" | "activeDockTargetId" | "onDockTargetChange" | "onPanelDock" | "messages"> & {
+  targetNodeId: string;
+  panels: PanelRegistry;
+}) {
   const [hoveredPosition, setHoveredPosition] = useState<DockPosition>();
   if (!draggingPanelId) return null;
   const active = activeDockTargetId === targetNodeId;
   return (
-    <div className={`wb-dock-overlay${active ? " is-active" : ""}`} aria-label={messages.dockPanel} onDragEnter={(event) => { event.preventDefault(); onDockTargetChange(targetNodeId); }} onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; if (!active) onDockTargetChange(targetNodeId); }} onDragLeave={(event) => { const rect = event.currentTarget.getBoundingClientRect(); if (event.clientX <= rect.left || event.clientX >= rect.right || event.clientY <= rect.top || event.clientY >= rect.bottom) { setHoveredPosition(undefined); onDockTargetChange(); } }}>
+    <div
+      className={`wb-dock-overlay${active ? " is-active" : ""}`}
+      aria-label={messages.dockPanel}
+      onDragEnter={(event) => {
+        event.preventDefault();
+        onDockTargetChange(targetNodeId);
+      }}
+      onDragOver={(event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        if (!active) onDockTargetChange(targetNodeId);
+      }}
+      onDragLeave={(event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        if (
+          event.clientX <= rect.left ||
+          event.clientX >= rect.right ||
+          event.clientY <= rect.top ||
+          event.clientY >= rect.bottom
+        ) {
+          setHoveredPosition(undefined);
+          onDockTargetChange();
+        }
+      }}
+    >
       {active && hoveredPosition ? <div className={`wb-dock-preview wb-dock-preview--${hoveredPosition}`} /> : null}
-      {active ? <div className="wb-dock-compass">{DOCK_POSITIONS.map((position) => (
-        <button
-          type="button"
-          className={`wb-dock-target wb-dock-target--${position}`}
-          aria-label={messages.dockPosition(panels.get(draggingPanelId)?.title ?? draggingPanelId, position)}
-          tabIndex={-1}
-          key={position}
-          onDragEnter={(event) => { event.preventDefault(); event.stopPropagation(); setHoveredPosition(position); }}
-          onDragOver={(event) => {
-            event.preventDefault();
-            event.dataTransfer.dropEffect = "move";
-          }}
-          onDrop={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            setHoveredPosition(undefined);
-            onPanelDock(targetNodeId, position);
-          }}
-        >
-          <DockGlyph position={position} />
-        </button>
-      ))}</div> : null}
+      {active ? (
+        <div className="wb-dock-compass">
+          {DOCK_POSITIONS.map((position) => (
+            <button
+              type="button"
+              className={`wb-dock-target wb-dock-target--${position}`}
+              aria-label={messages.dockPosition(panels.get(draggingPanelId)?.title ?? draggingPanelId, position)}
+              tabIndex={-1}
+              key={position}
+              onDragEnter={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setHoveredPosition(position);
+              }}
+              onDragOver={(event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setHoveredPosition(undefined);
+                onPanelDock(targetNodeId, position);
+              }}
+            >
+              <DockGlyph position={position} />
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function SinglePanel({ node, layout, panels, onLayoutChange, messages, draggingPanelId, activeDockTargetId, onPanelDragStart, onPanelDragEnd, onDockTargetChange, onPanelDock }: {
+function SinglePanel({
+  node,
+  layout,
+  panels,
+  onLayoutChange,
+  messages,
+  draggingPanelId,
+  activeDockTargetId,
+  renderToggleButton,
+  onPanelDragStart,
+  onPanelDragEnd,
+  onDockTargetChange,
+  onPanelDock
+}: {
   node: PanelLayoutNode;
   layout: WorkbenchLayoutState;
   panels: PanelRegistry;
@@ -132,24 +258,77 @@ function SinglePanel({ node, layout, panels, onLayoutChange, messages, draggingP
 } & DockingProps) {
   const panel = panels.get(node.panelId);
   const draggable = Boolean(panel?.canMove && panel.canDock);
+  const presentation = panel?.presentation ?? "tool-window";
+  const editor = presentation === "editor";
   return (
-    <section className="wb-panel" data-panel-id={node.panelId}>
-      <header className="wb-panel__header">
-        <span
-          className={draggable ? "wb-panel__drag-handle" : undefined}
-          draggable={draggable}
-          onDragStart={(event) => onPanelDragStart(node.panelId, event)}
-          onDragEnd={onPanelDragEnd}
-        >{panel?.title ?? node.panelId}</span>
-        <Tooltip content={messages.maximizePanel} side="left"><button type="button" className="wb-panel__action" aria-label={messages.maximizePanelLabel(panel?.title ?? node.panelId)} onClick={() => onLayoutChange(toggleMaximizedPanel(layout, node.panelId))}><ActionIcon /></button></Tooltip>
+    <section
+      className={`wb-panel wb-panel--${presentation}`}
+      data-panel-id={node.panelId}
+      data-panel-presentation={presentation}
+    >
+      <header className={editor ? "wb-editor__header" : "wb-panel__header"}>
+        {editor ? (
+          <div className="wb-editor__tab" aria-current="page">
+            {panel?.renderHeader?.() ?? panel?.title ?? node.panelId}
+          </div>
+        ) : (
+          <span
+            className={draggable ? "wb-panel__drag-handle" : undefined}
+            draggable={draggable}
+            onDragStart={(event) => onPanelDragStart(node.panelId, event)}
+            onDragEnd={onPanelDragEnd}
+          >
+            {panel?.icon}
+            <span>{panel?.title ?? node.panelId}</span>
+          </span>
+        )}
+        <span className="wb-panel__header-spacer" />
+        <Tooltip content={messages.maximizePanel} side="left">
+          <PanelModeToggle
+            renderToggleButton={renderToggleButton}
+            isSelected={false}
+            aria-controls={`workbench-panel-${node.panelId}`}
+            aria-label={messages.maximizePanelLabel(panel?.title ?? node.panelId)}
+            onChange={(isSelected) => {
+              if (isSelected) onLayoutChange(toggleMaximizedPanel(layout, node.panelId));
+            }}
+          >
+            <ActionIcon />
+          </PanelModeToggle>
+        </Tooltip>
       </header>
-      <div className="wb-panel__body">{panelBody(node.panelId, panels, messages)}</div>
-      {draggingPanelId !== node.panelId ? <DockOverlay targetNodeId={node.id} draggingPanelId={draggingPanelId} activeDockTargetId={activeDockTargetId} onDockTargetChange={onDockTargetChange} onPanelDock={onPanelDock} messages={messages} panels={panels} /> : null}
+      <div id={`workbench-panel-${node.panelId}`} className="wb-panel__body">
+        {panelBody(node.panelId, panels, messages)}
+      </div>
+      {draggingPanelId !== node.panelId ? (
+        <DockOverlay
+          targetNodeId={node.id}
+          draggingPanelId={draggingPanelId}
+          activeDockTargetId={activeDockTargetId}
+          onDockTargetChange={onDockTargetChange}
+          onPanelDock={onPanelDock}
+          messages={messages}
+          panels={panels}
+        />
+      ) : null}
     </section>
   );
 }
 
-function TabGroup({ node, layout, panels, onLayoutChange, messages, draggingPanelId, activeDockTargetId, onPanelDragStart, onPanelDragEnd, onDockTargetChange, onPanelDock }: {
+function TabGroup({
+  node,
+  layout,
+  panels,
+  onLayoutChange,
+  messages,
+  draggingPanelId,
+  activeDockTargetId,
+  renderToggleButton,
+  onPanelDragStart,
+  onPanelDragEnd,
+  onDockTargetChange,
+  onPanelDock
+}: {
   node: TabLayoutNode;
   layout: WorkbenchLayoutState;
   panels: PanelRegistry;
@@ -181,21 +360,61 @@ function TabGroup({ node, layout, panels, onLayoutChange, messages, draggingPane
                 {panel?.title ?? panelId}
               </button>
               {panel?.canClose ? (
-                <Tooltip content={messages.closePanel(panel.title)}><button type="button" className="wb-tab__close" aria-label={messages.closePanel(panel.title)} onClick={() => onLayoutChange(closePanel(layout, panelId))}><ActionIcon close /></button></Tooltip>
+                <Tooltip content={messages.closePanel(panel.title)}>
+                  <button
+                    type="button"
+                    className="wb-tab__close"
+                    aria-label={messages.closePanel(panel.title)}
+                    onClick={() => onLayoutChange(closePanel(layout, panelId))}
+                  >
+                    <ActionIcon close />
+                  </button>
+                </Tooltip>
               ) : null}
             </div>
           );
         })}
         <span className="wb-tabs__spacer" />
-        <Tooltip content={messages.maximizePanel} side="left"><button type="button" className="wb-panel__action" aria-label={messages.maximizePanelLabel(active?.title ?? node.activePanelId)} onClick={() => onLayoutChange(toggleMaximizedPanel(layout, node.activePanelId))}><ActionIcon /></button></Tooltip>
+        <Tooltip content={messages.maximizePanel} side="left">
+          <PanelModeToggle
+            renderToggleButton={renderToggleButton}
+            isSelected={false}
+            aria-controls={`workbench-panel-${node.activePanelId}`}
+            aria-label={messages.maximizePanelLabel(active?.title ?? node.activePanelId)}
+            onChange={(isSelected) => {
+              if (isSelected) onLayoutChange(toggleMaximizedPanel(layout, node.activePanelId));
+            }}
+          >
+            <ActionIcon />
+          </PanelModeToggle>
+        </Tooltip>
       </div>
-      <div className="wb-panel__body" role="tabpanel">{panelBody(node.activePanelId, panels, messages)}</div>
-      {!(node.panelIds.length === 1 && node.panelIds[0] === draggingPanelId) ? <DockOverlay targetNodeId={node.id} draggingPanelId={draggingPanelId} activeDockTargetId={activeDockTargetId} onDockTargetChange={onDockTargetChange} onPanelDock={onPanelDock} messages={messages} panels={panels} /> : null}
+      <div id={`workbench-panel-${node.activePanelId}`} className="wb-panel__body" role="tabpanel">
+        {panelBody(node.activePanelId, panels, messages)}
+      </div>
+      {!(node.panelIds.length === 1 && node.panelIds[0] === draggingPanelId) ? (
+        <DockOverlay
+          targetNodeId={node.id}
+          draggingPanelId={draggingPanelId}
+          activeDockTargetId={activeDockTargetId}
+          onDockTargetChange={onDockTargetChange}
+          onPanelDock={onPanelDock}
+          messages={messages}
+          panels={panels}
+        />
+      ) : null}
     </section>
   );
 }
 
-function SplitView({ node, layout, panels, onLayoutChange, messages, ...docking }: {
+function SplitView({
+  node,
+  layout,
+  panels,
+  onLayoutChange,
+  messages,
+  ...docking
+}: {
   node: SplitLayoutNode;
   layout: WorkbenchLayoutState;
   panels: PanelRegistry;
@@ -238,19 +457,34 @@ function SplitView({ node, layout, panels, onLayoutChange, messages, ...docking 
     <div className={`wb-split wb-split--${node.direction}`} data-split-id={node.id}>
       {node.children.flatMap((child, index) => {
         const size = node.sizes[index] ?? 1 / node.children.length;
-        const childStyle = { "--wb-split-size": size, "--wb-min-size": `${minimumFor(child, node.direction, panels)}px` } as CSSProperties;
+        const childStyle = {
+          "--wb-split-size": size,
+          "--wb-min-size": `${minimumFor(child, node.direction, panels)}px`
+        } as CSSProperties;
         const childElement = (
           <div className="wb-split__child" style={childStyle} key={child.id}>
-            <LayoutNode node={child} layout={layout} panels={panels} onLayoutChange={onLayoutChange} messages={messages} {...docking} />
+            <LayoutNode
+              node={child}
+              layout={layout}
+              panels={panels}
+              onLayoutChange={onLayoutChange}
+              messages={messages}
+              {...docking}
+            />
           </div>
         );
         if (index === node.children.length - 1) return [childElement];
         const separator = (
+          // The focusable ARIA separator implements keyboard resizing; jsx-a11y 6 does not classify this role as interactive.
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
           <div
             className="wb-separator"
             role="separator"
             aria-orientation={horizontal ? "vertical" : "horizontal"}
             aria-label={messages.resizePanels}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(size * 100)}
             tabIndex={0}
             key={`${node.id}:separator:${index}`}
             onKeyDown={(event) => resizeByKeyboard(index, event)}
@@ -263,18 +497,32 @@ function SplitView({ node, layout, panels, onLayoutChange, messages, ...docking 
   );
 }
 
-function LayoutNode({ node, layout, panels, onLayoutChange, ...docking }: {
+function LayoutNode({
+  node,
+  layout,
+  panels,
+  onLayoutChange,
+  ...docking
+}: {
   node: WorkbenchLayoutNode;
   layout: WorkbenchLayoutState;
   panels: PanelRegistry;
   onLayoutChange: (layout: WorkbenchLayoutState) => void;
 } & DockingProps) {
-  if (node.type === "split") return <SplitView node={node} layout={layout} panels={panels} onLayoutChange={onLayoutChange} {...docking} />;
-  if (node.type === "tabs") return <TabGroup node={node} layout={layout} panels={panels} onLayoutChange={onLayoutChange} {...docking} />;
+  if (node.type === "split")
+    return <SplitView node={node} layout={layout} panels={panels} onLayoutChange={onLayoutChange} {...docking} />;
+  if (node.type === "tabs")
+    return <TabGroup node={node} layout={layout} panels={panels} onLayoutChange={onLayoutChange} {...docking} />;
   return <SinglePanel node={node} layout={layout} panels={panels} onLayoutChange={onLayoutChange} {...docking} />;
 }
 
-export function Workbench({ layout, panels, onLayoutChange, messages: messageOverrides }: WorkbenchProps) {
+export function Workbench({
+  layout,
+  panels,
+  onLayoutChange,
+  messages: messageOverrides,
+  renderToggleButton
+}: WorkbenchProps) {
   const messages = { ...DEFAULT_MESSAGES, ...messageOverrides };
   const [draggingPanelId, setDraggingPanelId] = useState<string>();
   const [activeDockTargetId, setActiveDockTargetId] = useState<string>();
@@ -284,7 +532,10 @@ export function Workbench({ layout, panels, onLayoutChange, messages: messageOve
     event.dataTransfer.setData("application/x-agidn-panel", panelId);
     event.dataTransfer.setData("text/plain", panelId);
   };
-  const onPanelDragEnd = (): void => { setDraggingPanelId(undefined); setActiveDockTargetId(undefined); };
+  const onPanelDragEnd = (): void => {
+    setDraggingPanelId(undefined);
+    setActiveDockTargetId(undefined);
+  };
   const onPanelDock = (targetNodeId: string, position: DockPosition): void => {
     if (!draggingPanelId) return;
     onLayoutChange(dockPanel(layout, draggingPanelId, targetNodeId, position));
@@ -293,14 +544,45 @@ export function Workbench({ layout, panels, onLayoutChange, messages: messageOve
   };
 
   if (layout.maximizedPanelId) {
+    const maximizedPanel = panels.get(layout.maximizedPanelId);
+    const presentation = maximizedPanel?.presentation ?? "tool-window";
+    const editor = presentation === "editor";
     return (
       <div className="wb-root wb-root--maximized" data-dock-hint={messages.dockingHint}>
-        <section className="wb-panel" data-panel-id={layout.maximizedPanelId}>
-          <header className="wb-panel__header">
-            <span>{panels.get(layout.maximizedPanelId)?.title ?? layout.maximizedPanelId}</span>
-            <Tooltip content={messages.restoreLayout} side="left"><button type="button" className="wb-panel__action" aria-label={messages.restoreLayoutLabel} onClick={() => onLayoutChange(toggleMaximizedPanel(layout, layout.maximizedPanelId!))}><ActionIcon restore /></button></Tooltip>
+        <section
+          className={`wb-panel wb-panel--${presentation}`}
+          data-panel-id={layout.maximizedPanelId}
+          data-panel-presentation={presentation}
+        >
+          <header className={editor ? "wb-editor__header" : "wb-panel__header"}>
+            {editor ? (
+              <div className="wb-editor__tab" aria-current="page">
+                {maximizedPanel?.renderHeader?.() ?? maximizedPanel?.title ?? layout.maximizedPanelId}
+              </div>
+            ) : (
+              <span>
+                {maximizedPanel?.icon}
+                <span>{maximizedPanel?.title ?? layout.maximizedPanelId}</span>
+              </span>
+            )}
+            <span className="wb-panel__header-spacer" />
+            <Tooltip content={messages.restoreLayout} side="left">
+              <PanelModeToggle
+                renderToggleButton={renderToggleButton}
+                isSelected
+                aria-controls={`workbench-panel-${layout.maximizedPanelId}`}
+                aria-label={messages.restoreLayoutLabel}
+                onChange={(isSelected) => {
+                  if (!isSelected) onLayoutChange(toggleMaximizedPanel(layout, layout.maximizedPanelId!));
+                }}
+              >
+                <ActionIcon restore />
+              </PanelModeToggle>
+            </Tooltip>
           </header>
-          <div className="wb-panel__body">{panelBody(layout.maximizedPanelId, panels, messages)}</div>
+          <div id={`workbench-panel-${layout.maximizedPanelId}`} className="wb-panel__body">
+            {panelBody(layout.maximizedPanelId, panels, messages)}
+          </div>
         </section>
       </div>
     );
@@ -315,6 +597,7 @@ export function Workbench({ layout, panels, onLayoutChange, messages: messageOve
         messages={messages}
         draggingPanelId={draggingPanelId}
         activeDockTargetId={activeDockTargetId}
+        renderToggleButton={renderToggleButton}
         onPanelDragStart={onPanelDragStart}
         onPanelDragEnd={onPanelDragEnd}
         onDockTargetChange={setActiveDockTargetId}

@@ -2,6 +2,7 @@ import { SearchField as SpectrumSearchField } from "@react-spectrum/s2/SearchFie
 
 export interface SearchFieldProps {
   label: string;
+  size?: "S" | "M" | "L" | "XL";
   isLabelHidden?: boolean;
   value?: string;
   defaultValue?: string;
@@ -17,6 +18,7 @@ export interface SearchFieldProps {
 
 export function SearchField({
   label,
+  size = "S",
   isLabelHidden = false,
   value,
   defaultValue,
@@ -43,18 +45,21 @@ export function SearchField({
     ...(onChange === undefined ? {} : { onChange }),
     ...(onSubmit === undefined ? {} : { onSubmit }),
     ...(onClear === undefined ? {} : { onClear }),
-    ...(onEscape === undefined ? {} : {
-      onKeyDown: (event: React.KeyboardEvent) => {
-        if (event.key === "Escape") onEscape();
-      }
-    })
+    ...(onEscape === undefined
+      ? {}
+      : {
+          onKeyDown: (event: React.KeyboardEvent) => {
+            if (event.key === "Escape") onEscape();
+          }
+        })
   };
 
   return (
     <SpectrumSearchField
       {...optionalProps}
       {...(isLabelHidden ? { "aria-label": label } : { label })}
-      size="M"
+      size={size}
+      UNSAFE_style={{ width: "100%" }}
     />
   );
 }

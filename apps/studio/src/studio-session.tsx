@@ -60,12 +60,31 @@ export interface SavedComponent {
   displayName: string;
   node: PageNode;
   createdAt: string;
+  customComponentId?: string;
 }
 
 export type InsertDragPayload = { type: "component" | "saved"; id: string };
 
+export interface WorkspacePage {
+  id: string;
+  name: string;
+  document: PageDocument;
+  revision: number;
+  isPrimary: boolean;
+}
+
+interface LocalWorkspacePage {
+  id: string;
+  name: string;
+  document: PageDocument;
+  revision: number;
+}
+
 interface StudioSessionValue {
   document?: PageDocument;
+  pages: readonly WorkspacePage[];
+  activePageId?: string;
+  openPageIds: readonly string[];
   catalog?: GetCatalogResponse;
   revision: number;
   selectedNodeId?: string;
@@ -78,18 +97,23 @@ interface StudioSessionValue {
   savedComponents: readonly SavedComponent[];
   activeInsertDrag?: InsertDragPayload;
   activeNodeDragId?: string;
+  createPage: () => string;
+  activatePage: (pageId: string) => void;
+  closePage: (pageId: string) => void;
   selectNode: (nodeId?: string) => void;
   setProp: (nodeId: string, property: string, value: unknown) => Promise<boolean>;
   setVariant: (nodeId: string, variant: string) => Promise<boolean>;
   insertComponent: (componentRef: string, target?: InsertTarget) => Promise<boolean>;
   insertSavedComponent: (savedId: string, target?: InsertTarget) => Promise<boolean>;
   saveSelectedComponent: (displayName: string) => boolean;
+  upsertCustomComponentTemplate: (customComponentId: string, displayName: string, node: PageNode) => void;
   removeSavedComponent: (savedId: string) => void;
   beginInsertDrag: (payload: InsertDragPayload) => void;
   endInsertDrag: () => void;
   beginNodeDrag: (nodeId: string) => void;
   endNodeDrag: () => void;
   moveNode: (nodeId: string, target: MoveTarget) => Promise<boolean>;
+  removeNode: (nodeId: string) => Promise<boolean>;
   restoreRevision: (targetRevision: number) => Promise<boolean>;
   exportRevision: () => Promise<ExportContextResponse>;
   undo: () => Promise<void>;
@@ -163,6 +187,107 @@ function cloneNodeWithFreshIds(node: PageNode): PageNode {
   return cloned;
 }
 
+function childCollections(node: PageNode): PageNode[][] {
+  return node.kind === "layout" ? [node.children] : Object.values(node.slots ?? {});
+}
+
+function insertNode(document: PageDocument, target: InsertTarget, node: PageNode): boolean {
+  let collection: PageNode[] | undefined;
+  if (target.parentId === document.id) collection = document.children;
+  else {
+    const parent = findNode(document, target.parentId);
+    if (parent?.kind === "layout" && !target.slot) collection = parent.children;
+    if (parent?.kind === "component" && target.slot) {
+      (parent.slots ??= {});
+      collection = (parent.slots[target.slot] ??= []);
+    }
+  }
+  if (!collection) return false;
+  const index = target.beforeNodeId
+    ? collection.findIndex(({ id }) => id === target.beforeNodeId)
+    : collection.length;
+  if (index < 0) return false;
+  collection.splice(index, 0, node);
+  return true;
+}
+
+function removeNode(document: PageDocument, nodeId: string): PageNode | undefined {
+  const remove = (collection: PageNode[]): PageNode | undefined => {
+    const index = collection.findIndex(({ id }) => id === nodeId);
+    if (index >= 0) return collection.splice(index, 1)[0];
+    for (const node of collection) {
+      for (const children of childCollections(node)) {
+        const removed = remove(children);
+        if (removed) return removed;
+      }
+    }
+    return undefined;
+  };
+  return remove(document.children);
+}
+
+function loadLocalPages(): LocalWorkspacePage[] {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem("agidn.studio.workspace.pages") ?? "[]");
+    if (!Array.isArray(value)) return [];
+    return value.filter(
+      (page): page is LocalWorkspacePage =>
+        Boolean(
+          page &&
+            typeof page === "object" &&
+            "id" in page &&
+            typeof page.id === "string" &&
+            "name" in page &&
+            typeof page.name === "string" &&
+            "document" in page &&
+            "revision" in page &&
+            typeof page.revision === "number"
+        )
+    );
+  } catch {
+    return [];
+  }
+}
+
+function loadPageViewState(): { activePageId?: string; openPageIds: string[] } {
+  try {
+    const value: unknown = JSON.parse(
+      localStorage.getItem("agidn.studio.workspace.page-view") ?? "{}"
+    );
+    if (!value || typeof value !== "object") return { openPageIds: [] };
+    const state = value as { activePageId?: unknown; openPageIds?: unknown };
+    return {
+      ...(typeof state.activePageId === "string" ? { activePageId: state.activePageId } : {}),
+      openPageIds: Array.isArray(state.openPageIds)
+        ? state.openPageIds.filter((id): id is string => typeof id === "string")
+        : []
+    };
+  } catch {
+    return { openPageIds: [] };
+  }
+}
+
+export function createWorkspacePageDocument(name: string): PageDocument {
+  const pageId = `page_${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
+  return {
+    schemaVersion: "1.0.0",
+    id: pageId,
+    kind: "page",
+    role: "page",
+    name,
+    children: [
+      {
+        id: `${pageId}_root`,
+        kind: "layout",
+        layout: "stack",
+        role: "main",
+        name: "Page root",
+        children: []
+      }
+    ]
+  };
+}
+
 function loadSavedComponents(): SavedComponent[] {
   try {
     const value: unknown = JSON.parse(localStorage.getItem("agidn.studio.saved-components") ?? "[]");
@@ -194,6 +319,14 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
   revisionRef.current = revisionState;
   const [catalog, setCatalog] = useState<GetCatalogResponse>();
   const [selectedNodeId, setSelectedNodeId] = useState<string>();
+  const [localPages, setLocalPages] = useState<LocalWorkspacePage[]>(loadLocalPages);
+  const initialPageView = useRef(loadPageViewState());
+  const [activePageId, setActivePageId] = useState<string | undefined>(
+    initialPageView.current.activePageId
+  );
+  const [openPageIds, setOpenPageIds] = useState<string[]>(
+    initialPageView.current.openPageIds
+  );
   const [status, setStatus] = useState<SessionStatus>("loading");
   const [error, setError] = useState<MessageDescriptor>();
   const [savedComponents, setSavedComponents] = useState<SavedComponent[]>(loadSavedComponents);
@@ -232,6 +365,84 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { void reload(); }, [reload]);
 
+  useEffect(() => {
+    localStorage.setItem("agidn.studio.workspace.pages", JSON.stringify(localPages));
+  }, [localPages]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "agidn.studio.workspace.page-view",
+      JSON.stringify({ activePageId, openPageIds })
+    );
+  }, [activePageId, openPageIds]);
+
+  useEffect(() => {
+    const primaryId = revisionState?.document.id;
+    if (!primaryId || activePageId) return;
+    setActivePageId(primaryId);
+    setOpenPageIds((current) => (current.includes(primaryId) ? current : [...current, primaryId]));
+  }, [activePageId, revisionState?.document.id]);
+
+  const activeLocalPage = localPages.find(({ id }) => id === activePageId);
+  const activeDocument = activeLocalPage?.document ?? revisionState?.document;
+  const activeRevision = activeLocalPage?.revision ?? revisionState?.revision ?? 0;
+  const pages = useMemo<WorkspacePage[]>(() => {
+    const primary = revisionState
+      ? [
+          {
+            id: revisionState.document.id,
+            name: revisionState.document.name ?? revisionState.document.id,
+            document: revisionState.document,
+            revision: revisionState.revision,
+            isPrimary: true
+          }
+        ]
+      : [];
+    return [
+      ...primary,
+      ...localPages.map((page) => ({
+        ...page,
+        isPrimary: false
+      }))
+    ];
+  }, [localPages, revisionState]);
+
+  useEffect(() => {
+    if (!pages.length) return;
+    const validIds = new Set(pages.map(({ id }) => id));
+    const nextActive =
+      activePageId && validIds.has(activePageId) ? activePageId : pages[0]!.id;
+    const nextOpen = openPageIds.filter((id) => validIds.has(id));
+    if (!nextOpen.includes(nextActive)) nextOpen.push(nextActive);
+    if (nextActive !== activePageId) setActivePageId(nextActive);
+    if (
+      nextOpen.length !== openPageIds.length ||
+      nextOpen.some((id, index) => id !== openPageIds[index])
+    )
+      setOpenPageIds(nextOpen);
+  }, [activePageId, openPageIds, pages]);
+
+  const updateActiveLocalDocument = useCallback(
+    (update: (document: PageDocument) => boolean | void): boolean => {
+      if (!activeLocalPage) return false;
+      setLocalPages((current) =>
+        current.map((page) => {
+          if (page.id !== activeLocalPage.id) return page;
+          const document = structuredClone(page.document);
+          if (update(document) === false) return page;
+          return {
+            ...page,
+            name: document.name ?? page.name,
+            document,
+            revision: page.revision + 1
+          };
+        })
+      );
+      return true;
+    },
+    [activeLocalPage]
+  );
+
   const commit = useCallback(async (command: DocumentCommand): Promise<boolean> => {
     const current = revisionRef.current;
     if (!current || status === "saving") return false;
@@ -263,51 +474,85 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
     }
   }, [loadHistory, reload, status]);
 
-  const setProp = useCallback((nodeId: string, property: string, value: unknown) => commit({
-    protocolVersion: "1.0.0", commandId: commandId("set_prop"), type: "node.setProp", nodeId, property, value
-  }), [commit]);
+  const setProp = useCallback(
+    async (nodeId: string, property: string, value: unknown): Promise<boolean> => {
+      if (activeLocalPage)
+        return updateActiveLocalDocument((document) => {
+          const node = findNode(document, nodeId);
+          if (node?.kind !== "component") return false;
+          (node.props ??= {})[property] = value;
+        });
+      return commit({
+        protocolVersion: "1.0.0",
+        commandId: commandId("set_prop"),
+        type: "node.setProp",
+        nodeId,
+        property,
+        value
+      });
+    },
+    [activeLocalPage, commit, updateActiveLocalDocument]
+  );
 
-  const setVariant = useCallback((nodeId: string, variant: string) => commit({
-    protocolVersion: "1.0.0", commandId: commandId("set_variant"), type: "node.setVariant", nodeId, variant
-  }), [commit]);
+  const setVariant = useCallback(
+    async (nodeId: string, variant: string): Promise<boolean> => {
+      if (activeLocalPage)
+        return updateActiveLocalDocument((document) => {
+          const node = findNode(document, nodeId);
+          if (node?.kind !== "component") return false;
+          node.variant = variant;
+        });
+      return commit({
+        protocolVersion: "1.0.0",
+        commandId: commandId("set_variant"),
+        type: "node.setVariant",
+        nodeId,
+        variant
+      });
+    },
+    [activeLocalPage, commit, updateActiveLocalDocument]
+  );
 
   const insertComponent = useCallback(async (componentRef: string, explicitTarget?: InsertTarget): Promise<boolean> => {
-    const current = revisionRef.current;
-    if (!current || !catalog) return false;
-    const selected = selectedNodeId ? findNode(current.document, selectedNodeId) : undefined;
-    const target = explicitTarget ?? defaultInsertTarget(current.document, catalog, selected, componentRef);
+    const currentDocument = activeDocument;
+    if (!currentDocument || !catalog) return false;
+    const selected = selectedNodeId ? findNode(currentDocument, selectedNodeId) : undefined;
+    const target = explicitTarget ?? defaultInsertTarget(currentDocument, catalog, selected, componentRef);
     const node = createComponentNode(catalog, componentRef, t("defaults.newContent"));
     if (!target || !node) {
       setError(message("errors.noInsertTarget"));
       setStatus("error");
       return false;
     }
-    const accepted = await commit({
+    const accepted = activeLocalPage
+      ? updateActiveLocalDocument((document) => insertNode(document, target, node))
+      : await commit({
       protocolVersion: "1.0.0", commandId: commandId("insert"), type: "node.insert",
       targetParentId: target.parentId, ...(target.slot ? { targetSlot: target.slot } : {}),
       ...(target.beforeNodeId ? { beforeNodeId: target.beforeNodeId } : {}), node
     });
     if (accepted) setSelectedNodeId(node.id);
     return accepted;
-  }, [catalog, commit, selectedNodeId, t]);
+  }, [activeDocument, activeLocalPage, catalog, commit, selectedNodeId, t, updateActiveLocalDocument]);
 
   const insertSavedComponent = useCallback(async (savedId: string, explicitTarget?: InsertTarget): Promise<boolean> => {
-    const current = revisionRef.current;
     const saved = savedComponents.find(({ id }) => id === savedId);
-    if (!current || !catalog || !saved) return false;
-    const selected = selectedNodeId ? findNode(current.document, selectedNodeId) : undefined;
+    if (!activeDocument || !catalog || !saved) return false;
+    const selected = selectedNodeId ? findNode(activeDocument, selectedNodeId) : undefined;
     const componentRef = saved.node.kind === "component" ? saved.node.componentRef : "";
-    const target = explicitTarget ?? (componentRef ? defaultInsertTarget(current.document, catalog, selected, componentRef) : selected?.kind === "layout" ? { parentId: selected.id } : undefined);
+    const target = explicitTarget ?? (componentRef ? defaultInsertTarget(activeDocument, catalog, selected, componentRef) : selected?.kind === "layout" ? { parentId: selected.id } : undefined);
     const node = cloneNodeWithFreshIds(saved.node);
     if (!target) { setError(message("errors.noSavedInsertTarget")); setStatus("error"); return false; }
-    const accepted = await commit({
+    const accepted = activeLocalPage
+      ? updateActiveLocalDocument((document) => insertNode(document, target, node))
+      : await commit({
       protocolVersion: "1.0.0", commandId: commandId("insert_saved"), type: "node.insert",
       targetParentId: target.parentId, ...(target.slot ? { targetSlot: target.slot } : {}),
       ...(target.beforeNodeId ? { beforeNodeId: target.beforeNodeId } : {}), node
     });
     if (accepted) setSelectedNodeId(node.id);
     return accepted;
-  }, [catalog, commit, savedComponents, selectedNodeId]);
+  }, [activeDocument, activeLocalPage, catalog, commit, savedComponents, selectedNodeId, updateActiveLocalDocument]);
 
   const persistSavedComponents = useCallback((update: (current: SavedComponent[]) => SavedComponent[]): void => {
     setSavedComponents((current) => {
@@ -331,15 +576,54 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
     return true;
   }, [persistSavedComponents, selectedNodeId]);
 
+  const upsertCustomComponentTemplate = useCallback((customComponentId: string, displayName: string, node: PageNode): void => {
+    persistSavedComponents((items) => {
+      const savedId = `custom_${customComponentId}`;
+      const existing = items.find(({ id }) => id === savedId);
+      const template: SavedComponent = {
+        id: savedId,
+        displayName,
+        node: structuredClone(node),
+        createdAt: existing?.createdAt ?? new Date().toISOString(),
+        customComponentId
+      };
+      return existing
+        ? items.map((item) => item.id === savedId ? template : item)
+        : [...items, template];
+    });
+  }, [persistSavedComponents]);
+
   const moveNode = useCallback(async (nodeId: string, target: MoveTarget): Promise<boolean> => {
-    const accepted = await commit({
+    const accepted = activeLocalPage
+      ? updateActiveLocalDocument((document) => {
+          const node = removeNode(document, nodeId);
+          if (!node) return false;
+          if (!insertNode(document, target, node)) return false;
+        })
+      : await commit({
       protocolVersion: "1.0.0", commandId: commandId("move"), type: "node.move", nodeId,
       targetParentId: target.parentId, ...(target.slot ? { targetSlot: target.slot } : {}),
       ...(target.beforeNodeId ? { beforeNodeId: target.beforeNodeId } : {})
     });
     if (accepted) setSelectedNodeId(nodeId);
     return accepted;
-  }, [commit]);
+  }, [activeLocalPage, commit, updateActiveLocalDocument]);
+
+  const removeDocumentNode = useCallback(
+    async (nodeId: string): Promise<boolean> => {
+      const accepted = activeLocalPage
+        ? updateActiveLocalDocument((document) => Boolean(removeNode(document, nodeId)))
+        : await commit({
+            protocolVersion: "1.0.0",
+            commandId: commandId("remove"),
+            type: "node.remove",
+            nodeId
+          });
+      if (accepted && selectedNodeId === nodeId) setSelectedNodeId(undefined);
+      return accepted;
+    },
+    [activeLocalPage, commit, selectedNodeId, updateActiveLocalDocument]
+  );
 
   const exportRevision = useCallback(async (): Promise<ExportContextResponse> => {
     const revision = revisionRef.current?.revision;
@@ -371,6 +655,7 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
   }, [loadHistory, status]);
 
   const restoreRevision = useCallback(async (targetRevision: number): Promise<boolean> => {
+    if (activeLocalPage) return false;
     const current = revisionRef.current;
     if (!current || status === "saving" || targetRevision === current.revision) return false;
     setStatus("saving"); setError(undefined);
@@ -395,26 +680,119 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
       setError(messageFromError(caught, "errors.restoreFailed")); setStatus("error");
       return false;
     }
-  }, [loadHistory, reload, selectedNodeId, status]);
+  }, [activeLocalPage, loadHistory, reload, selectedNodeId, status]);
 
   const selectNode = useCallback((nodeId?: string): void => {
-    if (nodeId && revisionRef.current && !findNode(revisionRef.current.document, nodeId)) return;
+    if (nodeId && activeDocument && !findNode(activeDocument, nodeId)) return;
     setSelectedNodeId(nodeId);
-  }, []);
+  }, [activeDocument]);
 
-  const selectedNode = revisionState && selectedNodeId ? findNode(revisionState.document, selectedNodeId) : undefined;
+  const createPage = useCallback((): string => {
+    const name = `Page ${pages.length + 1}`;
+    const document = createWorkspacePageDocument(name);
+    const page: LocalWorkspacePage = {
+      id: document.id,
+      name,
+      document,
+      revision: 0
+    };
+    setLocalPages((current) => [...current, page]);
+    setOpenPageIds((current) => (current.includes(page.id) ? current : [...current, page.id]));
+    setActivePageId(page.id);
+    setSelectedNodeId(undefined);
+    return page.id;
+  }, [pages.length]);
+
+  const activatePage = useCallback(
+    (pageId: string): void => {
+      if (!pages.some(({ id }) => id === pageId)) return;
+      setOpenPageIds((current) => (current.includes(pageId) ? current : [...current, pageId]));
+      setActivePageId(pageId);
+      setSelectedNodeId(undefined);
+    },
+    [pages]
+  );
+
+  const closePage = useCallback(
+    (pageId: string): void => {
+      if (openPageIds.length <= 1) return;
+      const index = openPageIds.indexOf(pageId);
+      if (index < 0) return;
+      const nextOpen = openPageIds.filter((id) => id !== pageId);
+      setOpenPageIds(nextOpen);
+      if (activePageId === pageId) {
+        const nextId = nextOpen[Math.min(index, nextOpen.length - 1)];
+        setActivePageId(nextId);
+        setSelectedNodeId(undefined);
+      }
+    },
+    [activePageId, openPageIds]
+  );
+
+  const selectedNode = activeDocument && selectedNodeId ? findNode(activeDocument, selectedNodeId) : undefined;
   const value = useMemo<StudioSessionValue>(() => ({
-    ...(revisionState ? { document: revisionState.document } : {}), ...(catalog ? { catalog } : {}),
-    revision: revisionState?.revision ?? 0, ...(selectedNodeId ? { selectedNodeId } : {}), ...(selectedNode ? { selectedNode } : {}),
-    status, ...(error ? { error } : {}), canUndo: historyState.canUndo, canRedo: historyState.canRedo, history: historyState.entries,
+    ...(activeDocument ? { document: activeDocument } : {}),
+    pages,
+    ...(activePageId ? { activePageId } : {}),
+    openPageIds,
+    ...(catalog ? { catalog } : {}),
+    revision: activeRevision,
+    ...(selectedNodeId ? { selectedNodeId } : {}),
+    ...(selectedNode ? { selectedNode } : {}),
+    status,
+    ...(error ? { error } : {}),
+    canUndo: activeLocalPage ? false : historyState.canUndo,
+    canRedo: activeLocalPage ? false : historyState.canRedo,
+    history: activeLocalPage ? [] : historyState.entries,
     savedComponents, ...(activeInsertDrag ? { activeInsertDrag } : {}), ...(activeNodeDragId ? { activeNodeDragId } : {}),
-    selectNode, setProp, setVariant, insertComponent, insertSavedComponent, saveSelectedComponent,
+    createPage,
+    activatePage,
+    closePage,
+    selectNode, setProp, setVariant, insertComponent, insertSavedComponent, saveSelectedComponent, upsertCustomComponentTemplate,
     removeSavedComponent: (savedId) => persistSavedComponents((items) => items.filter(({ id }) => id !== savedId)),
     beginInsertDrag: setActiveInsertDrag, endInsertDrag: () => setActiveInsertDrag(undefined),
     beginNodeDrag: setActiveNodeDragId, endNodeDrag: () => setActiveNodeDragId(undefined),
-    moveNode, restoreRevision, exportRevision,
-    undo: () => navigate("undo"), redo: () => navigate("redo"), reload
-  }), [activeInsertDrag, activeNodeDragId, catalog, error, exportRevision, historyState, insertComponent, insertSavedComponent, moveNode, navigate, persistSavedComponents, reload, restoreRevision, revisionState, saveSelectedComponent, savedComponents, selectNode, selectedNode, selectedNodeId, setProp, setVariant, status]);
+    moveNode,
+    removeNode: removeDocumentNode,
+    restoreRevision,
+    exportRevision,
+    undo: () => (activeLocalPage ? Promise.resolve() : navigate("undo")),
+    redo: () => (activeLocalPage ? Promise.resolve() : navigate("redo")),
+    reload
+  }), [
+    activatePage,
+    activeDocument,
+    activeInsertDrag,
+    activeLocalPage,
+    activeNodeDragId,
+    activePageId,
+    activeRevision,
+    catalog,
+    closePage,
+    createPage,
+    error,
+    exportRevision,
+    historyState,
+    insertComponent,
+    insertSavedComponent,
+    moveNode,
+    navigate,
+    openPageIds,
+    pages,
+    persistSavedComponents,
+    removeDocumentNode,
+    reload,
+    restoreRevision,
+    saveSelectedComponent,
+    savedComponents,
+    selectNode,
+    selectedNode,
+    selectedNodeId,
+    setProp,
+    setVariant,
+    status,
+    upsertCustomComponentTemplate
+  ]);
 
   return <StudioSessionContext.Provider value={value}>{children}</StudioSessionContext.Provider>;
 }

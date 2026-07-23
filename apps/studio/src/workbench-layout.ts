@@ -2,34 +2,26 @@ import { WORKBENCH_LAYOUT_VERSION, type WorkbenchLayoutState } from "@agidn/stud
 
 export const DEFAULT_WORKBENCH_LAYOUT: WorkbenchLayoutState = {
   version: WORKBENCH_LAYOUT_VERSION,
-  hiddenPanelIds: [],
+  hiddenPanelIds: ["problems", "history"],
   root: {
     type: "split",
     id: "split.root",
     direction: "horizontal",
-    sizes: [0.19, 0.6, 0.21],
+    sizes: [0.16, 0.16, 0.48, 0.2],
     children: [
       {
         type: "tabs",
         id: "tabs.primary",
         activePanelId: "page-outline",
-        panelIds: ["page-outline", "components"]
+        panelIds: ["page-outline"]
       },
       {
-        type: "split",
-        id: "split.center",
-        direction: "vertical",
-        sizes: [0.76, 0.24],
-        children: [
-          { type: "panel", id: "panel.canvas", panelId: "canvas" },
-          {
-            type: "tabs",
-            id: "tabs.bottom",
-            activePanelId: "problems",
-            panelIds: ["problems", "history"]
-          }
-        ]
+        type: "tabs",
+        id: "tabs.components",
+        activePanelId: "components",
+        panelIds: ["components"]
       },
+      { type: "panel", id: "panel.canvas", panelId: "canvas" },
       {
         type: "tabs",
         id: "tabs.secondary",
@@ -42,6 +34,7 @@ export const DEFAULT_WORKBENCH_LAYOUT: WorkbenchLayoutState = {
 
 export const PANEL_TARGETS = {
   primary: "tabs.primary",
+  components: "tabs.components",
   secondary: "tabs.secondary",
   bottom: "tabs.bottom",
   center: "tabs.primary"
