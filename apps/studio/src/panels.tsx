@@ -209,8 +209,10 @@ function OutlineNodeRow({
           event.preventDefault();
           event.dataTransfer.dropEffect = "copy";
           const rect = event.currentTarget.getBoundingClientRect();
-          const resolution = resolveInsertTarget(document, catalog, insert.source, node.id, event.clientY, {
+          const resolution = resolveInsertTarget(document, catalog, insert.source, node.id, { x: event.clientX, y: event.clientY }, {
+            x: rect.left,
             y: rect.top,
+            width: rect.width,
             height: rect.height
           });
           setDropIndicator(resolution.valid ? { nodeId: node.id, position: resolution.position } : undefined);
@@ -221,10 +223,12 @@ function OutlineNodeRow({
         event.preventDefault();
         event.dataTransfer.dropEffect = "move";
         const rect = event.currentTarget.getBoundingClientRect();
-        const resolution = resolveMoveTarget(document, catalog, sourceNodeId, node.id, event.clientY, {
-          y: rect.top,
-          height: rect.height
-        });
+        const resolution = resolveMoveTarget(document, catalog, sourceNodeId, node.id, { x: event.clientX, y: event.clientY }, {
+            x: rect.left,
+            y: rect.top,
+            width: rect.width,
+            height: rect.height
+          });
         setDropIndicator(resolution.valid ? { nodeId: node.id, position: resolution.position } : undefined);
         setDragError(resolution.valid ? undefined : resolution.reason);
       }}
@@ -234,8 +238,10 @@ function OutlineNodeRow({
         if (insert && document && catalog) {
           event.preventDefault();
           const rect = event.currentTarget.getBoundingClientRect();
-          const resolution = resolveInsertTarget(document, catalog, insert.source, node.id, event.clientY, {
+          const resolution = resolveInsertTarget(document, catalog, insert.source, node.id, { x: event.clientX, y: event.clientY }, {
+            x: rect.left,
             y: rect.top,
+            width: rect.width,
             height: rect.height
           });
           setDropIndicator(undefined);
@@ -249,10 +255,12 @@ function OutlineNodeRow({
         if (!sourceNodeId || !document || !catalog) return;
         event.preventDefault();
         const rect = event.currentTarget.getBoundingClientRect();
-        const resolution = resolveMoveTarget(document, catalog, sourceNodeId, node.id, event.clientY, {
-          y: rect.top,
-          height: rect.height
-        });
+        const resolution = resolveMoveTarget(document, catalog, sourceNodeId, node.id, { x: event.clientX, y: event.clientY }, {
+            x: rect.left,
+            y: rect.top,
+            width: rect.width,
+            height: rect.height
+          });
         setDropIndicator(undefined);
         if (resolution.valid) {
           setDragError(undefined);

@@ -78,22 +78,55 @@ function slotForInsert(catalog: GetCatalogResponse, target: PageNode, source: In
   return undefined;
 }
 
+export interface DragPointer {
+  x: number;
+  y: number;
+}
+
+export interface DragHitRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+function isHorizontalCollection(parent: PageDocument | PageNode): boolean {
+  return parent.kind === "layout" && (parent.layout === "row" || parent.layout === "grid");
+}
+
+function axisRatio(
+  parent: PageDocument | PageNode,
+  pointer: DragPointer | undefined,
+  hitRect: DragHitRect | undefined
+): number {
+  if (!pointer || !hitRect) return 0.5;
+  if (isHorizontalCollection(parent)) {
+    return hitRect.width > 0 ? (pointer.x - hitRect.x) / hitRect.width : 0.5;
+  }
+  return hitRect.height > 0 ? (pointer.y - hitRect.y) / hitRect.height : 0.5;
+}
+
+function verticalRatio(pointer: DragPointer | undefined, hitRect: DragHitRect | undefined): number {
+  return pointer && hitRect && hitRect.height > 0 ? (pointer.y - hitRect.y) / hitRect.height : 0.5;
+}
+
 export function resolveInsertTarget(
   document: PageDocument,
   catalog: GetCatalogResponse,
   source: InsertSource,
   hitNodeId: string,
-  pointerY?: number,
-  hitRect?: { y: number; height: number }
+  pointer?: DragPointer,
+  hitRect?: DragHitRect
 ): InsertResolution {
   const hit = findLocation(document, hitNodeId);
   if (!hit) return { valid: false, reason: "dropTargetMissing" };
-  const ratio = hitRect && pointerY !== undefined && hitRect.height > 0 ? (pointerY - hitRect.y) / hitRect.height : 0.5;
-  const slot = ratio >= 0.25 && ratio <= 0.75 ? slotForInsert(catalog, hit.node, source) : undefined;
+  const band = verticalRatio(pointer, hitRect);
+  const slot = band >= 0.25 && band <= 0.75 ? slotForInsert(catalog, hit.node, source) : undefined;
   if (slot) return { valid: true, target: { parentId: hit.node.id, slot }, position: "inside" };
-  if (hit.node.kind === "layout" && ratio >= 0.25 && ratio <= 0.75) {
+  if (hit.node.kind === "layout" && band >= 0.25 && band <= 0.75) {
     return { valid: true, target: { parentId: hit.node.id }, position: "inside" };
   }
+  const ratio = axisRatio(hit.parent, pointer, hitRect);
   const beforeNodeId = ratio < 0.5 ? hit.node.id : hit.collection[hit.index + 1]?.id;
   return {
     valid: true,
@@ -142,16 +175,16 @@ export function resolveMoveTarget(
   catalog: GetCatalogResponse,
   sourceNodeId: string,
   hitNodeId: string,
-  pointerY: number,
-  hitRect: { y: number; height: number }
+  pointer: DragPointer,
+  hitRect: DragHitRect
 ): MoveResolution {
   const source = findLocation(document, sourceNodeId);
   const hit = findLocation(document, hitNodeId);
   if (!source || !hit) return { valid: false, reason: "sourceOrTargetMissing" };
   if (contains(source.node, hit.node.id)) return { valid: false, reason: "selfOrDescendant" };
 
-  const ratio = hitRect.height > 0 ? (pointerY - hitRect.y) / hitRect.height : 0.5;
-  const insideSlot = ratio >= 0.25 && ratio <= 0.75 ? slotForNode(catalog, hit.node, source.node, source) : undefined;
+  const band = verticalRatio(pointer, hitRect);
+  const insideSlot = band >= 0.25 && band <= 0.75 ? slotForNode(catalog, hit.node, source.node, source) : undefined;
   let targetParent: PageDocument | PageNode;
   let targetSlot: string | undefined;
   let beforeNodeId: string | undefined;
@@ -161,12 +194,13 @@ export function resolveMoveTarget(
     targetParent = hit.node;
     targetSlot = insideSlot;
     position = "inside";
-  } else if (hit.node.kind === "layout" && ratio >= 0.25 && ratio <= 0.75 && layoutCanContain(hit.node, source.node)) {
+  } else if (hit.node.kind === "layout" && band >= 0.25 && band <= 0.75 && layoutCanContain(hit.node, source.node)) {
     targetParent = hit.node;
     position = "inside";
   } else {
     targetParent = hit.parent;
     targetSlot = hit.slot;
+    const ratio = axisRatio(hit.parent, pointer, hitRect);
     if (ratio < 0.5) {
       beforeNodeId = hit.node.id;
       position = "before";

@@ -2113,54 +2113,6 @@ kbd {
   white-space: nowrap;
 }
 
-.canvas-move-preview {
-  position: absolute;
-  z-index: 3;
-  box-sizing: border-box;
-  border: 2px solid var(--accent-fg);
-  background: var(--accent-subtle);
-  pointer-events: none;
-}
-
-.canvas-move-preview--before {
-  height: 3px !important;
-  transform: translateY(-2px);
-  background: var(--accent-fg);
-}
-
-.canvas-move-preview--after {
-  height: 3px !important;
-  transform: translateY(-1px);
-  background: var(--accent-fg);
-}
-
-.canvas-insert-preview {
-  position: absolute;
-  z-index: 5;
-  box-sizing: border-box;
-  border: 2px solid var(--success-fg);
-  background: var(--success-subtle);
-  pointer-events: none;
-}
-
-.canvas-insert-preview--before,
-.canvas-insert-preview--after {
-  height: 4px !important;
-  background: var(--success-fg);
-}
-
-.canvas-insert-preview > span {
-  position: absolute;
-  bottom: calc(100% + 3px);
-  left: 0;
-  border-radius: var(--studio-radius-sm);
-  background: var(--success-emphasis);
-  padding: 3px 6px;
-  color: var(--fg-on-emphasis);
-  font-size: var(--studio-text-caption);
-  white-space: nowrap;
-}
-
 .canvas-error {
   position: absolute;
   z-index: 6;

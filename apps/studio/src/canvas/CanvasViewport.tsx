@@ -13,7 +13,8 @@ import {
   type PreviewRect,
   type StudioToPreviewMessage
 } from "@agidn/preview-protocol";
-import { findNode } from "@agidn/document-schema";
+import { findNode, type PageNode } from "@agidn/document-schema";
+import { createComponentNode } from "../component-node-factory.js";
 import { useStudioSession } from "../studio-session.js";
 import type { ContextMenuTarget } from "../context-menu/registry.js";
 import {
@@ -79,7 +80,6 @@ export function CanvasViewport() {
     new Map<string, { point: { x: number; y: number }; returnFocusTo: HTMLElement; timeout: number }>()
   );
   const moveRequestsRef = useRef(new Map<string, { sourceNodeId: string; commit: boolean }>());
-  const moveCandidateRef = useRef<{ sourceNodeId: string; target: MoveTarget } | undefined>(undefined);
   const lastMoveRequestRef = useRef(0);
   const lastInsertRequestRef = useRef(0);
   const initializedRef = useRef(false);
@@ -93,8 +93,8 @@ export function CanvasViewport() {
   const [selectionBounds, setSelectionBounds] = useState<SelectionBounds>();
   const [previewError, setPreviewError] = useState<MessageDescriptor>();
   const [previewContentHeights, setPreviewContentHeights] = useState<Record<string, number>>({});
-  const [movePreview, setMovePreview] = useState<{ rect: PreviewRect; position: "before" | "inside" | "after" }>();
-  const [insertPreview, setInsertPreview] = useState<{ rect: PreviewRect; position: "before" | "inside" | "after" }>();
+  const ghostActiveRef = useRef(false);
+  const insertGhostNodeRef = useRef<{ key: string; node: PageNode } | undefined>(undefined);
   const baseSize = SIZE_BY_BREAKPOINT[breakpoint];
   const contentHeightKey = `${session.activePageId ?? session.document?.id ?? "loading"}:${breakpoint}`;
   const previewContentHeight = previewContentHeights[contentHeightKey] ?? 0;
@@ -117,6 +117,27 @@ export function CanvasViewport() {
     }),
     [session.revision]
   );
+
+  const showDropGhost = useCallback(
+    (target: MoveTarget, node: PageNode, moveSourceNodeId?: string): void => {
+      ghostActiveRef.current = true;
+      post({
+        ...messageBase(nextRequestId("ghost")),
+        type: "preview.showDropGhost",
+        target,
+        node,
+        ...(moveSourceNodeId ? { moveSourceNodeId } : {})
+      });
+    },
+    [messageBase, nextRequestId, post]
+  );
+
+  const hideDropGhost = useCallback((): void => {
+    if (!ghostActiveRef.current) return;
+    ghostActiveRef.current = false;
+    insertGhostNodeRef.current = undefined;
+    post({ ...messageBase(nextRequestId("ghost")), type: "preview.hideDropGhost" });
+  }, [messageBase, nextRequestId, post]);
 
   const queueViewport = useCallback((update: (current: ViewportState) => ViewportState) => {
     pendingRef.current = update(pendingRef.current ?? stateRef.current);
@@ -285,21 +306,37 @@ export function CanvasViewport() {
           session.catalog,
           source,
           message.nodeId,
-          message.pointerY,
+          { x: message.pointerX, y: message.pointerY },
           message.rect
         );
         if (!resolution.valid) {
-          setInsertPreview(undefined);
+          hideDropGhost();
           if (request.commit) setPreviewError(structureDragErrorMessage(resolution.reason));
           return;
         }
-        setInsertPreview({ rect: message.rect, position: resolution.position });
+        const ghostKey = `${request.payload.type}:${request.payload.id}`;
+        if (insertGhostNodeRef.current?.key !== ghostKey) {
+          const created =
+            request.payload.type === "component"
+              ? createComponentNode(session.catalog, request.payload.id, t("defaults.newContent"))
+              : saved?.node
+                ? structuredClone(saved.node)
+                : undefined;
+          insertGhostNodeRef.current = created ? { key: ghostKey, node: created } : undefined;
+        }
+        if (insertGhostNodeRef.current) showDropGhost(resolution.target, insertGhostNodeRef.current.node);
         if (request.commit) {
           const insertion =
             request.payload.type === "component"
               ? session.insertComponent(request.payload.id, resolution.target)
               : session.insertSavedComponent(request.payload.id, resolution.target);
-          void insertion.finally(() => setInsertPreview(undefined));
+          void insertion.then((ok) => {
+            // A successful commit triggers preview.setDocument, which clears the
+            // ghost preview-side; failed commits need an explicit hide.
+            ghostActiveRef.current = false;
+            insertGhostNodeRef.current = undefined;
+            if (!ok) hideDropGhost();
+          });
         }
       } else if (message.type === "preview.moveIntent") {
         const request = moveRequestsRef.current.get(message.requestId);
@@ -310,22 +347,21 @@ export function CanvasViewport() {
           session.catalog,
           request.sourceNodeId,
           message.nodeId,
-          message.pointerY,
+          { x: message.pointerX, y: message.pointerY },
           message.rect
         );
         if (!resolution.valid) {
-          moveCandidateRef.current = undefined;
-          setMovePreview(undefined);
+          hideDropGhost();
           if (request.commit && resolution.reason !== "alreadyAtPosition")
             setPreviewError(structureDragErrorMessage(resolution.reason));
           return;
         }
-        moveCandidateRef.current = { sourceNodeId: request.sourceNodeId, target: resolution.target };
-        setMovePreview({ rect: message.rect, position: resolution.position });
+        const sourceNode = findNode(session.document, request.sourceNodeId);
+        if (sourceNode) showDropGhost(resolution.target, sourceNode, request.sourceNodeId);
         if (request.commit) {
-          void session.moveNode(request.sourceNodeId, resolution.target).finally(() => {
-            moveCandidateRef.current = undefined;
-            setMovePreview(undefined);
+          void session.moveNode(request.sourceNodeId, resolution.target).then((ok) => {
+            ghostActiveRef.current = false;
+            if (!ok) hideDropGhost();
           });
         }
       } else if (message.type === "preview.renderError") {
@@ -341,7 +377,7 @@ export function CanvasViewport() {
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [contentHeightKey, nodeContextTarget, openContextMenuAt, revealSelection, session]);
+  }, [contentHeightKey, hideDropGhost, nodeContextTarget, openContextMenuAt, revealSelection, session, showDropGhost, t]);
 
   useEffect(() => {
     if (previewStatus !== "connecting") return;
@@ -384,11 +420,13 @@ export function CanvasViewport() {
     pendingContextMenusRef.current.clear();
     pendingDropsRef.current.clear();
     moveRequestsRef.current.clear();
-    moveCandidateRef.current = undefined;
     setSelectionBounds(undefined);
-    setMovePreview(undefined);
-    setInsertPreview(undefined);
-  }, [session.activePageId]);
+    hideDropGhost();
+  }, [hideDropGhost, session.activePageId]);
+
+  useEffect(() => {
+    if (!session.activeInsertDrag && !session.activeNodeDragId) hideDropGhost();
+  }, [hideDropGhost, session.activeInsertDrag, session.activeNodeDragId]);
 
   useEffect(() => {
     if (!previewReady || !initializedRef.current) return;
@@ -516,19 +554,6 @@ export function CanvasViewport() {
       height: screenRect.height
     };
   };
-  const indicatorStyle = (
-    preview: { rect: PreviewRect; position: "before" | "inside" | "after" },
-    lineHeight: number
-  ): CSSProperties => {
-    const screenRect = previewRectToScreen(preview.rect, viewport);
-    return {
-      left: screenRect.x,
-      top: preview.position === "after" ? screenRect.y + screenRect.height - lineHeight : screenRect.y,
-      width: screenRect.width,
-      height: preview.position === "inside" ? screenRect.height : lineHeight
-    };
-  };
-
   return (
     <div className="canvas-panel">
       <div className="canvas-toolbar">
@@ -680,10 +705,7 @@ export function CanvasViewport() {
           });
         }}
         onDragLeave={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-            setMovePreview(undefined);
-            setInsertPreview(undefined);
-          }
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) hideDropGhost();
         }}
       >
         <div
@@ -732,32 +754,11 @@ export function CanvasViewport() {
             }}
             onDragEnd={() => {
               session.endNodeDrag();
-              moveCandidateRef.current = undefined;
-              setMovePreview(undefined);
+              hideDropGhost();
             }}
           >
             <span>
               {session.selectedNodeId} · {t("canvas.dragToMove")}
-            </span>
-          </div>
-        ) : null}
-        {movePreview ? (
-          <div
-            className={`canvas-move-preview canvas-move-preview--${movePreview.position}`}
-            style={indicatorStyle(movePreview, 3)}
-          />
-        ) : null}
-        {insertPreview ? (
-          <div
-            className={`canvas-insert-preview canvas-insert-preview--${insertPreview.position}`}
-            style={indicatorStyle(insertPreview, 4)}
-          >
-            <span>
-              {insertPreview.position === "inside"
-                ? t("canvas.insertInside")
-                : insertPreview.position === "before"
-                  ? t("canvas.insertBefore")
-                  : t("canvas.insertAfter")}
             </span>
           </div>
         ) : null}

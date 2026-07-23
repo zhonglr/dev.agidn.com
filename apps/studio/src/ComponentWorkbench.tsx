@@ -8,9 +8,8 @@ import {
   type DragEvent,
   type PointerEvent as ReactPointerEvent
 } from "react";
-import type { GetCatalogResponse } from "@agidn/api-protocol";
 import { decodePreviewToStudioMessage, PREVIEW_PROTOCOL_VERSION, type PreviewRect } from "@agidn/preview-protocol";
-import { findNode, type ComponentNode, type PageDocument, type PageNode } from "@agidn/document-schema";
+import { findNode, type PageDocument, type PageNode } from "@agidn/document-schema";
 import {
   createCustomComponentAsset,
   createSlot,
@@ -27,6 +26,7 @@ import { displayLabel } from "./display-label.js";
 import { useI18n } from "./i18n.js";
 import { useStudioSession, type InsertTarget } from "./studio-session.js";
 import { COMPONENT_DRAG_MIME, NODE_DRAG_MIME, resolveInsertTarget, resolveMoveTarget } from "./structure-drag.js";
+import { createComponentNode, defaultValue } from "./component-node-factory.js";
 import {
   ActionButton,
   Button,
@@ -39,52 +39,6 @@ import {
   useContextMenu,
   type SelectOption
 } from "./components/ui/index.js";
-
-function defaultValue(
-  definition: GetCatalogResponse["components"]["components"][string]["props"][string],
-  defaultContent: string
-): unknown {
-  if (definition.type === "boolean") return false;
-  if (definition.type === "number") return 0;
-  if (definition.type === "enum") return definition.values?.[0] ?? "";
-  return defaultContent;
-}
-
-function createComponentNode(
-  catalog: GetCatalogResponse,
-  componentRef: string,
-  defaultContent: string,
-  depth = 0
-): ComponentNode | undefined {
-  const definition = catalog.components.components[componentRef];
-  if (!definition) return undefined;
-  const suffix = crypto.randomUUID().replaceAll("-", "").slice(0, 10);
-  const props = Object.fromEntries(
-    Object.entries(definition.props)
-      .filter(([, prop]) => prop.required)
-      .map(([name, prop]) => [name, defaultValue(prop, defaultContent)])
-  );
-  const slots: Record<string, PageNode[]> = {};
-  if (depth < 3) {
-    for (const [slotName, slot] of Object.entries(definition.slots)) {
-      const count = Math.max(slot.minItems ?? 0, slot.required ? 1 : 0);
-      if (!count) continue;
-      const childRef = slot.accepts?.find((candidate) => candidate !== "*") ?? "Text";
-      const children = Array.from({ length: count }, () =>
-        createComponentNode(catalog, childRef, defaultContent, depth + 1)
-      ).filter((node): node is ComponentNode => Boolean(node));
-      if (children.length) slots[slotName] = children;
-    }
-  }
-  return {
-    id: `${componentRef.toLowerCase()}_${suffix}`,
-    kind: "component",
-    componentRef,
-    ...(definition.variants[0] ? { variant: definition.variants[0] } : {}),
-    ...(Object.keys(props).length ? { props } : {}),
-    ...(Object.keys(slots).length ? { slots } : {})
-  };
-}
 
 function childCollections(node: PageNode): PageNode[][] {
   return node.kind === "layout" ? [node.children] : Object.values(node.slots ?? {});
@@ -373,7 +327,7 @@ export function ComponentWorkbench({ componentId, onClose, onSaved }: ComponentW
           catalog,
           { kind: "component", componentRef },
           message.nodeId,
-          message.pointerY,
+          { x: message.pointerX, y: message.pointerY },
           message.rect
         );
         if (!resolution.valid) return;
@@ -724,8 +678,8 @@ export function ComponentWorkbench({ componentId, onClose, onSaved }: ComponentW
                     session.catalog,
                     sourceNodeId,
                     node.id,
-                    event.clientY,
-                    { y: rect.top, height: rect.height }
+                    { x: event.clientX, y: event.clientY },
+                    { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
                   );
                   if (!resolution.valid) return;
                   event.preventDefault();
@@ -741,8 +695,8 @@ export function ComponentWorkbench({ componentId, onClose, onSaved }: ComponentW
                     session.catalog,
                     sourceNodeId,
                     node.id,
-                    event.clientY,
-                    { y: rect.top, height: rect.height }
+                    { x: event.clientX, y: event.clientY },
+                    { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
                   );
                   if (!resolution.valid) return;
                   event.preventDefault();
