@@ -90,6 +90,39 @@ for (const file of markdownFiles) {
   }
 }
 
+for (const file of markdownFiles) {
+  const path = repositoryPath(file);
+  if (path.startsWith("docs/templates/")) continue;
+  const content = readFileSync(file, "utf8");
+
+  for (const match of content.matchAll(/最后更新[：:]\s*([^\n]+)/g)) {
+    const value = match[1].trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      errors.push(`${path}: “最后更新”日期格式无效：${value}`);
+    }
+  }
+
+  if (path.startsWith("docs/archive/") && !path.endsWith("README.md")) {
+    if (!content.includes("Archived")) {
+      errors.push(`${path}: 归档文档必须醒目标注 Archived`);
+    }
+  }
+}
+
+for (const statusPath of [
+  "docs/project/status.md",
+  "docs/project/roadmap.md",
+  "docs/quality/README.md",
+  "docs/quality/issues.md",
+  "docs/contributing/documentation.md",
+]) {
+  const absolutePath = resolve(root, statusPath);
+  if (!existsSync(absolutePath)) continue;
+  if (!/最后更新[：:]\s*\d{4}-\d{2}-\d{2}/.test(readFileSync(absolutePath, "utf8"))) {
+    errors.push(`${statusPath}: 状态类文档必须在标题后提供“最后更新：YYYY-MM-DD”`);
+  }
+}
+
 for (const requiredPath of [
   "docs/README.md",
   "docs/contributing/documentation.md",
