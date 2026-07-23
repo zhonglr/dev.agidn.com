@@ -1,5 +1,5 @@
 import { ActionButton as SpectrumActionButton } from "@react-spectrum/s2/ActionButton";
-import { Header, Menu, MenuItem, MenuSection, MenuTrigger } from "@react-spectrum/s2/Menu";
+import { Header, Keyboard, Menu, MenuItem, MenuSection, MenuTrigger, Text } from "@react-spectrum/s2/Menu";
 import type { ReactNode } from "react";
 
 export interface MenuButtonAction {
@@ -7,6 +7,7 @@ export interface MenuButtonAction {
   label: string;
   isDisabled?: boolean;
   isSelected?: boolean;
+  keyboard?: string;
   onAction: () => void;
 }
 
@@ -45,8 +46,9 @@ export function MenuButton({ label, trigger, sections }: MenuButtonProps) {
           <MenuSection id={section.id} key={section.id}>
             <Header>{section.label}</Header>
             {section.actions.map((action) => (
-              <MenuItem id={action.id} key={action.id}>
-                {action.label}
+              <MenuItem id={action.id} key={action.id} textValue={action.label}>
+                <Text slot="label">{action.label}</Text>
+                {action.keyboard ? <Keyboard>{action.keyboard}</Keyboard> : null}
               </MenuItem>
             ))}
           </MenuSection>

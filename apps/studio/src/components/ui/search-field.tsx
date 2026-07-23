@@ -14,6 +14,8 @@ export interface SearchFieldProps {
   onSubmit?: (value: string) => void;
   onClear?: () => void;
   onEscape?: () => void;
+  "aria-controls"?: string;
+  "aria-activedescendant"?: string;
 }
 
 export function SearchField({
@@ -29,7 +31,9 @@ export function SearchField({
   onChange,
   onSubmit,
   onClear,
-  onEscape
+  onEscape,
+  "aria-controls": ariaControls,
+  "aria-activedescendant": ariaActiveDescendant
 }: SearchFieldProps) {
   if (value !== undefined && defaultValue !== undefined) {
     throw new Error("SearchField cannot be both controlled and uncontrolled.");
@@ -51,7 +55,9 @@ export function SearchField({
           onKeyDown: (event: React.KeyboardEvent) => {
             if (event.key === "Escape") onEscape();
           }
-        })
+        }),
+    ...(ariaControls === undefined ? {} : { "aria-controls": ariaControls }),
+    ...(ariaActiveDescendant === undefined ? {} : { "aria-activedescendant": ariaActiveDescendant })
   };
 
   return (

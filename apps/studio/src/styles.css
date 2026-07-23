@@ -2351,6 +2351,21 @@ kbd {
   text-transform: uppercase;
 }
 
+.command-group {
+  margin: 6px 9px 2px;
+  color: var(--fg-muted);
+  font-size: var(--studio-text-caption);
+  font-weight: var(--studio-weight-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.command-empty {
+  margin: var(--studio-space-lg);
+  color: var(--fg-muted);
+  text-align: center;
+}
+
 .wb-panel__body,
 .command-list,
 .settings-content,

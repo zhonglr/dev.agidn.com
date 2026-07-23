@@ -19,7 +19,10 @@ function capabilityItem(
     : undefined;
 }
 
-export function createStudioContextMenuRegistry(t: Translate): ContextMenuRegistry {
+export function createStudioContextMenuRegistry(
+  t: Translate,
+  keybindingFor?: (actionId: string) => string | undefined
+): ContextMenuRegistry {
   const editSection = { id: "edit", label: t("contextMenu.edit"), order: 10 };
   const navigationSection = { id: "navigation", label: t("contextMenu.navigation"), order: 20 };
   const viewSection = { id: "view", label: t("contextMenu.view"), order: 30 };
@@ -84,7 +87,6 @@ export function createStudioContextMenuRegistry(t: Translate): ContextMenuRegist
         id: "copy-identifier",
         label: t("contextMenu.copyIdentifier"),
         description: target.id!,
-        keyboard: "⌘C",
         icon: <ProductIcon name="commands" />,
         execute: () => navigator.clipboard.writeText(target.id!)
       })
@@ -95,16 +97,18 @@ export function createStudioContextMenuRegistry(t: Translate): ContextMenuRegist
       section: editSection,
       order: 20,
       build: (target) => {
+        const undoKeyboard = keybindingFor?.("document.undo");
+        const redoKeyboard = keybindingFor?.("document.redo");
         const undo = capabilityItem(target, "undo", {
           id: "undo",
           label: t("actions.undo"),
-          keyboard: "⌘Z",
+          ...(undoKeyboard ? { keyboard: undoKeyboard } : {}),
           icon: <ProductIcon name="undo" />
         });
         const redo = capabilityItem(target, "redo", {
           id: "redo",
           label: t("actions.redo"),
-          keyboard: "⇧⌘Z",
+          ...(redoKeyboard ? { keyboard: redoKeyboard } : {}),
           icon: <ProductIcon name="redo" />
         });
         const children = [undo, redo].filter((item): item is ContextMenuItemDescriptor => Boolean(item));

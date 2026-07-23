@@ -1,11 +1,13 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useMemo, useRef, useState } from "react";
 import {
+  ActionRegistry,
   closePanel,
-  CommandRegistry,
+  detectMacPlatform,
   openPanel,
   PanelRegistry,
   Tooltip,
   TooltipProvider,
+  useActionKeybindings,
   Workbench,
   type DockPosition,
   type PanelContribution,
@@ -187,6 +189,32 @@ function panelControlId(panelId: string): string {
   return `workbench-panel-${panelId}`;
 }
 
+function focusPanelElement(panelId: string): void {
+  requestAnimationFrame(() => {
+    document.getElementById(panelControlId(panelId))?.focus();
+  });
+}
+
+function focusCanvasElement(): void {
+  requestAnimationFrame(() => {
+    document.querySelector<HTMLElement>(".canvas-viewport")?.focus();
+  });
+}
+
+function focusedPanelId(): string | undefined {
+  const element = document.activeElement;
+  if (!(element instanceof HTMLElement)) return undefined;
+  return element.closest<HTMLElement>(".wb-panel[data-panel-id]")?.dataset.panelId;
+}
+
+function focusIsInEditable(): boolean {
+  const element = document.activeElement;
+  if (!(element instanceof HTMLElement)) return false;
+  return Boolean(
+    element.closest("input, textarea, select, [contenteditable='true'], [role='listbox'], [role='menu'], [role='dialog']")
+  );
+}
+
 function renderWorkbenchToggleButton({
   children,
   isSelected,
@@ -216,12 +244,13 @@ function StudioApp() {
     [t]
   );
   const panels = useMemo(() => new PanelRegistry(localizedContributions), [localizedContributions]);
-  const contextMenuRegistry = useMemo(() => createStudioContextMenuRegistry(t), [t]);
   const { layout, setLayout, resetLayout } = useWorkbenchLayout(DEFAULT_WORKBENCH_LAYOUT, panels);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [componentEditor, setComponentEditor] = useState<{ id?: string } | null>(null);
+  const [contextMenuOpen, setContextMenuOpen] = useState(false);
+  const isMac = useMemo(() => detectMacPlatform(), []);
   const commandPaletteFallbackRef = useRef<HTMLButtonElement>(null);
   const commandPaletteReturnFocusRef = useRef<HTMLElement | null>(null);
   const {
@@ -252,14 +281,6 @@ function StudioApp() {
     setComponentEditor(componentId ? { id: componentId } : {});
   }, []);
 
-  const openRegisteredPanel = useCallback(
-    (panelId: string) => {
-      const panel = panels.get(panelId);
-      if (!panel) return;
-      setLayout((current) => openPanel(current, panelId, targetFor(panel)));
-    },
-    [panels, setLayout]
-  );
   const setRegisteredPanelOpen = useCallback(
     (panelId: string, isOpen: boolean) => {
       const panel = panels.get(panelId);
@@ -272,21 +293,85 @@ function StudioApp() {
     },
     [panels, setLayout]
   );
-  const commands = useMemo(
+  const toggleablePanels = useMemo(
+    () => localizedContributions.filter((panel) => panel.canClose),
+    [localizedContributions]
+  );
+  const actions = useMemo(
     () =>
-      new CommandRegistry([
+      new ActionRegistry([
         {
           id: "workbench.commandPalette",
           title: t("commandPalette.show"),
           category: t("commandPalette.categoryWorkbench"),
-          keybinding: "⌘⇧P",
+          keybinding: "Mod+Shift+P",
           execute: () => openCommandPalette()
+        },
+        {
+          id: "document.undo",
+          title: t("actions.undo"),
+          category: t("commandPalette.categoryDocument"),
+          keybinding: "Mod+Z",
+          isEnabled: () => session.canUndo,
+          execute: () => void session.undo()
+        },
+        {
+          id: "document.redo",
+          title: t("actions.redo"),
+          category: t("commandPalette.categoryDocument"),
+          keybinding: "Mod+Shift+Z",
+          isEnabled: () => session.canRedo,
+          execute: () => void session.redo()
         },
         {
           id: "workbench.resetLayout",
           title: t("commandPalette.resetLayout"),
           category: t("commandPalette.categoryWorkbench"),
           execute: resetLayout
+        },
+        {
+          id: "workbench.closeActivePanel",
+          title: t("workbench.closeActivePanel"),
+          category: t("commandPalette.categoryWorkbench"),
+          keybinding: "Shift+Escape",
+          isEnabled: () => {
+            if (focusIsInEditable()) return false;
+            const panelId = focusedPanelId();
+            return Boolean(panelId && panels.get(panelId)?.canClose);
+          },
+          execute: () => {
+            const panelId = focusedPanelId();
+            if (!panelId || !panels.get(panelId)?.canClose) return;
+            setLayout((current) => closePanel(current, panelId));
+            focusCanvasElement();
+          }
+        },
+        {
+          id: "workbench.focusCanvas",
+          title: t("workbench.focusCanvas"),
+          category: t("commandPalette.categoryWorkbench"),
+          keybinding: "Escape",
+          isEnabled: () => {
+            if (focusIsInEditable()) return false;
+            const element = document.activeElement;
+            return (
+              element instanceof HTMLElement &&
+              Boolean(element.closest(".wb-panel, .activity-bar, .statusbar, .main-toolbar"))
+            );
+          },
+          execute: focusCanvasElement
+        },
+        {
+          id: "workbench.nextRegion",
+          title: t("workbench.nextRegion"),
+          category: t("commandPalette.categoryWorkbench"),
+          keybinding: "F6",
+          execute: () => {
+            const regions = [...document.querySelectorAll<HTMLElement>("[data-studio-region]")];
+            if (!regions.length) return;
+            const current = regions.findIndex((region) => region.contains(document.activeElement));
+            regions[(current + 1) % regions.length]?.focus();
+          }
         },
         {
           id: "studio.settings",
@@ -318,26 +403,42 @@ function StudioApp() {
           category: t("commandPalette.categoryPreferences"),
           execute: () => setThemeSelection(colorTheme.id)
         })),
-        ...localizedContributions.map((panel) => ({
-          id: `workbench.open.${panel.id}`,
-          title: t("commandPalette.openPanel", { panel: panel.title }),
+        ...toggleablePanels.map((panel, index) => ({
+          id: `workbench.toggle.${panel.id}`,
+          title: t("navigation.togglePanel", { panel: panel.title }),
           category: t("commandPalette.categoryView"),
-          execute: () => openRegisteredPanel(panel.id)
+          keybinding: `Mod+${index + 1}`,
+          execute: () => {
+            const hidden = layout.hiddenPanelIds.includes(panel.id);
+            setRegisteredPanelOpen(panel.id, hidden);
+            if (hidden) focusPanelElement(panel.id);
+            else focusCanvasElement();
+          }
         }))
       ]),
-    [localizedContributions, openCommandPalette, openComponentWorkbench, openRegisteredPanel, resetLayout, setThemeSelection, t, themes]
+    [layout, openCommandPalette, openComponentWorkbench, panels, resetLayout, session, setRegisteredPanelOpen, setLayout, setThemeSelection, t, themes, toggleablePanels]
   );
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "p") {
-        event.preventDefault();
-        openCommandPalette();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [openCommandPalette]);
+  const overlayOpen =
+    paletteOpen || exportOpen || settingsOpen || Boolean(componentEditor) || contextMenuOpen;
+  useActionKeybindings(actions, { suspended: overlayOpen, isMac });
+  const keybindingFor = useCallback((actionId: string) => actions.formatKeybinding(actionId, isMac), [actions, isMac]);
+  const contextMenuRegistry = useMemo(() => createStudioContextMenuRegistry(t, keybindingFor), [t, keybindingFor]);
+  const menuAction = useCallback(
+    (id: string) => {
+      const action = actions.get(id);
+      if (!action) throw new Error(`Action '${id}' is not registered.`);
+      const keyboard = actions.formatKeybinding(id, isMac);
+      return {
+        id: action.id,
+        label: action.title,
+        isDisabled: !actions.isEnabled(id),
+        ...(keyboard ? { keyboard } : {}),
+        onAction: () => void actions.execute(id)
+      };
+    },
+    [actions, isMac]
+  );
   const updateLayout = useCallback((next: WorkbenchLayoutState) => setLayout(next), [setLayout]);
   const panelButton = (panel: PanelContribution, side: "left" | "right" | "top") => {
     const selected = !layout.hiddenPanelIds.includes(panel.id);
@@ -379,7 +480,7 @@ function StudioApp() {
 
   return (
     <StudioUiProvider locale={locale} colorScheme={activeTheme.uiTheme}>
-      <ContextMenuProvider registry={contextMenuRegistry}>
+      <ContextMenuProvider registry={contextMenuRegistry} onOpenChange={setContextMenuOpen}>
         <ComponentWorkbenchNavigationProvider openComponentWorkbench={openComponentWorkbench}>
           <>
         <main
@@ -397,49 +498,28 @@ function StudioApp() {
                     {
                       id: "file",
                       label: t("navigation.file"),
-                      actions: [
-                        {
-                          id: "export",
-                          label: t("actions.exportRevision"),
-                          onAction: () => setExportOpen(true)
-                        }
-                      ]
+                      actions: [menuAction("studio.export")]
                     },
                     {
                       id: "edit",
                       label: t("navigation.edit"),
-                      actions: [
-                        {
-                          id: "undo",
-                          label: t("actions.undo"),
-                          isDisabled: !session.canUndo,
-                          onAction: () => void session.undo()
-                        },
-                        {
-                          id: "redo",
-                          label: t("actions.redo"),
-                          isDisabled: !session.canRedo,
-                          onAction: () => void session.redo()
-                        }
-                      ]
+                      actions: [menuAction("document.undo"), menuAction("document.redo")]
                     },
                     {
                       id: "view",
                       label: t("navigation.view"),
                       actions: [
-                        ...localizedContributions
-                          .filter(({ id }) => id !== "canvas")
-                          .map((panel) => ({
+                        ...toggleablePanels.map((panel) => {
+                          const keyboard = actions.formatKeybinding(`workbench.toggle.${panel.id}`, isMac);
+                          return {
                             id: `panel.${panel.id}`,
                             label: panel.title,
                             isSelected: !layout.hiddenPanelIds.includes(panel.id),
-                            onAction: () => setRegisteredPanelOpen(panel.id, layout.hiddenPanelIds.includes(panel.id))
-                          })),
-                        {
-                          id: "reset-layout",
-                          label: t("actions.resetLayout"),
-                          onAction: resetLayout
-                        }
+                            ...(keyboard ? { keyboard } : {}),
+                            onAction: () => void actions.execute(`workbench.toggle.${panel.id}`)
+                          };
+                        }),
+                        menuAction("workbench.resetLayout")
                       ]
                     }
                   ]}
@@ -489,7 +569,12 @@ function StudioApp() {
             </div>
           </header>
           <div className="studio-body">
-            <nav className="activity-bar activity-bar--left" aria-label={t("navigation.projectToolWindows")}>
+            <nav
+              className="activity-bar activity-bar--left"
+              aria-label={t("navigation.projectToolWindows")}
+              data-studio-region="primary"
+              tabIndex={-1}
+            >
               <div className="activity-bar__top">{primaryPanels.map((panel) => panelButton(panel, "right"))}</div>
               <div className="activity-bar__bottom">{bottomPanels.map((panel) => panelButton(panel, "right"))}</div>
             </nav>
@@ -502,11 +587,16 @@ function StudioApp() {
                 onLayoutChange={updateLayout}
               />
             </section>
-            <nav className="activity-bar activity-bar--right" aria-label={t("navigation.contentToolWindows")}>
+            <nav
+              className="activity-bar activity-bar--right"
+              aria-label={t("navigation.contentToolWindows")}
+              data-studio-region="secondary"
+              tabIndex={-1}
+            >
               <div className="activity-bar__top">{secondaryPanels.map((panel) => panelButton(panel, "left"))}</div>
             </nav>
           </div>
-          <footer className="statusbar">
+          <footer className="statusbar" data-studio-region="statusbar" tabIndex={-1}>
             <div className="statusbar__context">
               <strong>{session.document?.name ?? "—"}</strong>
               <span>›</span>
@@ -543,7 +633,8 @@ function StudioApp() {
         <Suspense fallback={null}>
           {paletteOpen ? (
             <CommandPalette
-              commands={commands}
+              actions={actions}
+              isMac={isMac}
               locale={locale}
               colorScheme={activeTheme.uiTheme}
               open

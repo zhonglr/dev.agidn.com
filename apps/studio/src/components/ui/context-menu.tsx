@@ -117,19 +117,24 @@ function menuItems(
 
 export function ContextMenuProvider({
   registry,
+  onOpenChange,
   children
 }: {
   registry: ContextMenuRegistry;
+  onOpenChange?: (open: boolean) => void;
   children: ReactNode;
 }) {
   const [state, setState] = useState<ContextMenuState>();
   const stateRef = useRef(state);
   stateRef.current = state;
   const anchorRef = useRef<HTMLSpanElement>(null);
+  const onOpenChangeRef = useRef(onOpenChange);
+  onOpenChangeRef.current = onOpenChange;
 
   const closeContextMenu = useCallback(() => {
     const returnFocusTo = stateRef.current?.returnFocusTo;
     setState(undefined);
+    onOpenChangeRef.current?.(false);
     requestAnimationFrame(() => {
       if (returnFocusTo?.isConnected) returnFocusTo.focus();
     });
@@ -150,6 +155,7 @@ export function ContextMenuProvider({
         sections,
         ...(returnFocusTo ? { returnFocusTo } : {})
       });
+      onOpenChangeRef.current?.(true);
     },
     [registry]
   );

@@ -59,7 +59,8 @@ export const zhCN = {
     colorTheme: "颜色主题：{{theme}}",
     followSystemTheme: "跟随系统",
     categoryPreferences: "首选项",
-    openPanel: "打开{{panel}}",
+    recent: "最近使用",
+    noMatches: "没有匹配的命令",
     categoryWorkbench: "工作区",
     categoryStudio: "Studio",
     categoryDocument: "文档",
@@ -259,7 +260,10 @@ export const zhCN = {
     resizePanels: "调整面板大小",
     restoreLayout: "恢复布局",
     restoreLayoutLabel: "恢复工作区布局",
-    dockingHint: "移动到一个面板上，然后选择停靠位置"
+    dockingHint: "移动到一个面板上，然后选择停靠位置",
+    closeActivePanel: "关闭当前工具窗口",
+    focusCanvas: "聚焦画布",
+    nextRegion: "聚焦下一个区域"
   },
   drag: {
     dropTargetMissing: "放置目标已不存在。",

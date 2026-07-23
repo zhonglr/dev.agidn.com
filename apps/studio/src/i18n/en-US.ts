@@ -57,7 +57,8 @@ export const enUS = {
     colorTheme: "Color Theme: {{theme}}",
     followSystemTheme: "Follow System",
     categoryPreferences: "Preferences",
-    openPanel: "Open {{panel}}",
+    recent: "Recent",
+    noMatches: "No matching commands",
     categoryWorkbench: "Workbench",
     categoryStudio: "Studio",
     categoryDocument: "Document",
@@ -257,7 +258,10 @@ export const enUS = {
     resizePanels: "Resize panels",
     restoreLayout: "Restore layout",
     restoreLayoutLabel: "Restore workbench layout",
-    dockingHint: "Move over a panel, then choose its docking position"
+    dockingHint: "Move over a panel, then choose its docking position",
+    closeActivePanel: "Close Active Tool Window",
+    focusCanvas: "Focus Canvas",
+    nextRegion: "Focus Next Region"
   },
   drag: {
     dropTargetMissing: "The drop target no longer exists.",
