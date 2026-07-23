@@ -501,6 +501,19 @@ a {
   }
 }
 
+/* Drop ghost: rendered in the real flow so siblings reflow exactly like the
+   real drop. The dashed outline marks it as a preview, not committed content. */
+[data-node-id^="ghost/"] {
+  position: relative;
+  opacity: 0.6;
+  outline: 2px dashed #4b4bb8;
+  outline-offset: -2px;
+  pointer-events: none !important;
+}
+[data-node-id^="ghost/"] * {
+  pointer-events: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

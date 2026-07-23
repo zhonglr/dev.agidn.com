@@ -8,6 +8,7 @@ import {
   type PreviewToStudioMessage
 } from "@agidn/preview-protocol";
 import { PageRenderer } from "@agidn/react-renderer";
+import { applyDropGhost, type DropGhostState } from "./drop-ghost.js";
 import pageSource from "../../../examples/golden-pricing/page.ui.json" with { type: "json" };
 import tokenSource from "../../../examples/golden-pricing/tokens.json" with { type: "json" };
 import { previewComponentRegistry } from "./components.js";
@@ -27,6 +28,7 @@ interface PreviewState {
   breakpoint: PreviewBreakpoint;
   initialized: boolean;
   selectedNodeId?: string;
+  dropGhost?: DropGhostState | undefined;
 }
 
 function nodeElement(nodeId: string): HTMLElement | undefined {
@@ -99,8 +101,20 @@ export function PreviewApp() {
           ...current,
           document: message.document,
           revision: message.documentRevision,
-          initialized: true
+          initialized: true,
+          dropGhost: undefined
         }));
+      } else if (message.type === "preview.showDropGhost") {
+        setState((current) => ({
+          ...current,
+          dropGhost: {
+            target: message.target,
+            node: message.node,
+            ...(message.moveSourceNodeId ? { moveSourceNodeId: message.moveSourceNodeId } : {})
+          }
+        }));
+      } else if (message.type === "preview.hideDropGhost") {
+        setState((current) => (current.dropGhost ? { ...current, dropGhost: undefined } : current));
       } else if (message.type === "preview.setBreakpoint") {
         setState((current) => ({ ...current, breakpoint: message.breakpoint }));
       } else if (message.type === "preview.setSelection") {
@@ -128,6 +142,7 @@ export function PreviewApp() {
             nodeId,
             nodeKind,
             rect: rectFor(target),
+            pointerX: message.x,
             pointerY: message.y
           });
         } else if (message.type === "preview.resolveMove") {
@@ -139,6 +154,7 @@ export function PreviewApp() {
             nodeId,
             nodeKind,
             rect: rectFor(target),
+            pointerX: message.x,
             pointerY: message.y
           });
         } else {
@@ -217,6 +233,8 @@ export function PreviewApp() {
     return <div className="preview-pending" aria-hidden="true" />;
   }
 
+  const renderedDocument = state.dropGhost ? applyDropGhost(state.document, state.dropGhost) : state.document;
+
   return (
     <PreviewErrorBoundary
       resetKey={`${state.document.id}:${state.revision}`}
@@ -229,8 +247,11 @@ export function PreviewApp() {
         })
       }
     >
+      {state.dropGhost?.moveSourceNodeId ? (
+        <style>{`[data-node-id="${state.dropGhost.moveSourceNodeId}"]{display:none!important}`}</style>
+      ) : null}
       <PageRenderer
-        document={state.document}
+        document={renderedDocument}
         tokens={tokenSource as TokenRegistry}
         components={previewComponentRegistry}
         onAction={(actionRef, argumentsValue) => console.info("Preview action", actionRef, argumentsValue)}

@@ -60,14 +60,39 @@ describe("Preview postMessage protocol", () => {
   it("validates component drop requests and resolved node intents", () => {
     const request = { source: "agidn.studio", protocolVersion: PREVIEW_PROTOCOL_VERSION, requestId: "drop_1", documentRevision: 2, type: "preview.resolveDrop", componentRef: "Button", x: 30, y: 50 };
     expect(decodeStudioToPreviewMessage(request).valid).toBe(true);
-    const response = { source: "agidn.preview", protocolVersion: PREVIEW_PROTOCOL_VERSION, requestId: "drop_1", documentRevision: 2, type: "preview.dropIntent", nodeId: "stack_hero", nodeKind: "layout", pointerY: 50, rect: { x: 0, y: 0, width: 200, height: 80 } };
+    const response = { source: "agidn.preview", protocolVersion: PREVIEW_PROTOCOL_VERSION, requestId: "drop_1", documentRevision: 2, type: "preview.dropIntent", nodeId: "stack_hero", nodeKind: "layout", pointerX: 30, pointerY: 50, rect: { x: 0, y: 0, width: 200, height: 80 } };
     expect(decodePreviewToStudioMessage(response).valid).toBe(true);
   });
 
   it("validates existing-node move intents", () => {
     const request = { source: "agidn.studio", protocolVersion: PREVIEW_PROTOCOL_VERSION, requestId: "move_1", documentRevision: 2, type: "preview.resolveMove", sourceNodeId: "text_hero", x: 30, y: 50 };
     expect(decodeStudioToPreviewMessage(request).valid).toBe(true);
-    const response = { source: "agidn.preview", protocolVersion: PREVIEW_PROTOCOL_VERSION, requestId: "move_1", documentRevision: 2, type: "preview.moveIntent", sourceNodeId: "text_hero", nodeId: "stack_faq", nodeKind: "layout", pointerY: 50, rect: { x: 0, y: 0, width: 200, height: 80 } };
+    const response = { source: "agidn.preview", protocolVersion: PREVIEW_PROTOCOL_VERSION, requestId: "move_1", documentRevision: 2, type: "preview.moveIntent", sourceNodeId: "text_hero", nodeId: "stack_faq", nodeKind: "layout", pointerX: 30, pointerY: 50, rect: { x: 0, y: 0, width: 200, height: 80 } };
     expect(decodePreviewToStudioMessage(response).valid).toBe(true);
+  });
+
+  it("validates drop ghost messages with resolved targets and node payloads", async () => {
+    const project = await loadGoldenProject();
+    const node = project.document.children[0]!;
+    const show = {
+      source: "agidn.studio",
+      protocolVersion: PREVIEW_PROTOCOL_VERSION,
+      requestId: "ghost_1",
+      documentRevision: 2,
+      type: "preview.showDropGhost",
+      target: { parentId: "grid_plans", beforeNodeId: "pricing_card_pro" },
+      node,
+      moveSourceNodeId: "card_guarantee"
+    };
+    expect(decodeStudioToPreviewMessage(show).valid).toBe(true);
+    const hide = {
+      source: "agidn.studio",
+      protocolVersion: PREVIEW_PROTOCOL_VERSION,
+      requestId: "ghost_2",
+      documentRevision: 2,
+      type: "preview.hideDropGhost"
+    };
+    expect(decodeStudioToPreviewMessage(hide).valid).toBe(true);
+    expect(decodeStudioToPreviewMessage({ ...show, node: { kind: "mystery" } }).valid).toBe(false);
   });
 });
