@@ -150,6 +150,7 @@ Rebuild 指主动放弃或替换某个已有实现路径，例如重写 Workbenc
 | Cycle | 名称 | 状态 | Git 边界 | UAT | Rebuild | 记录 |
 | --- | --- | --- | --- | --- | --- | --- |
 | C01 | Studio Foundation & First UAT | Closed with carryover | `d6c95b9..9bece1d` | Not accepted | No | [查看](./c01.md) |
+| C02 | Core Workflow Remediation | Active | `9bece1d..HEAD`（未关闭） | Round 03 待组织 | No | [查看](./c02.md) |
 
 ## 8. 开启下一轮
 
