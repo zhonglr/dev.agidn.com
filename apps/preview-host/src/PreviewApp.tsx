@@ -184,7 +184,12 @@ export function PreviewApp() {
     if (!nodeId) return;
     const element = nodeElement(nodeId);
     if (!element) return;
-    const update = (): void => postBounds(nodeId, `bounds_${state.revision}`);
+    // While a drop ghost is mounted the layout is in flux; reporting bounds
+    // would make Studio auto-reveal the selection and pan the canvas mid-drag.
+    const update = (): void => {
+      if (stateRef.current.dropGhost) return;
+      postBounds(nodeId, `bounds_${state.revision}`);
+    };
     const observer = new ResizeObserver(update);
     observer.observe(element);
     window.addEventListener("resize", update);

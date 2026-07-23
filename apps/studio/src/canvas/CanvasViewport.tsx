@@ -285,6 +285,9 @@ export function CanvasViewport() {
         session.selectNode(message.nodeId);
         setSelectionBounds({ nodeId: message.nodeId, rect: message.rect });
       } else if (message.type === "preview.nodeBounds" && message.nodeId === session.selectedNodeId) {
+        // Bounds shifts caused by a drop ghost must not move the selection
+        // overlay or auto-reveal it, or the canvas pans itself mid-drag.
+        if (session.activeInsertDrag || session.activeNodeDragId) return;
         setSelectionBounds({ nodeId: message.nodeId, rect: message.rect });
         revealSelection(message.rect);
       } else if (message.type === "preview.dropIntent") {
