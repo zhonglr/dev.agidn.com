@@ -297,7 +297,7 @@ function SinglePanel({
           </PanelModeToggle>
         </Tooltip>
       </header>
-      <div id={`workbench-panel-${node.panelId}`} className="wb-panel__body">
+      <div id={`workbench-panel-${node.panelId}`} className="wb-panel__body" tabIndex={-1}>
         {panelBody(node.panelId, panels, messages)}
       </div>
       {draggingPanelId !== node.panelId ? (
@@ -389,7 +389,12 @@ function TabGroup({
           </PanelModeToggle>
         </Tooltip>
       </div>
-      <div id={`workbench-panel-${node.activePanelId}`} className="wb-panel__body" role="tabpanel">
+      <div
+        id={`workbench-panel-${node.activePanelId}`}
+        className="wb-panel__body"
+        role="tabpanel"
+        tabIndex={-1}
+      >
         {panelBody(node.activePanelId, panels, messages)}
       </div>
       {!(node.panelIds.length === 1 && node.panelIds[0] === draggingPanelId) ? (
@@ -580,7 +585,7 @@ export function Workbench({
               </PanelModeToggle>
             </Tooltip>
           </header>
-          <div id={`workbench-panel-${layout.maximizedPanelId}`} className="wb-panel__body">
+          <div id={`workbench-panel-${layout.maximizedPanelId}`} className="wb-panel__body" tabIndex={-1}>
             {panelBody(layout.maximizedPanelId, panels, messages)}
           </div>
         </section>

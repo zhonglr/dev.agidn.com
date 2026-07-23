@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import {
   checkWorkbenchLayout,
   closePanel,
-  CommandRegistry,
+  ActionRegistry,
   dockPanel,
   normalizeWorkbenchLayout,
   openPanel,
@@ -174,7 +174,7 @@ describe("Studio Workbench", () => {
   });
 
   it("rejects duplicate commands and keybinding conflicts", () => {
-    const commands = new CommandRegistry([
+    const commands = new ActionRegistry([
       { id: "workbench.open", title: "Open", keybinding: "Ctrl+P", execute: () => undefined }
     ]);
     expect(() =>

@@ -18,14 +18,6 @@ export interface PanelContribution {
   render: () => ReactNode;
 }
 
-export interface CommandContribution {
-  id: string;
-  title: string;
-  category?: string;
-  keybinding?: string;
-  execute: () => void | Promise<void>;
-}
-
 export interface InspectorContribution {
   id: string;
   title: string;
@@ -71,31 +63,8 @@ export class PanelRegistry extends ContributionMap<PanelContribution> {
   }
 }
 
-export class CommandRegistry extends ContributionMap<CommandContribution> {
-  constructor(contributions: readonly CommandContribution[] = []) {
-    super();
-    contributions.forEach((contribution) => this.register(contribution));
-  }
-
-  override register(command: CommandContribution): () => void {
-    const normalizedKeybinding = command.keybinding?.toLowerCase();
-    if (normalizedKeybinding) {
-      const conflict = this.list().find((candidate) => candidate.keybinding?.toLowerCase() === normalizedKeybinding);
-      if (conflict) throw new Error(`Keybinding '${command.keybinding}' conflicts with command '${conflict.id}'.`);
-    }
-    return super.register(command);
-  }
-
-  async execute(id: string): Promise<void> {
-    const command = this.get(id);
-    if (!command) throw new Error(`Command '${id}' is not registered.`);
-    await command.execute();
-  }
-}
-
 export class ContributionRegistry {
   readonly panels = new PanelRegistry();
-  readonly commands = new CommandRegistry();
   readonly inspectors = new ContributionMap<InspectorContribution>();
   readonly routes = new ContributionMap<RouteContribution>();
   readonly statusItems = new ContributionMap<StatusItemContribution>();
