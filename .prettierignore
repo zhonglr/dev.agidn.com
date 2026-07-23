@@ -1,0 +1,7 @@
+node_modules/
+dist/
+coverage/
+.revision-store/
+.ui-context/
+pnpm-lock.yaml
+docs/archive/

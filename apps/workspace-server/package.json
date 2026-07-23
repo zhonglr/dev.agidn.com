@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx src/server.ts ../../examples/golden-pricing/page.ui.json 4178"
+    "dev": "tsx watch src/server.ts ../../examples/golden-pricing/page.ui.json 4178"
   },
   "dependencies": {
     "@agidn/api-protocol": "workspace:*",
