@@ -34,7 +34,7 @@
 - Issue 的稳定 ID 使用 `<DOMAIN>-NNN`，例如 `STUDIO-018`。当前规模集中维护在 `quality/issues.md`；需要独立文件时命名为 `quality/issues/studio-018-short-title.md`，一个文件只描述一个长期 Issue。
 - UAT 使用 `<YYYY-MM-DD>-<domain>-round-NN.md`，例如 `quality/uat/2026-07-23-studio-round-03.md`。
 - Verification 使用 `<YYYY-MM-DD>-<domain>-<gate-or-topic>.md`，例如 `quality/verification/2026-07-23-studio-ui-gate-01.md`。
-- 不使用 `final`、`new`、`latest`、`v2`、`issues` 之类无法解释生命周期的后缀；版本、日期、轮次或稳定 ID 必须显式。
+- 文件名不使用 `final`、`new`、`latest`、`v2` 之类无法解释生命周期的后缀；版本、日期、轮次或稳定 ID 必须显式。稳定台账类文件（如 `quality/issues.md`）使用领域名词命名，不受此后缀规则限制。
 
 重命名或移动文档时必须同步更新全部仓库内链接。Git 历史承担旧路径追溯，不保留重复副本或只有跳转作用的空壳文件。
 

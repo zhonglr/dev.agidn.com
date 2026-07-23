@@ -1,5 +1,7 @@
 # AI 友好的低代码网页设计器：技术决策汇总
 
+> 最后更新：2026-07-23
+
 > 产品设计参见 [产品设计](../product/ai-low-code-designer.md)，模块和目录设计参见 [系统架构](./system-overview.md)，Studio 与画布参见 [Studio Workbench](./studio-workbench.md)。最初的开工条件已归档为 [实施准备基线](../archive/2026-07-22-implementation-readiness.md)，当前进度以 [项目状态](../project/status.md) 为准。
 
 ## 1. 文档目的
@@ -119,11 +121,11 @@ Web Components：
 
 ### TD-006：Monorepo 与构建工具
 
-**状态：MVP 默认**
+**状态：已调整（2026-07-23）**
 
 ```text
 包管理与工作区    pnpm workspace
-任务编排与缓存    Turborepo
+任务编排          根 package.json scripts（pnpm --parallel / --filter）
 语言              TypeScript
 Studio            React
 开发与构建        Vite
@@ -131,19 +133,21 @@ Studio            React
 
 核心包采用 ESM。具体运行时和 TypeScript 版本在初始化仓库时统一锁定，禁止不同包自行选择不兼容版本。
 
+Turborepo 未采用：当前只有 typecheck、test、build、lint 等少量根脚本，没有证据表明需要额外任务编排与缓存层；出现真实需求时通过新 ADR 引入。
+
 ### TD-007：Schema 定义与运行时验证
 
-**状态：MVP 默认**
+**状态：已确定**
 
 采用：
 
 ```text
 跨进程协议        JSON Schema 2020-12
 TypeScript 编写   TypeBox
-运行时验证        Ajv 或 TypeBox Schema Compiler
+运行时验证        TypeBox Schema Compiler
 ```
 
-在实现第一个契约测试时，通过小型性能和错误信息对比确定 Ajv 与 TypeBox Schema Compiler 的最终选择。
+运行时验证器选型已由 [ADR-0001](../adr/0001-typebox-schema-compiler.md) 确定为 TypeBox Schema Compiler。
 
 不能只使用 TypeScript Interface，因为静态类型无法验证：
 
@@ -259,16 +263,9 @@ Schema 保存响应式意图，而不是 CSS 查询字符串。
 
 ### TD-015：拖拽引擎
 
-**状态：MVP 默认**
+**状态：已调整（2026-07-23）**
 
-采用 dnd-kit，并通过项目自己的 `DragController` 和 `DropResolver` 隔离。
-
-dnd-kit 只负责：
-
-- Pointer、Touch 和 Keyboard Sensor。
-- 拖拽生命周期。
-- 碰撞检测。
-- Drag Overlay。
+dnd-kit 未采用：Studio 当前使用自研 `DragController` / `DropResolver`，直接基于指针事件与 HTML Drag and Drop 实现结构拖放。未来引入第三方拖拽库时仍必须隔离在同一边界后。
 
 项目自身负责：
 
@@ -282,34 +279,29 @@ dnd-kit 只负责：
 
 ### TD-016：状态管理
 
-**状态：MVP 默认**
+**状态：已调整（2026-07-23）**
 
 ```text
 Page Document    自研 Document Engine + Command Reducer
-Editor UI State  Zustand 或等价的轻量 Store
+Editor UI State  React Context + 功能级状态（Studio Session）
 远程服务数据     独立 Query Cache（需要时引入）
 ```
+
+Zustand 未引入：当前编辑器状态由 React Context 和功能级 `useState` 承载；出现真实性能或规模证据时再评估轻量 Store。
 
 页面文档、拖拽临时状态、面板状态和服务端缓存不能混入同一个 Store。
 
 ### TD-017：本地持久化
 
-**状态：MVP 默认**
+**状态：已调整（2026-07-23）**
 
-项目目录中的文件是正式来源，IndexedDB 仅用于自动保存和崩溃恢复。
+项目目录中的 PageDocument 文件是正式来源。实际持久化布局为：
 
-```text
-.ai-ui/
-├── project.json
-├── tokens.json
-├── components.json
-├── patterns/
-└── pages/
-    ├── home.ui.json
-    └── pricing.ui.json
-```
+- Revision、History 和 undo/redo 状态保存在文档同目录的 `.revision-store/`，格式见 [Revision Store](../api/revision-store.md)。
+- Schema Context Package 导出到文档同目录的 `.ui-context/`。
+- Studio 的多页面与自定义组件原型暂存浏览器 `localStorage`，属于待升级的原型缓存，升级为 Workspace 项目级 Schema 由 `STUDIO-026`、`STUDIO-028` 跟踪。
 
-浏览器不能直接写项目文件，必须通过 Workspace Server。
+原 `.ai-ui/` 项目目录方案未采用。浏览器不能直接写项目文件，必须通过 Workspace Server。
 
 ### TD-018：Studio 与 Workspace Server 通信
 
@@ -325,18 +317,7 @@ Editor UI State  Zustand 或等价的轻量 Store
 
 **状态：MVP 默认**
 
-系统导出版本化的 Schema Context Package：
-
-```text
-.ui-context/
-├── document.json
-├── components.json
-├── tokens.json
-├── policies.json
-├── actions.json
-├── constraints.json
-└── manifest.json
-```
+系统导出版本化的 Schema Context Package，文件内容与导出规则的权威定义见 [Schema Context Package](../api/context-package.md)。
 
 `document.json` 是页面唯一事实来源，其他文件只解析引用。导出器不能修改 PageDocument，也不能把 AI 厂商字段写入文档。
 
@@ -375,18 +356,20 @@ Workspace Server 默认允许读写：
 
 ### TD-022：测试工具
 
-**状态：MVP 默认**
+**状态：已调整（2026-07-23）**
 
 ```text
 核心包单元测试    Vitest
 Schema 契约测试   Vitest + JSON fixtures
 规则测试          Table-driven tests
-Studio 组件测试   Testing Library
-端到端测试        Playwright
-视觉回归          Playwright screenshots
-无障碍检查        axe-core
-组件示例          Storybook（可选）
+Studio 组件测试   Vitest（无 Testing Library）
+端到端测试        未建立（已知缺口）
+视觉回归          未建立（已知缺口）
+无障碍检查        未建立（已知缺口）
+组件示例          未建立
 ```
+
+Testing Library、Playwright、axe-core 和 Storybook 均未安装。缺少浏览器级交互测试已在首轮 UAT 中造成漏检，属于 [项目状态](../project/status.md) 记录的未完成项；引入前不再需要新选型，直接按原计划评估 Playwright。
 
 规则测试必须包含大量负向用例，证明非法状态无法创建，而不能只测试合法页面能够渲染。
 
@@ -483,73 +466,32 @@ MCP 不拥有独立持久化或规则逻辑；写入必须携带 `baseRevision` 
 ## 5. MVP 技术组合摘要
 
 ```text
-工作区             pnpm workspace + Turborepo
+工作区             pnpm workspace（根 scripts 编排，无 Turborepo）
 语言               TypeScript
 Studio             React + Vite
-工作区           数据驱动 Workbench Layout + Panel Registry
+工作台             数据驱动 Workbench Layout + Panel Registry
 画布               独立 Canvas Viewport + 统一坐标转换
 核心协议           JSON Schema 2020-12
 Schema 编写        TypeBox
-运行时验证         Ajv 或 TypeBox Schema Compiler（技术验证后确定）
-拖拽               dnd-kit，隔离在 DragController
+运行时验证         TypeBox Schema Compiler（ADR-0001）
+拖拽               自研 DragController / DropResolver
 页面状态           自研 Command/Document Engine
-编辑器状态         Zustand 或等价轻量 Store
+编辑器状态         React Context + 功能级状态（Studio Session）
 预览               独立 Vite Preview Host + sandboxed iframe
 Token 输出         CSS Custom Properties
-本地通信           HTTP + WebSocket
+本地通信           HTTP（WebSocket 待实现）
 上下文导出         Schema Context Package
-单元测试           Vitest
-端到端测试         Playwright
-无障碍检查         axe-core
+单元/契约测试      Vitest
+端到端测试         未建立（已知缺口）
+无障碍检查         未建立（已知缺口）
 多人协作           MVP 不实现
 Web Components     后续可选 Runtime Adapter
 ```
 
-## 6. 开工前必须完成的技术验证
+## 6. 开工前技术验证（已完成）
 
-### 6.1 Schema 技术验证
+本节原为开工前的验证清单。Schema 验证器选型、Preview Host 隔离、组件注册和规则引擎四项验证已在 M0～M1 完成，结论已落地为实现和 [ADR-0001](../adr/0001-typebox-schema-compiler.md)；原始开工基线见 [实施准备基线](../archive/2026-07-22-implementation-readiness.md)。
 
-- 定义一个递归 PageDocument。
-- 生成 JSON Schema。
-- 验证合法和非法 Command/API 消息。
-- 比较 Ajv 与 TypeBox Schema Compiler 的错误质量和性能。
-- 验证 Schema 版本迁移。
+## 7. ADR 索引
 
-### 6.2 Preview Host 技术验证
-
-- 从示例项目加载真实 React 组件。
-- 支持路径别名、CSS、图片和字体。
-- 支持 HMR。
-- 在 iframe 中返回节点边界。
-- 验证组件异常不会破坏 Studio。
-
-### 6.3 组件注册技术验证
-
-- 从 TypeScript Props 生成注册定义初稿。
-- 通过 `*.ui.ts` 补充 Slot、语义和规则。
-- 检测源码与注册定义漂移。
-- 向 Renderer 和 Context Exporter 提供同一份注册数据。
-
-### 6.4 规则引擎技术验证
-
-- 拒绝任意颜色和间距。
-- 拒绝普通节点绝对定位。
-- 验证 Slot 和组件 Props。
-- 对非法操作提供机器可读建议。
-- 证明 Studio 乐观验证和 Workspace Server 最终提交经过同一规则路径。
-
-## 7. 首批 ADR
-
-仓库初始化后建议建立：
-
-```text
-docs/adr/
-├── 0001-page-schema-source-of-truth.md
-├── 0002-json-schema-typebox.md
-├── 0003-react-first-runtime.md
-├── 0004-preview-host-isolation.md
-├── 0005-closed-style-system.md
-└── 0006-command-patch-protocol.md
-```
-
-ADR 至少记录：背景、决策、候选方案、选择理由、负面影响和迁移条件。
+长期决策以 [ADR 索引](../adr/README.md) 为准。本文中标注“已调整”的条目记录 MVP 默认与最终实现之间的差异；后续技术选型变化继续通过新 ADR 记录，不再回填本节。

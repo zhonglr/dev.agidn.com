@@ -576,20 +576,7 @@ operations.json
 integrations.json
 ```
 
-Context Package 的目标内容为：
-
-```text
-.ui-context/
-├── document.json
-├── components.json
-├── tokens.json
-├── policies.json
-├── actions.json
-├── operations.json
-├── integrations.json
-├── constraints.json
-└── manifest.json
-```
+Context Package 的当前文件内容以 [Schema Context Package](../api/context-package.md) 为权威定义；本阶段计划在现有七个文件基础上增加 `operations.json`（当前页面所需 Operation）和 `integrations.json`（Action Binding 与映射）。
 
 Exporter 只选择当前页面引用 Action 所需的 Binding 和 Operation，不能导出整个后端 Catalog、Secret、环境地址或 Test Trace。
 

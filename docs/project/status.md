@@ -128,7 +128,7 @@ pnpm preview
 | M1 无界面内核               | 大部分完成                                                                            |
 | M2 Workspace Server         | 核心服务、HTTP API 和本地 Revision 持久化已完成，WebSocket 未完成                     |
 | M3 React Renderer / Preview | 确定性 Renderer、Vite Preview、响应式 Golden Page 和隔离通信已完成                    |
-| M4 Studio                   | W0～W2 与 Heading/Text 编辑链路已有代码基线；首轮 UAT 未通过，按 STUDIO-001～017 整改 |
+| M4 Studio                   | Workbench、编辑闭环、多页面与自定义组件原型、上下文菜单均有代码基线；Round 01/02 均未通过验收，STUDIO-001～030 整改待正式 Round 03 复验 |
 | M5 完整导出闭环             | 指定正式 Revision 的可重复导出 API 已完成                                             |
 | M6 MCP                      | 未开始                                                                                |
 

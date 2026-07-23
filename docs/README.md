@@ -24,6 +24,7 @@
 
 - [Workspace Server API](./api/workspace-server.md)：HTTP 端点、状态码和示例。
 - [Revision Store](./api/revision-store.md)：持久化格式、恢复与原子写入保证。
+- [Schema Context Package](./api/context-package.md)：导出文件内容、引用裁剪和 Hash 规则的权威定义。
 - [开发贡献指南](./contributing/development.md)：环境、依赖、编码、测试和提交要求。
 - [前端开发规范](./contributing/frontend.md)：Studio 的结构、组件、状态、样式、可访问性和验收要求。
 - [文档贡献规范](./contributing/documentation.md)：文档分类、命名、格式、生命周期和检查规则。

@@ -52,16 +52,7 @@ Future MCP ──→ Workspace Server application services
 
 ## Schema Context Package
 
-```text
-.ui-context/
-├── document.json          PageDocument，页面唯一事实来源
-├── components.json        当前页面引用的组件定义
-├── tokens.json            当前页面引用的 Token
-├── policies.json          当前页面适用的规则
-├── actions.json           Action 和 Data Source
-├── constraints.json       禁止事项
-└── manifest.json          协议版本与内容 Hash
-```
+导出结果包含 `document.json`（PageDocument，页面唯一事实来源）、页面引用的组件 / Token / Policy / Action / 约束，以及带协议版本与内容 Hash 的 `manifest.json`。文件内容与导出规则的权威定义见 [Schema Context Package](./docs/api/context-package.md)。
 
 其他文件只帮助下游工具解析 `document.json` 中的引用，不构成第二份页面事实来源。
 
@@ -99,12 +90,7 @@ M6  MCP 与 AI Proposed Commands，后置
 
 ## MVP 成功标准
 
-- 人类无需接触任意 CSS 和坐标即可完成页面。
-- 未注册组件、任意样式、非法 Slot 和普通绝对定位无法进入 PageDocument。
-- 前端乐观结果和后端正式 Revision 可以正确确认或回滚。
-- 页面能够稳定使用真实 React 组件渲染。
-- 同一 Document Revision 可以重复导出内容一致、带版本和 Hash 的 Context Package。
-- 下游 AI 无需依赖截图猜测布局、组件和样式。
+核心判断：人类无需接触任意 CSS 和坐标即可完成页面；未注册组件、任意样式、非法 Slot 和普通绝对定位无法进入 PageDocument；同一 Document Revision 可以重复导出内容一致、带版本和 Hash 的 Context Package。完整 13 条验收标准见 [产品设计](./docs/product/ai-low-code-designer.md#9-mvp-验收标准)。
 
 ## 文档导航
 

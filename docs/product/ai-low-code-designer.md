@@ -405,18 +405,7 @@ Token 与组件检查
 
 ### 4.12 Schema Context Package
 
-系统不应只向下游 AI 输出截图或一段自然语言 Prompt，而应导出版本化的 Schema Context Package：
-
-```text
-Schema Context Package
-├── document.json         PageDocument，页面唯一事实来源
-├── components.json       当前页面引用的真实代码组件
-├── tokens.json           允许使用的设计令牌
-├── policies.json         当前页面适用的布局规则
-├── actions.json          行为和数据绑定接口
-├── constraints.json      禁止事项和业务规则
-└── manifest.json         协议版本与内容 Hash
-```
+系统不应只向下游 AI 输出截图或一段自然语言 Prompt，而应导出版本化的 Schema Context Package。文件内容与导出规则的权威定义见 [Schema Context Package](../api/context-package.md)。
 
 `document.json` 是页面事实来源，其他文件只用于解析其中的引用。系统只导出当前页面使用或允许使用的组件、Token 和 Policy，避免把整个项目作为噪声交给 AI。
 

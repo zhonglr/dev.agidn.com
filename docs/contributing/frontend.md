@@ -15,7 +15,7 @@
 
 ## 目录与依赖
 
-Studio 前端按以下边界演进：
+Studio 前端按以下边界演进。这是目标结构；当前 `apps/studio/src` 仍保留部分早期扁平文件（如 `App.tsx`、`panels.tsx`），迁移按本规范渐进进行，当前布局以代码为准：
 
 ```text
 apps/studio/src/

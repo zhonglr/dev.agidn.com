@@ -320,7 +320,7 @@ apps/studio/src/
 
 packages/
 ├── studio-workbench/       可复用布局模型和容器
-├── studio-plugin-api/      稳定 Contribution 类型与受控 API
+├── studio-plugin-api/      稳定 Contribution 类型与受控 API（规划，未创建；当前类型在 apps/studio 内部）
 └── preview-protocol/       Studio/Preview 运行时验证协议
 ```
 

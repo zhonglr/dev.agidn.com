@@ -157,12 +157,4 @@ P3 Migration、Validation API 与 WebSocket 完善
 
 ## 当前里程碑
 
-| 阶段                        | 状态                                                     |
-| --------------------------- | -------------------------------------------------------- |
-| M0 领域资产                 | 部分完成                                                 |
-| M1 无界面内核               | 大部分完成                                               |
-| M2 Workspace Server         | 核心 HTTP 与持久化完成，实时能力待完成                   |
-| M3 React Renderer / Preview | Renderer、Preview Host、iframe 隔离与版本化通信已完成    |
-| M4 Studio                   | Workbench 与编辑闭环代码基线已完成，正式 Round 03 待组织 |
-| M5 Context Package 导出闭环 | 已完成                                                   |
-| M6 MCP                      | 后置，未开始                                             |
+各阶段完成度的唯一快照由 [项目状态](./status.md) 的“实施阶段”表维护，本文不再保留第二份里程碑表，避免两份记录漂移。
