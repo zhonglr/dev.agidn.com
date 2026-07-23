@@ -1,6 +1,6 @@
-# AI 友好的低代码网页设计器：技术决策记录
+# AI 友好的低代码网页设计器：技术决策汇总
 
-> 产品设计参见 [AI_LOW_CODE_DESIGNER.md](../product/AI_LOW_CODE_DESIGNER.md)，模块和目录设计参见 [ARCHITECTURE.md](./ARCHITECTURE.md)，Studio 与画布参见 [STUDIO_WORKBENCH.md](./STUDIO_WORKBENCH.md)，开工条件与实施顺序参见 [IMPLEMENTATION_READINESS.md](../development/IMPLEMENTATION_READINESS.md)。
+> 产品设计参见 [产品设计](../product/ai-low-code-designer.md)，模块和目录设计参见 [系统架构](./system-overview.md)，Studio 与画布参见 [Studio Workbench](./studio-workbench.md)。最初的开工条件已归档为 [实施准备基线](../archive/2026-07-22-implementation-readiness.md)，当前进度以 [项目状态](../project/status.md) 为准。
 
 ## 1. 文档目的
 

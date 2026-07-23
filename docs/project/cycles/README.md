@@ -25,27 +25,27 @@ Cycle 02 — Core Workflow Remediation
 ## 2. 目录结构
 
 ```text
-docs/development/cycles/
+docs/project/cycles/
 ├── README.md             Cycle 规范和总索引
-├── TEMPLATE.md           新 Cycle 文档模板
-├── c01/
-│   └── README.md         C01 的完整记录
+├── c01.md                无附件 Cycle 的完整记录
 ├── c02/
-│   ├── README.md         C02 的完整记录
-│   └── artifacts/        可选：本轮专属报告、fixture 或非代码证据
+│   ├── README.md         需要专属附件时使用目录
+│   └── artifacts/        本轮专属报告、fixture 或非代码证据
 └── …
+
+docs/templates/cycle.md   新 Cycle 文档模板
 ```
 
-每轮使用独立目录，而不是将所有轮次写入一个不断增长的文件。这样可以在未来安全收纳某轮特有的测试报告、迁移说明或 Rebuild 评估。
+普通 Cycle 使用单个 `cNN.md`，避免为一份记录创建空目录。只有本轮确实包含需要共同归档的截图、fixture、迁移产物或其他附件时，才使用 `cNN/README.md` 与 `artifacts/`；不得仅为了未来可能出现附件而预建目录。
 
 ## 3. Cycle 与其他文档的职责边界
 
 | 文档 | 回答的问题 |
 | --- | --- |
 | Cycle record | 这一轮为什么做、做了什么、怎么测试、结果如何、遗留什么 |
-| `STUDIO_ISSUE_TRACKER.md` | 某个问题的当前状态、根因、验收条件和历史 |
-| `CURRENT_STATUS.md` | 整个项目此刻的快照 |
-| `TODO.md` | 跨 Cycle 的路线和未完成能力 |
+| [质量记录](../../quality/README.md) | Issue 当前状态，以及 UAT、Verification 的固定证据 |
+| [项目状态](../status.md) | 整个项目此刻的快照 |
+| [项目路线图](../roadmap.md) | 跨 Cycle 的路线和未完成能力 |
 | ADR | 为什么选择某个长期架构决策 |
 | API / architecture docs | 当前有效的协议和系统设计 |
 
@@ -60,6 +60,17 @@ Intake → Baseline → Dev → Fix → Test → UAT → Close
 
 需要时：Baseline → Rebuild Decision → Rebuild → Dev/Fix/Test
 ```
+
+### 4.0 创建触发条件
+
+只有同时满足以下条件才创建新 Cycle：
+
+1. 有一组能够形成共同交付结果的目标，而不是单个随手修正。
+2. 可以在开发开始前锁定 start commit。
+3. 已明确范围、非目标和至少一项可验收结果。
+4. 工作预计包含一个或多个实现提交，并需要独立 Test 或 UAT 结论。
+
+以下情况不创建 Cycle：单个小型文档修正、当场完成的低风险 Bug、没有交付边界的长期探索，以及只有一个技术问题的 Spike。小修直接进入提交记录；长期方向进入 Roadmap；专项 Spike 使用 Verification；需要持续追踪的缺陷使用 Issue。
 
 ### 4.1 Intake
 
@@ -123,7 +134,7 @@ Rebuild 指主动放弃或替换某个已有实现路径，例如重写 Workbenc
 
 ## 6. 必填字段
 
-每个 Cycle 的 `README.md` 必须包含：
+每个 Cycle 的记录文件必须包含：
 
 1. ID、名称、状态、起止日期、start/end commit、commit range。
 2. 产品验收结果和 Rebuild 决策。
@@ -138,11 +149,11 @@ Rebuild 指主动放弃或替换某个已有实现路径，例如重写 Workbenc
 
 | Cycle | 名称 | 状态 | Git 边界 | UAT | Rebuild | 记录 |
 | --- | --- | --- | --- | --- | --- | --- |
-| C01 | Studio Foundation & First UAT | Closed with carryover | `d6c95b9..9bece1d` | Not accepted | No | [查看](./c01/README.md) |
+| C01 | Studio Foundation & First UAT | Closed with carryover | `d6c95b9..9bece1d` | Not accepted | No | [查看](./c01.md) |
 
 ## 8. 开启下一轮
 
-1. 从 [Cycle 模板](./TEMPLATE.md) 创建 `cNN/README.md`。
+1. 从 [Cycle 模板](../../templates/cycle.md) 创建 `cNN.md`；只有确定需要附件时才创建 `cNN/README.md`。
 2. 将状态设为 `Planned`，记录预期目标和 carryover Issue。
 3. 开始编码前记录 start commit 和工作区状态，再将状态改为 `Active`。
 4. 在本索引追加新行，不改变旧 Cycle 的 Git 边界。

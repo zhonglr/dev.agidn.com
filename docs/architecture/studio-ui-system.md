@@ -274,7 +274,7 @@ Spectrum 阶段只映射明暗模式，不把现有主题颜色强行注入 Spec
 
 ### Gate 0：兼容性 Spike
 
-首次执行结果见 [Studio UI Gate 00](../quality/verification/studio/2026-07-23-ui-gate-00.md)。
+首次执行结果见 [Studio UI Gate 00](../quality/verification/2026-07-23-studio-ui-gate-00.md)。
 
 范围：Provider、Button、TextField、Dialog 的隔离验证，不迁移整页。
 

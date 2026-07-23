@@ -136,8 +136,8 @@ pnpm build
 
 ## 文档和决策
 
-- 完成功能后更新 `CURRENT_STATUS.md`。
-- 每轮开始前从 `docs/development/cycles/TEMPLATE.md` 建立 Cycle 记录，关闭时锁定 end commit、测试结果、UAT 结论和 carryover。
-- API 变化后更新 `docs/api/`。
-- 架构或技术选择改变时新增 ADR。
-- 不通过静默修改旧文档来掩盖已经发生的决策变化。
+- 文档分类、格式、命名、生命周期和检查规则统一遵循 [文档贡献规范](./documentation.md)。
+- 功能完成度变化后更新 [项目状态](../project/status.md)，跨 Cycle 的计划变化更新 [项目路线图](../project/roadmap.md)。
+- 每轮开始前从 [Cycle 模板](../templates/cycle.md) 建立 Cycle 记录，关闭时锁定 end commit、测试结果、UAT 结论和 carryover。
+- API 变化后更新 `docs/api/`；架构或长期技术选择改变时新增 ADR。
+- 不通过静默修改旧记录来掩盖已经发生的决策变化。

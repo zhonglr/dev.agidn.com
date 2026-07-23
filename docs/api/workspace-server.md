@@ -12,7 +12,7 @@ pnpm workspace-server examples/golden-pricing/page.ui.json 4178
 
 默认监听 `127.0.0.1:4178`。
 
-首次启动会在 PageDocument 同目录创建 `.revision-store/<document-name>.revisions.json`。后续启动会恢复完整 Revision、Command/Patch history 和 undo/redo 状态，详见 [Revision Store 持久化格式](./REVISION_STORE.md)。
+首次启动会在 PageDocument 同目录创建 `.revision-store/<document-name>.revisions.json`。后续启动会恢复完整 Revision、Command/Patch history 和 undo/redo 状态，详见 [Revision Store 持久化格式](./revision-store.md)。
 
 ## 通用规则
 

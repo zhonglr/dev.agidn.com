@@ -1,12 +1,14 @@
-# Studio 第二轮验收问题追踪
+# Studio UAT：2026-07-23 / Round 02
 
-> 创建日期：2026-07-23
+> 状态：Completed / Not accepted
+>
+> 日期：2026-07-23
 >
 > 来源：Studio 第二轮用户验收（UAT Round 2）
 >
 > 验收对象：`8df696d` 之后、尚未提交的第一轮整改工作区
 >
-> 关联文档：[第一轮 Studio 验收问题追踪](./STUDIO_ISSUE_TRACKER.md)
+> 关联文档：[Studio Issue 台账](../issues.md)
 >
 > 追踪范围：5 项用户反馈，整理为 STUDIO-R2-001～STUDIO-R2-005
 

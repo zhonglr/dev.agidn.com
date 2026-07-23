@@ -109,12 +109,12 @@ M6  MCP 与 AI Proposed Commands，后置
 ## 文档导航
 
 - [文档中心](./docs/README.md)：所有产品、架构、开发、API 和 ADR 文档的固定入口。
-- [Studio Workbench 架构](./docs/architecture/STUDIO_WORKBENCH.md)：可编排面板、插件扩展点、信息层级和画布独立缩放基线。
-- [当前状态](./docs/development/CURRENT_STATUS.md)：已经完成、尚未完成和下一步工作。
-- [Studio 问题追踪](./docs/development/STUDIO_ISSUE_TRACKER.md)：用户验收 Issue、优先级、根因、修复批次和验收标准。
-- [Development Cycles](./docs/development/cycles/README.md)：每一轮 Dev / Fix / Test / Rebuild 的规范、索引和交付记录。
-- [贡献指南](./docs/development/CONTRIBUTING.md)：编码、拆分、依赖、测试和提交规范。
-- [Workspace Server API](./docs/api/WORKSPACE_SERVER.md)：HTTP 端点、状态码和调用示例。
+- [Studio Workbench 架构](./docs/architecture/studio-workbench.md)：可编排面板、插件扩展点、信息层级和画布独立缩放基线。
+- [当前状态](./docs/project/status.md)：已经完成、尚未完成和下一步工作。
+- [质量记录](./docs/quality/README.md)：Issue、UAT、专项验证及其创建触发条件。
+- [Development Cycles](./docs/project/cycles/README.md)：每一轮 Dev / Fix / Test / Rebuild 的规范、索引和交付记录。
+- [贡献指南](./docs/contributing/development.md)：编码、拆分、依赖、测试和提交规范。
+- [Workspace Server API](./docs/api/workspace-server.md)：HTTP 端点、状态码和调用示例。
 
 ## 运行 Studio
 
@@ -123,14 +123,14 @@ pnpm install
 pnpm dev
 ```
 
-Studio 运行在 `http://127.0.0.1:4173/`，隔离 Preview Host 运行在 `http://127.0.0.1:4174/`，Workspace Server 运行在 `http://127.0.0.1:4178/`。Studio 已支持画布节点选中、Heading/Text 属性编辑、Revision 提交和 undo/redo。
+Studio 运行在 `http://127.0.0.1:4173/`，隔离 Preview Host 运行在 `http://127.0.0.1:4174/`，Workspace Server 运行在 `http://127.0.0.1:4178/`。当前 Studio 已具备节点选择与结构拖放、Registry Inspector、Revision 提交/恢复、undo/redo、导出、Saved components、类型安全 i18n 和可切换主题；真实浏览器 UAT 仍以 [项目状态](./docs/project/status.md) 记录为准。
 
-## 当前最先完成的资产
+## 仓库基础资产
 
-正式开发从以下三项开始，而不是从复杂画布开始：
+当前实现建立在以下三项可验证资产上：
 
 1. Golden Pricing Page Schema。
 2. 15 个真实组件及其 `*.ui.ts` 注册定义。
 3. 非法操作矩阵及预期错误码和修复建议。
 
-第一份可运行代码需要证明：合法 PageDocument 可以通过验证，普通绝对定位会被拒绝，并且能够导出完整 Schema Context Package。
+契约测试持续证明：合法 PageDocument 可以通过验证，普通绝对定位会被拒绝，并且能够导出完整 Schema Context Package。

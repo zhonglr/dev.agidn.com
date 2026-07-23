@@ -1,6 +1,10 @@
 # AI 友好的低代码网页设计器：实施准备与启动计划
 
-> 产品设计参见 [AI_LOW_CODE_DESIGNER.md](../product/AI_LOW_CODE_DESIGNER.md)，技术架构参见 [ARCHITECTURE.md](../architecture/ARCHITECTURE.md)，技术选型参见 [TECHNICAL_DECISIONS.md](../architecture/TECHNICAL_DECISIONS.md)。
+> 状态：Archived
+> 归档日期：2026-07-23
+> 说明：这是正式编码前的启动基线，保留用于追溯当时的产品边界和实施假设；当前完成度与下一步不得以本文为准，请查看 [项目状态](../project/status.md) 和 [项目路线图](../project/roadmap.md)。
+
+> 产品设计参见 [产品设计](../product/ai-low-code-designer.md)，技术架构参见 [系统架构](../architecture/system-overview.md)，技术选型参见 [技术决策汇总](../architecture/technical-decisions.md)。
 
 ## 1. 文档目的
 
@@ -700,7 +704,7 @@ apps/preview-host/
 
 ### 16.5 M4：专业 Studio Workbench 与首个编辑闭环
 
-创建 `apps/studio`。Studio 不以写死的三栏布局起步，先建立可编排的 Workbench 和独立 Canvas Viewport，再接入文档编辑。详细架构见 [STUDIO_WORKBENCH.md](../architecture/STUDIO_WORKBENCH.md)。
+创建 `apps/studio`。Studio 不以写死的三栏布局起步，先建立可编排的 Workbench 和独立 Canvas Viewport，再接入文档编辑。详细架构见 [Studio Workbench](../architecture/studio-workbench.md)。
 
 实施顺序：
 

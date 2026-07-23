@@ -1,37 +1,51 @@
 # 项目文档中心
 
-项目文档统一保存在 `docs/`。根目录只保留面向首次访问者的 `README.md`。
+`docs/` 是项目文档的唯一入口；仓库根目录只保留面向首次访问者的 `README.md`。先从“当前状态”判断项目进度，再按需要进入产品、架构、API、质量或历史记录，避免把旧计划当成当前事实。
 
-## 产品
+## 当前项目
 
-- [产品设计](./product/AI_LOW_CODE_DESIGNER.md)：产品定位、核心能力、页面结构和 MVP 验收标准。
+- [项目状态](./project/status.md)：当前已经实现、尚未完成和下一步顺序的唯一快照。
+- [项目路线图](./project/roadmap.md)：跨 Cycle 的计划、优先级和后置能力。
+- [Development Cycles](./project/cycles/README.md)：每轮范围、Git 边界、测试、UAT 和 carryover。
 
-## 架构
+## 产品与架构
 
-- [技术架构](./architecture/ARCHITECTURE.md)：模块职责、依赖边界和核心数据流。
-- [Studio Workbench 架构](./architecture/STUDIO_WORKBENCH.md)：可编排工作区、面板注册、插件扩展点和画布独立缩放。
-- [技术决策](./architecture/TECHNICAL_DECISIONS.md)：已确定选型、MVP 默认和后置能力。
+- [产品设计](./product/ai-low-code-designer.md)：产品定位、核心能力和 MVP 验收标准。
+- [Logic / Integration Editor 产品设计](./product/logic-integration-editor.md)：前端事件连接业务 Action 与后端 Operation 的产品范围、首个闭环和验收标准。
+- [系统架构](./architecture/system-overview.md)：模块职责、依赖边界和核心数据流。
+- [Logic / Integration Editor 架构](./architecture/logic-integration-editor.md)：Integration Schema、运行时、编辑器、Revision、安全边界和分阶段实施设计。
+- [Studio Workbench](./architecture/studio-workbench.md)：工作区、面板注册和 Canvas Viewport。
+- [Studio UI 系统](./architecture/studio-ui-system.md)：UI 门面、组件契约和迁移门槛。
+- [技术决策汇总](./architecture/technical-decisions.md)：仍然有效的技术选择和后置决策。
+- [ADR 索引](./adr/README.md)：已经落地且不能靠静默改文档覆盖的长期决策。
 
-## 开发
+## 协议与开发
 
-- [当前实现状态](./development/CURRENT_STATUS.md)：完成度、可运行能力和后续顺序。
-- [Studio 验收问题追踪](./development/STUDIO_ISSUE_TRACKER.md)：用户验收问题、优先级、根因、依赖和关闭条件。
-- [Development Cycles](./development/cycles/README.md)：每轮 Dev / Fix / Test / Rebuild 的命名、边界、模板、索引和历史记录。
-- [贡献指南](./development/CONTRIBUTING.md)：编码、文件拆分、依赖和测试规范。
-- [实施准备](./development/IMPLEMENTATION_READINESS.md)：M0～M6 路线与验收基线。
+- [Workspace Server API](./api/workspace-server.md)：HTTP 端点、状态码和示例。
+- [Revision Store](./api/revision-store.md)：持久化格式、恢复与原子写入保证。
+- [开发贡献指南](./contributing/development.md)：环境、依赖、编码、测试和提交要求。
+- [文档贡献规范](./contributing/documentation.md)：文档分类、命名、格式、生命周期和检查规则。
 
-## API
+## 质量与验收
 
-- [Workspace Server API](./api/WORKSPACE_SERVER.md)：本地 HTTP API 协议和示例。
-- [Revision Store](./api/REVISION_STORE.md)：版本化持久化格式、恢复与原子写入保证。
+- [质量记录](./quality/README.md)：统一说明 Issue、UAT、Verification 的职责、创建触发条件和当前索引。
+- [Studio Issue 台账](./quality/issues.md)：`STUDIO-*` 当前状态、根因、验收条件和关闭证据。
+- [Studio UAT Round 02](./quality/uat/2026-07-23-studio-round-02.md) / [Round 03](./quality/uat/2026-07-23-studio-round-03.md)：固定基线上的人工验收记录。
+- [Studio UI Gate 00](./quality/verification/2026-07-23-studio-ui-gate-00.md) / [Gate 01](./quality/verification/2026-07-23-studio-ui-gate-01.md)：Spectrum 迁移与包体积专项验证。
 
-## ADR
+## 模板与历史
 
-- [ADR 索引](./adr/README.md)：已经落地的工程决策及其理由。
+- [文档模板](./templates/README.md)：Issue、UAT、Cycle 的强制字段模板。
+- [归档索引](./archive/README.md)：已经失效但仍有追溯价值、不得作为当前依据的文档。
 
-## 文档维护规则
+## 事实优先级
 
-- 功能完成度发生变化时更新 `CURRENT_STATUS.md`。
-- 外部协议变化时同时更新运行时 Schema、契约测试和 API 文档。
-- 架构边界或技术选型变化时新增 ADR，不能只修改现有结论。
-- 文档中的命令必须能够在仓库根目录执行。
+出现冲突时按以下顺序判断：
+
+1. 运行时 Schema、实现和自动化测试决定“系统实际做什么”。
+2. API/架构文档和 Accepted ADR 决定“公开契约与设计意图是什么”。
+3. [项目状态](./project/status.md) 决定“当前完成到哪里”。
+4. Issue、UAT 和 Cycle 记录决定“何时发现、验证或遗留了什么”。
+5. 路线图和归档文档只表达计划或历史，不得覆盖前四项事实。
+
+提交前运行 `pnpm docs:check`。任何文件迁移必须在同一变更中修复内部链接；不允许为了链接稳定保留两份内容相同的文档。

@@ -1,6 +1,6 @@
 # Cycle NN — <Name>
 
-> 创建新 Cycle 时，将本文件复制到 `cycles/cNN/README.md`，删除所有尖括号提示，并在开始编码前锁定 start commit。
+> 仅当一组工作具有共同交付目标、可锁定的 start commit、明确范围/非目标，并需要独立 Test 或 UAT 时创建 Cycle。默认复制到 `docs/project/cycles/cNN.md`；确有专属附件时才使用 `cNN/README.md` 和 `artifacts/`。
 
 ## 1. Metadata
 

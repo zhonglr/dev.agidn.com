@@ -2,7 +2,7 @@
 
 > 日期：2026-07-23
 > 状态：通过，可继续增量迁移；包体积与自动化浏览器测试列为后续门槛。
-> 架构基线：[Studio UI 系统架构](../../../architecture/studio-ui-system.md) / [ADR-0004](../../../adr/0004-studio-ui-facade-and-spectrum-to-rac.md)
+> 架构基线：[Studio UI 系统架构](../../architecture/studio-ui-system.md) / [ADR-0004](../../adr/0004-studio-ui-facade-and-spectrum-to-rac.md)
 
 ## 验证范围
 

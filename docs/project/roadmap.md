@@ -1,8 +1,10 @@
-# 项目 TODO
+# 项目路线图
 
 > 最后更新：2026-07-23
 
-本清单记录当前已经落地的能力、下一阶段工作和明确后置的功能。更详细的实现状态见 [`docs/development/CURRENT_STATUS.md`](./docs/development/CURRENT_STATUS.md)；已确认但尚未通过用户验收的问题见 [`docs/development/STUDIO_ISSUE_TRACKER.md`](./docs/development/STUDIO_ISSUE_TRACKER.md)。
+本清单记录跨 Cycle 的已落地能力、下一阶段工作和明确后置功能。当前事实见 [项目状态](./status.md)；待验收问题见 [Studio Issue 台账](../quality/issues.md)。
+
+前端事件到后端 Operation 的新增产品范围与计划架构分别见 [Logic / Integration Editor 产品设计](../product/logic-integration-editor.md) 和 [Logic / Integration Editor 架构](../architecture/logic-integration-editor.md)。相关内容当前均为计划，不表示已经实现。
 
 ## 已完成
 
@@ -115,10 +117,24 @@ P3 Migration、Validation API 与 WebSocket 完善
 
 ### P4：工程自动化
 
+- [x] 建立文档目录、命名、生命周期规范和内部链接自动检查。
 - [ ] 配置 ESLint 和 Formatter。
 - [ ] 配置 CI 的 typecheck、test 和 build 检查。
 - [ ] 自动检查 Commit 规范。
 - [ ] 增加浏览器兼容性和 Preview 冒烟测试。
+
+### Logic / Integration Editor：首个前后端业务闭环
+
+该工作复用现有 PageDocument Interaction、Studio Workbench、Preview Host 和 Workspace Server，但保持独立 IntegrationDocument 和 Revision；具体阶段及退出条件见 [Logic / Integration Editor 架构](../architecture/logic-integration-editor.md)。
+
+- [ ] I0：定义 Operation Registry、Value Source、Effect 和 IntegrationDocument Schema。
+- [ ] I0：建立 Pricing Page Golden Integration、非法 fixture、跨引用校验和稳定错误码。
+- [ ] I1：实现 Integration Command、Patch、Revision、项目加载和原子持久化。
+- [ ] I2：增加 Design / Logic Route、四列 Connection Canvas、Inspector、Problems 和 History。
+- [ ] I3：实现受限 Test Action Runtime、Preview 消息和 Pending / Success / Failure 效果。
+- [ ] I3：验收 `button_pro.press → billing.selectPlan → billing.createCheckout` 浏览器闭环。
+- [ ] I4：裁剪并导出 Operation 与 Integration 上下文，升级 Manifest 与 Hash 契约。
+- [ ] I5：在 Action 闭环稳定后实现 Data Source / Component Prop Binding。
 
 ## 后置能力
 

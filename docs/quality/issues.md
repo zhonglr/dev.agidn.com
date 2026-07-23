@@ -1,13 +1,13 @@
-# Studio 验收问题追踪
+# Studio Issue 索引
 
-> 创建日期：2026-07-23  
-> 来源：Studio 第一轮用户验收（UAT）  
-> 验收基线：`2eeb35f` 及其之前的 Studio / Preview / Workbench 实现  
+> 创建日期：2026-07-23
+> 来源：Studio 第一轮用户验收（UAT）
+> 验收基线：`2eeb35f` 及其之前的 Studio / Preview / Workbench 实现
 > 追踪范围：17 项用户反馈，对应原始编号 0～16
 
-> 第二轮 UAT 已确认其中 3 项需要重开，并新增 2 项独立问题；精确复现、根因和新验收矩阵见 [Studio 第二轮验收问题追踪](./STUDIO_UAT_ROUND_2_ISSUES.md)。
+> 第二轮 UAT 已确认其中 3 项需要重开，并新增 2 项独立问题；精确复现、根因和新验收矩阵见 [Studio 第二轮 UAT](./uat/2026-07-23-studio-round-02.md)。
 
-本文档是 Studio 当前用户可见问题的事实来源。`TODO.md` 记录路线，`CURRENT_STATUS.md` 记录已交付能力，本文档则记录“已实现但未通过用户验收”、“仅有占位 UI”与“明确缺失”的项目。代码已存在、类型检查通过或单元测试通过，都不等于用户验收通过。
+本文档是 `STUDIO-*` 问题的索引和第一轮 UAT 基线。项目路线见 [项目路线图](../project/roadmap.md)，全局快照见 [项目状态](../project/status.md)。代码已存在、类型检查通过或单元测试通过，都不等于用户验收通过。
 
 ## 1. 管理规则
 
@@ -102,7 +102,7 @@
 
 - **原始编号**：2
 - **类型 / 优先级 / 状态**：Functional bug / incomplete capability / P0 / Ready for Verification
-- **第二轮复验**：Registry 已能生成 variant 选项并提交 `node.setVariant`，但 Preview 只实现少量 modifier，多数组件切换后没有可辨识视觉差异。详见 [STUDIO-R2-004](./STUDIO_UAT_ROUND_2_ISSUES.md#studio-r2-004registry-variant-可以提交但多数变体在-preview-中没有可辨识差异)。
+- **第二轮复验**：Registry 已能生成 variant 选项并提交 `node.setVariant`，但 Preview 只实现少量 modifier，多数组件切换后没有可辨识视觉差异。详见 [STUDIO-R2-004](./uat/2026-07-23-studio-round-02.md#studio-r2-004registry-variant-可以提交但多数变体在-preview-中没有可辨识差异)。
 - **影响范围**：Inspector、Component Registry、Command 提交、Revision、Preview 同步
 - **实际行为**：部分字段可产生保存状态，但 Preview 没有可见变化；部分看起来可操作的设置点击后没有任何行为。
 - **代码证据**：
@@ -122,7 +122,7 @@
 
 - **原始编号**：3
 - **类型 / 优先级 / 状态**：Missing capability / P1 / Ready for Verification
-- **第二轮复验**：第一轮整改只完成 Component Grid 新组件插入，没有实现 Canvas / Outline 已有节点的 `node.move`。详见 [STUDIO-R2-001](./STUDIO_UAT_ROUND_2_ISSUES.md#studio-r2-001画布中的已有节点不能拖动排序或更换父节点) 与 [STUDIO-R2-002](./STUDIO_UAT_ROUND_2_ISSUES.md#studio-r2-002page-outline-中的已有节点不能拖动重组结构)。
+- **第二轮复验**：第一轮整改只完成 Component Grid 新组件插入，没有实现 Canvas / Outline 已有节点的 `node.move`。详见 [STUDIO-R2-001](./uat/2026-07-23-studio-round-02.md#studio-r2-001画布中的已有节点不能拖动排序或更换父节点) 与 [STUDIO-R2-002](./uat/2026-07-23-studio-round-02.md#studio-r2-002page-outline-中的已有节点不能拖动重组结构)。
 - **实际行为**：Component Grid 的卡片显示抓取光标，但无法拖动，点击也不会向页面插入组件。
 - **代码证据**：`ComponentsPanel` 中的 button 没有 `onClick`、`draggable`、drag payload 或键盘插入命令；`StudioSessionValue` 也没有 `node.insert` / `node.move` 提交方法。CSS 却使用 `cursor: grab`，导致错误的功能暗示。
 - **期望行为**：点击使用可预测的默认位置插入；拖动时仅显示符合 Slot Policy 的合法落点和插入位置。
@@ -178,7 +178,7 @@
 
 - **原始编号**：7
 - **类型 / 优先级 / 状态**：Visual usability / P1 / Ready for Verification
-- **第二轮复验**：图标已统一为 SVG，但提示仍依赖浏览器原生 `title`，首次显示延迟不可控且过慢。详见 [STUDIO-R2-003](./STUDIO_UAT_ROUND_2_ISSUES.md#studio-r2-003图标依赖浏览器原生-title首次-tooltip-出现不可控且过慢)。
+- **第二轮复验**：图标已统一为 SVG，但提示仍依赖浏览器原生 `title`，首次显示延迟不可控且过慢。详见 [STUDIO-R2-003](./uat/2026-07-23-studio-round-02.md#studio-r2-003图标依赖浏览器原生-title首次-tooltip-出现不可控且过慢)。
 - **实际行为**：Activity Bar、Tab action、Undo/Redo、选中摘要和问题面板使用不同字符系的符号，含义难以识别，视觉尺寸和基线不一致。
 - **代码证据**：Panel contribution 和操作按钮直接使用 `⊞`、`◈`、`▣`、`☷`、`△`、`◷`、`□`、`⧉`、`↶`、`↷` 等 Unicode glyph，它们的字形依赖系统字体。
 - **期望行为**：使用一套具有统一 viewBox、stroke、尺寸和命名的产品图标系统，每个操作配有清晰 tooltip 和无障碍名称。

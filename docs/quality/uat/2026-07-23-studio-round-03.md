@@ -1,4 +1,4 @@
-# Studio 第三轮验收整改记录
+# Studio UAT：2026-07-23 / Round 03
 
 > 日期：2026-07-23
 > 来源：Studio 第三轮用户反馈
@@ -30,7 +30,7 @@
 | Inspector 参数大小写混杂 | 所有标识符先经过 Display Label 层，camelCase、点号和连字符不直接进入可见 UI |
 | 实际名称与展示名称未分离 | Component / Prop / Slot / Variant Schema 新增可本地化 display metadata；Catalog API 保留并返回该元数据 |
 | Components 未分组 | Registry 增加 category，面板按 Actions、Typography、Media、Content、Layout、Navigation、Commerce 分组 |
-| 缺少 i18n | 新增 `I18nProvider`、`en-US` / `zh-CN` 消息、Settings 语言切换；支持 `VITE_STUDIO_LOCALE` 和 `window.__AGIDN_STUDIO_CONFIG__.locale` 配置 |
+| 缺少 i18n | 语言包、类型、运行时和 React Provider 分层；Studio、Canvas、Workbench、ARIA 与异步错误均使用类型化消息 key；Catalog 提供组件/属性/Slot/Variant 展示元数据；支持 Settings、`VITE_STUDIO_LOCALE` 和运行时配置 |
 
 ## Workbench 与视觉层级
 
@@ -43,7 +43,7 @@
 ## 自动化与构建证据
 
 - `pnpm typecheck`：通过。
-- `pnpm test`：22 个文件、90 项测试通过。
+- `pnpm test`：24 个文件、99 项测试通过。
 - `pnpm build`、`pnpm studio:build`、`pnpm preview:build`：通过。
 - Chrome 1600×1000 静态渲染检查：顶部菜单、三侧工具栏、Outline 引导线和面板布局无溢出。
 - Catalog 运行冒烟：category、displayName 和 Button Slot 均由 Workspace Server 返回。

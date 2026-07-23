@@ -4,13 +4,13 @@
 
 ## 当前结论
 
-> 验收提醒：2026-07-23 的首轮 Studio UAT 已确认 17 项未关闭问题。下文“已完成”表示代码基线已存在，不表示用户验收通过。详见 [Studio 验收问题追踪](./STUDIO_ISSUE_TRACKER.md)。
+> 验收提醒：2026-07-23 的首轮 Studio UAT 已确认 17 项未关闭问题。下文“已完成”表示代码基线已存在，不表示用户验收通过。详见 [Studio Issue 台账](../quality/issues.md)。
 
-> 第二轮 UAT 进一步确认已有节点移动、Tree 拖动、Tooltip 时序、variant 视觉覆盖和 Dock Overlay 仍未达到产品验收，详见 [Studio 第二轮验收问题追踪](./STUDIO_UAT_ROUND_2_ISSUES.md)。
+> 第二轮 UAT 进一步确认已有节点移动、Tree 拖动、Tooltip 时序、variant 视觉覆盖和 Dock Overlay 仍未达到产品验收，详见 [Studio 第二轮 UAT](../quality/uat/2026-07-23-studio-round-02.md)。
 
-> 第三轮反馈已完成开发整改：新增插入位置预览、可靠的 Outline 移动、Button 内部 Slot、可复用组件保存、Revision 恢复、Display Label、组件分组、基础 i18n、树引导线、Dock 发现性和环绕式工具窗口栏；等待真实交互复验。详见 [Studio 第三轮验收整改记录](./STUDIO_UAT_ROUND_3_ISSUES.md)。
+> 第三轮反馈已完成开发整改：新增插入位置预览、可靠的 Outline 移动、Button 内部 Slot、可复用组件保存、Revision 恢复、Display Label、组件分组、类型安全 i18n、树引导线、Dock 发现性和环绕式工具窗口栏；等待真实交互复验。详见 [Studio 第三轮 UAT](../quality/uat/2026-07-23-studio-round-03.md)。
 
-> Cycle 边界：[C01 — Studio Foundation & First UAT](./cycles/c01/README.md) 已在 `9bece1d` 关闭，状态为 `Closed with carryover`，产品验收为 `Not accepted`。
+> Cycle 边界：[C01 — Studio Foundation & First UAT](./cycles/c01.md) 已在 `9bece1d` 关闭，状态为 `Closed with carryover`，产品验收为 `Not accepted`。
 
 项目已经完成可运行的无界面内核、具备本地持久化的 Workspace Server、React Renderer / Preview Host，以及可编排的 Studio Workbench 代码基线。布局树、面板停靠、独立 Canvas Viewport 和版本化 Preview 消息协议均已存在，但首轮 UAT 确认了选择链路、布局恢复和视觉一致性缺陷。
 
@@ -41,7 +41,8 @@ Heading / Text Inspector、Revision 提交、undo/redo、结构拖放和组件 S
 | Studio Workbench | 版本化布局 Schema、Panel/Command/Contribution Registry、嵌套 Split/Tab/Panel、可访问分隔条、紧凑 Dock compass、几何预览、标签合并和布局持久化 |
 | Canvas Viewport | 独立平移/缩放、触控板手势、`100%`、Fit Page / Selection、选中 Overlay、已有节点拖动和统一坐标转换服务 |
 | Editing Slice | 动态 Page Outline、画布/大纲选中同步、Registry Inspector、插入/移动、Revision 确认、undo/redo 和 History 恢复 |
-| Tests | 90 项契约、规则、渲染、Display Label、Variant 覆盖、Tooltip 时序、结构拖动、Preview 协议、Workbench、坐标、事务、模块边界、持久化恢复和 HTTP 集成测试 |
+| Studio UI 基础 | 类型安全 i18n、Catalog display metadata、Theme Plugin Registry，Provider / Button / TextField / Dialog / Select / SearchField 门面，低频操作面按需加载与第三方 import 边界 |
+| Tests | 108 项契约、规则、渲染、i18n 语言包/硬编码审计、Display Label、Theme Plugin、UI 门面与加载边界、Variant 覆盖、Tooltip 时序、结构拖动、Preview 协议、Workbench、坐标、事务、模块边界、持久化恢复和 HTTP 集成测试 |
 
 ## 已支持 Command
 
@@ -76,7 +77,7 @@ POST /v1/history/restore
 POST /v1/export
 ```
 
-详见 [Workspace Server API](../api/WORKSPACE_SERVER.md)。
+详见 [Workspace Server API](../api/workspace-server.md)。
 
 ## 当前可运行命令
 
@@ -105,6 +106,7 @@ pnpm preview
 - 更完整的键盘跨父级移动、拖动自动滚屏和乐观状态回滚。
 - Workspace Server 的独立 Validation 和 WebSocket API。
 - ESLint、Formatter、CI 和正式 Commit 规范自动化。
+- Studio UI 门面的组件展示页、完整行为矩阵和后续业务面迁移。
 - MCP；按产品计划后置。
 
 ## 实施阶段

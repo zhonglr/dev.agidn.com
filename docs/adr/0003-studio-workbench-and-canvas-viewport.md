@@ -19,7 +19,7 @@
 6. 建立 Panel、Command、Inspector、Route 和 Status Item 的内部 Contribution API，为未来插件保留稳定扩展点。
 7. 插件和内置功能都不得直接写入 PageDocument，页面修改仍统一经过 Command、Rule Engine 和 Revision。
 
-详细模型、交互和验收基线见 [Studio Workbench 架构](../architecture/STUDIO_WORKBENCH.md)。
+详细模型、交互和验收基线见 [Studio Workbench 架构](../architecture/studio-workbench.md)。
 
 ## 结果
 

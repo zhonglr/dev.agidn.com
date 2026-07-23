@@ -1,6 +1,6 @@
-# AI 友好的低代码网页设计器：技术架构设计
+# AI 友好的低代码网页设计器：系统架构
 
-> 产品定位、核心功能与 MVP 验收标准参见 [AI_LOW_CODE_DESIGNER.md](../product/AI_LOW_CODE_DESIGNER.md)，Studio 工作区与画布参见 [STUDIO_WORKBENCH.md](./STUDIO_WORKBENCH.md)，具体技术选型参见 [TECHNICAL_DECISIONS.md](./TECHNICAL_DECISIONS.md)，开工条件与实施顺序参见 [IMPLEMENTATION_READINESS.md](../development/IMPLEMENTATION_READINESS.md)。
+> 产品定位、核心功能与 MVP 验收标准参见 [产品设计](../product/ai-low-code-designer.md)，Studio 工作区与画布参见 [Studio Workbench](./studio-workbench.md)，具体技术选型参见 [技术决策汇总](./technical-decisions.md)。当前进度和实施顺序分别见 [项目状态](../project/status.md) 与 [项目路线图](../project/roadmap.md)。
 
 ## 1. 架构目标
 
@@ -527,7 +527,7 @@ Editor State                    Page Document
 
 Studio 不使用写死的左中右页面结构。Workbench Shell 根据版本化布局树渲染嵌套 Split、Tab Group 和 Panel Host，支持面板调整尺寸、移动、停靠、折叠、关闭与持久化恢复。内置面板通过 Panel Registry 注册，默认布局只是可替换配置。
 
-画布使用独立 Canvas Viewport。触控板 pinch、双指平移、指针中心缩放和 Fit 命令只改变 Preview Surface 与 Interaction Overlay，不缩放 Studio Chrome 和其他面板。详细模型和验收标准见 [Studio Workbench 架构](./STUDIO_WORKBENCH.md)。
+画布使用独立 Canvas Viewport。触控板 pinch、双指平移、指针中心缩放和 Fit 命令只改变 Preview Surface 与 Interaction Overlay，不缩放 Studio Chrome 和其他面板。详细模型和验收标准见 [Studio Workbench 架构](./studio-workbench.md)。
 
 ### 7.4 `packages/studio-ui`
 

@@ -1,6 +1,6 @@
 # Studio Workbench 架构
 
-> 状态：已确定，作为 M4 Studio 的实施基线。页面领域架构见 [ARCHITECTURE.md](./ARCHITECTURE.md)，关键决策见 [ADR-0003](../adr/0003-studio-workbench-and-canvas-viewport.md)。
+> 状态：已确定，作为 M4 Studio 的实施基线。页面领域架构见 [系统架构](./system-overview.md)，通用操作组件与组件库迁移见 [Studio UI 系统](./studio-ui-system.md)，关键决策见 [ADR-0003](../adr/0003-studio-workbench-and-canvas-viewport.md)。
 
 ## 1. 目标
 
