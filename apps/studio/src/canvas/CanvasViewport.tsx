@@ -7,7 +7,9 @@ import {
 } from "@agidn/preview-protocol";
 import { useStudioSession } from "../studio-session.js";
 import { COMPONENT_DRAG_MIME, NODE_DRAG_MIME, resolveInsertTarget, resolveMoveTarget, SAVED_COMPONENT_DRAG_MIME, type MoveTarget } from "../structure-drag.js";
-import { useI18n } from "../i18n.js";
+import { useI18n, type MessageDescriptor, type MessageKey } from "../i18n.js";
+import { structureDragErrorMessage } from "../i18n/structure-drag.js";
+import { message as localizedMessage } from "../i18n/types.js";
 import { screenToCanvas, zoomAtScreenPoint } from "./coordinates.js";
 
 type Breakpoint = "mobile" | "tablet" | "desktop";
@@ -27,10 +29,15 @@ const SIZE_BY_BREAKPOINT: Record<Breakpoint, { width: number; height: number }> 
 
 const MIN_SCALE = 0.15;
 const MAX_SCALE = 2;
+const BREAKPOINT_KEYS: Readonly<Record<Breakpoint, MessageKey>> = {
+  desktop: "canvas.desktop",
+  tablet: "canvas.tablet",
+  mobile: "canvas.mobile"
+};
 
 export function CanvasViewport() {
   const session = useStudioSession();
-  const { t } = useI18n();
+  const { format, t } = useI18n();
   const viewportRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const stateRef = useRef<ViewportState>({ scale: 0.68, offsetX: 56, offsetY: 46 });
@@ -52,7 +59,7 @@ export function CanvasViewport() {
   const [previewStatus, setPreviewStatus] = useState<PreviewStatus>("connecting");
   const [frameAttempt, setFrameAttempt] = useState(0);
   const [selectionRect, setSelectionRect] = useState<PreviewRect>();
-  const [previewError, setPreviewError] = useState<string>();
+  const [previewError, setPreviewError] = useState<MessageDescriptor>();
   const [previewContentHeight, setPreviewContentHeight] = useState(0);
   const [movePreview, setMovePreview] = useState<{ rect: PreviewRect; position: "before" | "inside" | "after" }>();
   const [insertPreview, setInsertPreview] = useState<{ rect: PreviewRect; position: "before" | "inside" | "after" }>();
@@ -151,7 +158,7 @@ export function CanvasViewport() {
         const resolution = resolveInsertTarget(session.document, session.catalog, source, message.nodeId, message.pointerY, message.rect);
         if (!resolution.valid) {
           setInsertPreview(undefined);
-          if (request.commit) setPreviewError(resolution.reason);
+          if (request.commit) setPreviewError(structureDragErrorMessage(resolution.reason));
           return;
         }
         setInsertPreview({ rect: message.rect, position: resolution.position });
@@ -169,7 +176,7 @@ export function CanvasViewport() {
         if (!resolution.valid) {
           moveCandidateRef.current = undefined;
           setMovePreview(undefined);
-          if (request.commit && !resolution.reason.includes("already at")) setPreviewError(resolution.reason);
+          if (request.commit && resolution.reason !== "alreadyAtPosition") setPreviewError(structureDragErrorMessage(resolution.reason));
           return;
         }
         moveCandidateRef.current = { sourceNodeId: request.sourceNodeId, target: resolution.target };
@@ -181,7 +188,7 @@ export function CanvasViewport() {
           });
         }
       } else if (message.type === "preview.renderError") {
-        setPreviewError(message.message);
+        setPreviewError(localizedMessage("errors.previewRuntime", { message: message.message }));
       } else if (message.type === "preview.contentOverflow") {
         setPreviewContentHeight(Math.ceil(message.contentHeight));
       }
@@ -194,7 +201,7 @@ export function CanvasViewport() {
     if (previewStatus !== "connecting") return;
     const timeout = window.setTimeout(() => {
       setPreviewStatus("error");
-      setPreviewError("Preview did not connect. Check Preview Host, then retry.");
+      setPreviewError(localizedMessage("errors.previewConnect"));
     }, 5000);
     return () => window.clearTimeout(timeout);
   }, [frameAttempt, previewStatus]);
@@ -328,27 +335,27 @@ export function CanvasViewport() {
   return (
     <div className="canvas-panel">
       <div className="canvas-toolbar">
-        <div className="canvas-toolbar__group" aria-label="Responsive breakpoint">
+        <div className="canvas-toolbar__group" aria-label={t("canvas.responsiveBreakpoint")}>
           {(["desktop", "tablet", "mobile"] as const).map((value) => (
             <button type="button" className={breakpoint === value ? "is-active" : ""} key={value} onClick={() => {
               setPreviewContentHeight(0);
               setBreakpoint(value);
             }}>
-              {value[0]!.toUpperCase() + value.slice(1)}
+              {t(BREAKPOINT_KEYS[value])}
             </button>
           ))}
         </div>
         <div className="canvas-toolbar__group">
           <button type="button" onClick={() => centerAtScale(1)}>100%</button>
-          <button type="button" onClick={fitPage}>Fit page</button>
-          <button type="button" disabled={!selectionRect} onClick={fitSelection}>Fit selection</button>
+          <button type="button" onClick={fitPage}>{t("canvas.fitPage")}</button>
+          <button type="button" disabled={!selectionRect} onClick={fitSelection}>{t("canvas.fitSelection")}</button>
           <span className="canvas-zoom">{Math.round(viewport.scale * 100)}%</span>
         </div>
       </div>
       <div
         ref={viewportRef}
         className={`canvas-viewport${panning ? " is-panning" : ""}`}
-        aria-label="Page canvas. Use trackpad to pan and pinch to zoom."
+        aria-label={t("canvas.ariaLabel")}
         tabIndex={0}
         onPointerDown={startPan}
         onPointerMove={movePan}
@@ -389,7 +396,7 @@ export function CanvasViewport() {
           const sourceNodeId = session.activeNodeDragId ?? event.dataTransfer.getData(NODE_DRAG_MIME);
           if (!payload?.id && !sourceNodeId) return;
           event.preventDefault();
-          if (previewStatus !== "ready") { setPreviewError("Preview is not connected, so the drop target cannot be resolved."); return; }
+          if (previewStatus !== "ready") { setPreviewError(localizedMessage("errors.previewNotConnected")); return; }
           const bounds = event.currentTarget.getBoundingClientRect();
           const point = screenToCanvas({ x: event.clientX - bounds.left, y: event.clientY - bounds.top }, stateRef.current);
           if (sourceNodeId) {
@@ -409,7 +416,7 @@ export function CanvasViewport() {
           <iframe
             ref={iframeRef}
             className="canvas-preview"
-            title="Page preview"
+            title={t("canvas.previewTitle")}
             src={previewUrl}
             key={frameAttempt}
             sandbox="allow-scripts"
@@ -436,15 +443,15 @@ export function CanvasViewport() {
               }}
               onDragEnd={() => { session.endNodeDrag(); moveCandidateRef.current = undefined; setMovePreview(undefined); }}
             >
-              <span>{session.selectedNodeId} · drag to move</span>
+              <span>{session.selectedNodeId} · {t("canvas.dragToMove")}</span>
             </div>
           ) : null}
           {movePreview ? <div className={`canvas-move-preview canvas-move-preview--${movePreview.position}`} style={{ left: movePreview.rect.x, top: movePreview.position === "after" ? movePreview.rect.y + movePreview.rect.height : movePreview.rect.y, width: movePreview.rect.width, height: movePreview.position === "inside" ? movePreview.rect.height : 3 }} /> : null}
-          {insertPreview ? <div className={`canvas-insert-preview canvas-insert-preview--${insertPreview.position}`} style={{ left: insertPreview.rect.x, top: insertPreview.position === "after" ? insertPreview.rect.y + insertPreview.rect.height : insertPreview.rect.y, width: insertPreview.rect.width, height: insertPreview.position === "inside" ? insertPreview.rect.height : 3 }}><span>{insertPreview.position === "inside" ? t("insertInside") : insertPreview.position === "before" ? t("insertBefore") : t("insertAfter")}</span></div> : null}
+          {insertPreview ? <div className={`canvas-insert-preview canvas-insert-preview--${insertPreview.position}`} style={{ left: insertPreview.rect.x, top: insertPreview.position === "after" ? insertPreview.rect.y + insertPreview.rect.height : insertPreview.rect.y, width: insertPreview.rect.width, height: insertPreview.position === "inside" ? insertPreview.rect.height : 3 }}><span>{insertPreview.position === "inside" ? t("canvas.insertInside") : insertPreview.position === "before" ? t("canvas.insertBefore") : t("canvas.insertAfter")}</span></div> : null}
         </div>
-        {previewStatus === "connecting" ? <div className="canvas-connection" role="status">Connecting to Preview…</div> : null}
-        {previewError ? <div className="canvas-error" role="alert"><span>{previewError}</span>{previewStatus === "error" ? <button type="button" onClick={() => { setPreviewError(undefined); setPreviewStatus("connecting"); setFrameAttempt((value) => value + 1); }}>Retry</button> : null}</div> : null}
-        <div className="canvas-help">Trackpad to pan · Pinch to zoom · Space + drag</div>
+        {previewStatus === "connecting" ? <div className="canvas-connection" role="status">{t("canvas.connecting")}</div> : null}
+        {previewError ? <div className="canvas-error" role="alert"><span>{format(previewError)}</span>{previewStatus === "error" ? <button type="button" onClick={() => { setPreviewError(undefined); setPreviewStatus("connecting"); setFrameAttempt((value) => value + 1); }}>{t("common.retry")}</button> : null}</div> : null}
+        <div className="canvas-help">{t("canvas.help")}</div>
       </div>
     </div>
   );

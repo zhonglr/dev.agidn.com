@@ -12,9 +12,18 @@ export interface MoveTarget {
 }
 
 export interface InsertSource { kind: PageNode["kind"]; componentRef?: string }
-export type InsertResolution = { valid: true; target: MoveTarget; position: "before" | "inside" | "after" } | { valid: false; reason: string };
+export type StructureDragErrorCode =
+  | "dropTargetMissing"
+  | "sourceOrTargetMissing"
+  | "selfOrDescendant"
+  | "requiredSourceSlot"
+  | "alreadyAtPosition"
+  | "nodeMissing"
+  | "alreadyFirst"
+  | "alreadyLast";
+export type InsertResolution = { valid: true; target: MoveTarget; position: "before" | "inside" | "after" } | { valid: false; reason: StructureDragErrorCode };
 
-export type MoveResolution = { valid: true; target: MoveTarget; position: "before" | "inside" | "after" } | { valid: false; reason: string };
+export type MoveResolution = { valid: true; target: MoveTarget; position: "before" | "inside" | "after" } | { valid: false; reason: StructureDragErrorCode };
 
 interface NodeLocation {
   node: PageNode;
@@ -78,7 +87,7 @@ export function resolveInsertTarget(
   hitRect?: { y: number; height: number }
 ): InsertResolution {
   const hit = findLocation(document, hitNodeId);
-  if (!hit) return { valid: false, reason: "The drop target no longer exists." };
+  if (!hit) return { valid: false, reason: "dropTargetMissing" };
   const ratio = hitRect && pointerY !== undefined && hitRect.height > 0 ? (pointerY - hitRect.y) / hitRect.height : 0.5;
   const slot = ratio >= 0.25 && ratio <= 0.75 ? slotForInsert(catalog, hit.node, source) : undefined;
   if (slot) return { valid: true, target: { parentId: hit.node.id, slot }, position: "inside" };
@@ -138,8 +147,8 @@ export function resolveMoveTarget(
 ): MoveResolution {
   const source = findLocation(document, sourceNodeId);
   const hit = findLocation(document, hitNodeId);
-  if (!source || !hit) return { valid: false, reason: "The dragged node or drop target no longer exists." };
-  if (contains(source.node, hit.node.id)) return { valid: false, reason: "A node cannot be moved into itself or one of its descendants." };
+  if (!source || !hit) return { valid: false, reason: "sourceOrTargetMissing" };
+  if (contains(source.node, hit.node.id)) return { valid: false, reason: "selfOrDescendant" };
 
   const ratio = hitRect.height > 0 ? (pointerY - hitRect.y) / hitRect.height : 0.5;
   const insideSlot = ratio >= 0.25 && ratio <= 0.75 ? slotForNode(catalog, hit.node, source.node, source) : undefined;
@@ -168,9 +177,9 @@ export function resolveMoveTarget(
   }
 
   if (requiredSourceWouldEmpty(catalog, source, targetParent, targetSlot)) {
-    return { valid: false, reason: "The source slot requires this child and cannot be left empty." };
+    return { valid: false, reason: "requiredSourceSlot" };
   }
-  if (isNoop(source, targetParent, targetSlot, beforeNodeId)) return { valid: false, reason: "The node is already at this position." };
+  if (isNoop(source, targetParent, targetSlot, beforeNodeId)) return { valid: false, reason: "alreadyAtPosition" };
   return {
     valid: true,
     target: { parentId: targetParent.id, ...(targetSlot ? { slot: targetSlot } : {}), ...(beforeNodeId ? { beforeNodeId } : {}) },
@@ -180,9 +189,9 @@ export function resolveMoveTarget(
 
 export function resolveSiblingMove(document: PageDocument, sourceNodeId: string, direction: "up" | "down"): MoveResolution {
   const source = findLocation(document, sourceNodeId);
-  if (!source) return { valid: false, reason: "The node no longer exists." };
+  if (!source) return { valid: false, reason: "nodeMissing" };
   const targetIndex = direction === "up" ? source.index - 1 : source.index + 1;
-  if (targetIndex < 0 || targetIndex >= source.collection.length) return { valid: false, reason: `The node is already ${direction === "up" ? "first" : "last"} in this group.` };
+  if (targetIndex < 0 || targetIndex >= source.collection.length) return { valid: false, reason: direction === "up" ? "alreadyFirst" : "alreadyLast" };
   const beforeNodeId = direction === "up" ? source.collection[targetIndex]!.id : source.collection[targetIndex + 1]?.id;
   return {
     valid: true,

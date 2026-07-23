@@ -1,0 +1,15 @@
+# Studio UI facade
+
+This directory is the only place in Studio allowed to import `@react-spectrum/s2` or `react-aria-components`.
+
+Rules:
+
+- Export AGIDN-owned semantic props; never extend or re-export toolkit props and types.
+- Keep theme, locale, accessibility, form, focus and ref behavior in the public contract.
+- Do not add an outer element only to accept `className`.
+- Keep StudioSession, PageDocument, commands, panels and canvas state outside this directory.
+- Import public controls through this directory's `index.ts`; do not import implementation files directly from features.
+- Low-frequency Spectrum surfaces should own an overlay `StudioUiProvider` inside their lazy boundary; they must receive locale and color scheme from application state rather than creating another source of truth.
+- Replace one backend implementation at a time and delete the obsolete adapter after its contract tests pass.
+
+The governing design is [Studio UI 系统架构](../../../../../docs/architecture/studio-ui-system.md) and [ADR-0004](../../../../../docs/adr/0004-studio-ui-facade-and-spectrum-to-rac.md).

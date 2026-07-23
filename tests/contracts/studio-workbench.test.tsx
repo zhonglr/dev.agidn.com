@@ -169,4 +169,28 @@ describe("Studio Workbench", () => {
     expect(html).toContain('role="separator"');
     expect(html).toContain('role="tablist"');
   });
+
+  it("accepts localized accessibility and action messages from the host", () => {
+    const panels = new PanelRegistry([
+      { id: "outline", title: "大纲", defaultLocation: "primary", canClose: true, canMove: true, canDock: true, render: () => <p>大纲内容</p> },
+      { id: "components", title: "组件", defaultLocation: "primary", canClose: true, canMove: true, canDock: true, render: () => <p>组件内容</p> },
+      { id: "canvas", title: "画布", defaultLocation: "center", canClose: false, canMove: true, canDock: false, render: () => <p>画布内容</p> }
+    ]);
+    const html = renderToStaticMarkup(<Workbench
+      layout={defaultLayout}
+      panels={panels}
+      messages={{
+        panelTabs: "面板标签页",
+        maximizePanel: "最大化面板",
+        maximizePanelLabel: (panel) => `最大化${panel}`,
+        closePanel: (panel) => `关闭${panel}`,
+        resizePanels: "调整面板大小"
+      }}
+      onLayoutChange={() => undefined}
+    />);
+    expect(html).toContain('aria-label="面板标签页"');
+    expect(html).toContain('aria-label="调整面板大小"');
+    expect(html).toContain('aria-label="最大化大纲"');
+    expect(html).toContain('aria-label="关闭组件"');
+  });
 });

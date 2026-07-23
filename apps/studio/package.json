@@ -13,6 +13,7 @@
     "@agidn/document-schema": "workspace:*",
     "@agidn/preview-protocol": "workspace:*",
     "@agidn/studio-workbench": "workspace:*",
+    "@react-spectrum/s2": "^1.5.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

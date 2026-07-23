@@ -1,0 +1,91 @@
+import type { StudioThemePluginManifest, ThemeColors } from "../types.js";
+
+const lightColors: ThemeColors = {
+  "canvas.default": "#ffffff",
+  "canvas.inset": "#f6f8fa",
+  "canvas.overlay": "#ffffff",
+  "canvas.subtle": "#f6f8fa",
+  "border.default": "#d0d7de",
+  "border.muted": "#d8dee4",
+  "foreground.default": "#1f2328",
+  "foreground.muted": "#656d76",
+  "foreground.subtle": "#6e7781",
+  "foreground.onEmphasis": "#ffffff",
+  "accent.foreground": "#0969da",
+  "accent.emphasis": "#0969da",
+  "accent.muted": "rgba(84, 174, 255, .4)",
+  "accent.subtle": "#ddf4ff",
+  "activity.activeBorder": "#fd8c73",
+  "neutral.subtle": "rgba(175, 184, 193, .2)",
+  "neutral.muted": "rgba(175, 184, 193, .2)",
+  "success.foreground": "#1a7f37",
+  "success.emphasis": "#1f883d",
+  "success.hover": "#1a7f37",
+  "success.subtle": "rgba(46, 160, 67, .15)",
+  "attention.foreground": "#9a6700",
+  "attention.subtle": "rgba(212, 167, 44, .4)",
+  "danger.foreground": "#cf222e",
+  "danger.emphasis": "#a40e26",
+  "danger.subtle": "rgba(255, 129, 130, .1)",
+  "done.foreground": "#8250df",
+  "done.subtle": "rgba(130, 80, 223, .1)",
+  "button.primary.background": "#1f883d",
+  "button.primary.hoverBackground": "#1a7f37",
+  "button.primary.border": "rgba(31, 35, 40, .15)",
+  backdrop: "rgba(31, 35, 40, .45)",
+  shadow: "rgba(31, 35, 40, .15)",
+  "workspace.background": "#f6f8fa",
+  "workspace.grid": "#d8dee4"
+};
+
+const darkColors: ThemeColors = {
+  "canvas.default": "#22272e",
+  "canvas.inset": "#1c2128",
+  "canvas.overlay": "#2d333b",
+  "canvas.subtle": "#2d333b",
+  "border.default": "#444c56",
+  "border.muted": "#373e47",
+  "foreground.default": "#adbac7",
+  "foreground.muted": "#768390",
+  "foreground.subtle": "#636e7b",
+  "foreground.onEmphasis": "#ffffff",
+  "accent.foreground": "#539bf5",
+  "accent.emphasis": "#316dca",
+  "accent.muted": "rgba(65, 132, 228, .4)",
+  "accent.subtle": "rgba(65, 132, 228, .15)",
+  "activity.activeBorder": "#ec775c",
+  "neutral.subtle": "rgba(99, 110, 123, .1)",
+  "neutral.muted": "rgba(99, 110, 123, .4)",
+  "success.foreground": "#57ab5a",
+  "success.emphasis": "#347d39",
+  "success.hover": "#46954a",
+  "success.subtle": "rgba(52, 125, 57, .15)",
+  "attention.foreground": "#c69026",
+  "attention.subtle": "rgba(174, 124, 20, .15)",
+  "danger.foreground": "#e5534b",
+  "danger.emphasis": "#c93c37",
+  "danger.subtle": "rgba(229, 83, 75, .1)",
+  "done.foreground": "#986ee2",
+  "done.subtle": "rgba(152, 110, 226, .1)",
+  "button.primary.background": "#347d39",
+  "button.primary.hoverBackground": "#46954a",
+  "button.primary.border": "rgba(205, 217, 229, .1)",
+  backdrop: "rgba(28, 33, 40, .55)",
+  shadow: "rgba(28, 33, 40, .8)",
+  "workspace.background": "#1c2128",
+  "workspace.grid": "#373e47"
+};
+
+export const builtinThemePlugin: StudioThemePluginManifest = {
+  id: "agidn.builtin-themes",
+  name: "Built-in Themes",
+  publisher: "AGIDN",
+  version: "1.0.0",
+  engines: { studio: ">=0.1.0" },
+  contributes: {
+    themes: [
+      { id: "light", label: "Light", description: "The built-in light color theme.", uiTheme: "light", colors: lightColors },
+      { id: "dark", label: "Dark", description: "The built-in dimmed dark color theme.", uiTheme: "dark", colors: darkColors }
+    ]
+  }
+};

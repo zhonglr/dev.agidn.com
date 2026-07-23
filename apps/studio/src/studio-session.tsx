@@ -15,9 +15,39 @@ import {
 } from "@agidn/api-protocol";
 import type { DocumentCommand } from "@agidn/command-engine";
 import { findNode, type ComponentNode, type PageDocument, type PageNode } from "@agidn/document-schema";
+import { useI18n, type MessageDescriptor, type MessageKey } from "./i18n.js";
+import { message, messageError, messageFromError } from "./i18n/types.js";
 import type { MoveTarget } from "./structure-drag.js";
 
 type SessionStatus = "loading" | "saved" | "saving" | "error";
+
+const VIOLATION_MESSAGE_KEYS: Readonly<Record<string, MessageKey>> = {
+  COMMAND_INVALID: "errors.commandInvalid",
+  COMMAND_TARGET_INVALID: "errors.commandTargetInvalid",
+  SCHEMA_INVALID: "errors.schemaInvalid",
+  DUPLICATE_NODE_ID: "errors.duplicateNodeId",
+  RAW_COLOR_FORBIDDEN: "errors.rawColorForbidden",
+  RAW_SPACING_FORBIDDEN: "errors.rawSpacingForbidden",
+  RAW_STYLE_FORBIDDEN: "errors.rawStyleForbidden",
+  ABSOLUTE_POSITION_FORBIDDEN: "errors.absolutePositionForbidden",
+  UNKNOWN_COMPONENT: "errors.unknownComponent",
+  UNKNOWN_PROP: "errors.unknownProp",
+  INVALID_PROP_VALUE: "errors.invalidPropValue",
+  INVALID_SLOT: "errors.invalidSlot",
+  INVALID_SLOT_CONTENT: "errors.invalidSlotContent",
+  REQUIRED_SLOT_MISSING: "errors.requiredSlotMissing",
+  MISSING_RESPONSIVE_RULE: "errors.missingResponsiveRule",
+  INVALID_OVERLAY: "errors.invalidOverlay",
+  ACCESSIBLE_NAME_REQUIRED: "errors.accessibleNameRequired",
+  UNKNOWN_ACTION: "errors.unknownAction",
+  INVALID_ACTION_ARGUMENT: "errors.invalidActionArgument",
+  UNKNOWN_VARIANT: "errors.unknownVariant",
+  UNKNOWN_STATE: "errors.unknownState",
+  UNKNOWN_TOKEN: "errors.unknownToken",
+  TOKEN_TYPE_MISMATCH: "errors.tokenTypeMismatch",
+  INVALID_LAYOUT_NESTING: "errors.invalidLayoutNesting",
+  LAYOUT_DEPTH_EXCEEDED: "errors.layoutDepthExceeded"
+};
 
 export interface InsertTarget {
   parentId: string;
@@ -41,7 +71,7 @@ interface StudioSessionValue {
   selectedNodeId?: string;
   selectedNode?: PageNode;
   status: SessionStatus;
-  error?: string;
+  error?: MessageDescriptor;
   canUndo: boolean;
   canRedo: boolean;
   history: GetHistoryResponse["entries"];
@@ -75,7 +105,7 @@ function commandId(prefix: string): string {
 
 async function jsonResponse(response: Response): Promise<unknown> {
   const value: unknown = await response.json();
-  if (!response.ok && response.status >= 500) throw new Error("Workspace Server could not process the request.");
+  if (!response.ok && response.status >= 500) throw messageError("errors.workspaceRequest");
   return value;
 }
 
@@ -89,27 +119,27 @@ function allNodes(document: PageDocument): PageNode[] {
   return result;
 }
 
-function defaultValue(definition: GetCatalogResponse["components"]["components"][string]["props"][string]): unknown {
+function defaultValue(definition: GetCatalogResponse["components"]["components"][string]["props"][string], defaultContent: string): unknown {
   if (definition.type === "boolean") return false;
   if (definition.type === "number") return 0;
   if (definition.type === "enum") return definition.values?.[0] ?? "";
-  return "New content";
+  return defaultContent;
 }
 
-function createComponentNode(catalog: GetCatalogResponse, componentRef: string, depth = 0): ComponentNode | undefined {
+function createComponentNode(catalog: GetCatalogResponse, componentRef: string, defaultContent: string, depth = 0): ComponentNode | undefined {
   const definition = catalog.components.components[componentRef];
   if (!definition) return undefined;
   const suffix = crypto.randomUUID().replaceAll("-", "").slice(0, 10);
   const props = Object.fromEntries(Object.entries(definition.props)
     .filter(([, prop]) => prop.required)
-    .map(([name, prop]) => [name, defaultValue(prop)]));
+    .map(([name, prop]) => [name, defaultValue(prop, defaultContent)]));
   const slots: Record<string, PageNode[]> = {};
   if (depth < 3) {
     for (const [slotName, slot] of Object.entries(definition.slots)) {
       const count = Math.max(slot.minItems ?? 0, slot.required ? 1 : 0);
       if (count === 0) continue;
       const childRef = slot.accepts?.find((candidate) => candidate !== "*") ?? "Text";
-      const children = Array.from({ length: count }, () => createComponentNode(catalog, childRef, depth + 1)).filter((node): node is ComponentNode => Boolean(node));
+      const children = Array.from({ length: count }, () => createComponentNode(catalog, childRef, defaultContent, depth + 1)).filter((node): node is ComponentNode => Boolean(node));
       if (children.length) slots[slotName] = children;
     }
   }
@@ -158,13 +188,14 @@ function defaultInsertTarget(document: PageDocument, catalog: GetCatalogResponse
 }
 
 export function StudioSessionProvider({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const [revisionState, setRevisionState] = useState<GetDocumentResponse["revision"]>();
   const revisionRef = useRef<GetDocumentResponse["revision"] | undefined>(undefined);
   revisionRef.current = revisionState;
   const [catalog, setCatalog] = useState<GetCatalogResponse>();
   const [selectedNodeId, setSelectedNodeId] = useState<string>();
   const [status, setStatus] = useState<SessionStatus>("loading");
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState<MessageDescriptor>();
   const [savedComponents, setSavedComponents] = useState<SavedComponent[]>(loadSavedComponents);
   const [activeInsertDrag, setActiveInsertDrag] = useState<InsertDragPayload>();
   const [activeNodeDragId, setActiveNodeDragId] = useState<string>();
@@ -174,7 +205,7 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
 
   const loadHistory = useCallback(async (): Promise<void> => {
     const value = await jsonResponse(await fetch("/api/v1/history"));
-    if (!checkGetHistoryResponse(value)) throw new Error("Workspace history response failed protocol validation.");
+    if (!checkGetHistoryResponse(value)) throw messageError("errors.historyProtocol");
     setHistoryState(value as GetHistoryResponse);
   }, []);
 
@@ -185,8 +216,8 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
         jsonResponse(await fetch("/api/v1/document")),
         jsonResponse(await fetch("/api/v1/catalog"))
       ]);
-      if (!checkGetDocumentResponse(documentValue)) throw new Error("Workspace document response failed protocol validation.");
-      if (!checkGetCatalogResponse(catalogValue)) throw new Error("Workspace catalog response failed protocol validation.");
+      if (!checkGetDocumentResponse(documentValue)) throw messageError("errors.documentProtocol");
+      if (!checkGetCatalogResponse(catalogValue)) throw messageError("errors.catalogProtocol");
       const response = documentValue as GetDocumentResponse;
       setRevisionState(response.revision);
       setCatalog(catalogValue as GetCatalogResponse);
@@ -194,7 +225,7 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
       setStatus("saved");
       await loadHistory();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Workspace could not be loaded.");
+      setError(messageFromError(caught, "errors.workspaceLoad"));
       setStatus("error");
     }
   }, [loadHistory]);
@@ -211,11 +242,14 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ protocolVersion: "1.0.0", baseRevision: current.revision, source: "human", commands: [command] })
       }));
-      if (!checkCommitCommandsResponse(value)) throw new Error("Workspace commit response failed protocol validation.");
+      if (!checkCommitCommandsResponse(value)) throw messageError("errors.commitProtocol");
       const response = value as CommitCommandsResponse;
       if (!response.ok) {
-        setError(response.error === "REVISION_CONFLICT" ? "Revision conflict: reloaded the latest document." : response.violations?.[0]?.message ?? `Server rejected the change: ${response.error}`);
         await reload();
+        setError(response.error === "REVISION_CONFLICT"
+          ? message("errors.revisionConflict")
+          : message(VIOLATION_MESSAGE_KEYS[response.violations?.[0]?.code ?? ""] ?? "errors.serverRejected"));
+        setStatus("error");
         return false;
       }
       setRevisionState(response.revision);
@@ -223,7 +257,7 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
       await loadHistory();
       return true;
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Change could not be saved.");
+      setError(messageFromError(caught, "errors.changeSave"));
       setStatus("error");
       return false;
     }
@@ -242,9 +276,9 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
     if (!current || !catalog) return false;
     const selected = selectedNodeId ? findNode(current.document, selectedNodeId) : undefined;
     const target = explicitTarget ?? defaultInsertTarget(current.document, catalog, selected, componentRef);
-    const node = createComponentNode(catalog, componentRef);
+    const node = createComponentNode(catalog, componentRef, t("defaults.newContent"));
     if (!target || !node) {
-      setError("No compatible insertion target is available for this component.");
+      setError(message("errors.noInsertTarget"));
       setStatus("error");
       return false;
     }
@@ -255,7 +289,7 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
     });
     if (accepted) setSelectedNodeId(node.id);
     return accepted;
-  }, [catalog, commit, selectedNodeId]);
+  }, [catalog, commit, selectedNodeId, t]);
 
   const insertSavedComponent = useCallback(async (savedId: string, explicitTarget?: InsertTarget): Promise<boolean> => {
     const current = revisionRef.current;
@@ -265,7 +299,7 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
     const componentRef = saved.node.kind === "component" ? saved.node.componentRef : "";
     const target = explicitTarget ?? (componentRef ? defaultInsertTarget(current.document, catalog, selected, componentRef) : selected?.kind === "layout" ? { parentId: selected.id } : undefined);
     const node = cloneNodeWithFreshIds(saved.node);
-    if (!target) { setError("No compatible insertion target is available for this saved component."); setStatus("error"); return false; }
+    if (!target) { setError(message("errors.noSavedInsertTarget")); setStatus("error"); return false; }
     const accepted = await commit({
       protocolVersion: "1.0.0", commandId: commandId("insert_saved"), type: "node.insert",
       targetParentId: target.parentId, ...(target.slot ? { targetSlot: target.slot } : {}),
@@ -309,12 +343,12 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
 
   const exportRevision = useCallback(async (): Promise<ExportContextResponse> => {
     const revision = revisionRef.current?.revision;
-    if (revision === undefined) throw new Error("The document has not loaded yet.");
+    if (revision === undefined) throw messageError("errors.documentNotLoaded");
     const value = await jsonResponse(await fetch("/api/v1/export", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ protocolVersion: "1.0.0", revision })
     }));
-    if (!checkExportContextResponse(value)) throw new Error("Workspace export response failed protocol validation.");
+    if (!checkExportContextResponse(value)) throw messageError("errors.exportProtocol");
     return value as ExportContextResponse;
   }, []);
 
@@ -327,12 +361,12 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ protocolVersion: "1.0.0", baseRevision: current.revision, source: "human" })
       }));
-      if (!checkNavigationResponse(value)) throw new Error("Workspace navigation response failed protocol validation.");
+      if (!checkNavigationResponse(value)) throw messageError("errors.navigationProtocol");
       const response = value as NavigationResponse;
-      if (!response.ok) throw new Error(direction === "undo" ? "There is nothing to undo." : "There is nothing to redo.");
+      if (!response.ok) throw messageError(direction === "undo" ? "actions.nothingToUndo" : "actions.nothingToRedo");
       setRevisionState(response.revision); setStatus("saved"); await loadHistory();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "History navigation failed."); setStatus("error");
+      setError(messageFromError(caught, "errors.historyNavigation")); setStatus("error");
     }
   }, [loadHistory, status]);
 
@@ -345,18 +379,20 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ protocolVersion: "1.0.0", baseRevision: current.revision, targetRevision, source: "human" })
       }));
-      if (!checkNavigationResponse(value)) throw new Error("Workspace restore response failed protocol validation.");
+      if (!checkNavigationResponse(value)) throw messageError("errors.restoreProtocol");
       const response = value as NavigationResponse;
       if (!response.ok) {
         if (response.error === "REVISION_CONFLICT") await reload();
-        throw new Error(response.error === "REVISION_NOT_FOUND" ? `Revision ${targetRevision} is no longer available.` : response.error === "ALREADY_CURRENT" ? "That revision is already current." : "Revision could not be restored.");
+        throw response.error === "REVISION_NOT_FOUND"
+          ? messageError("errors.revisionUnavailable", { revision: targetRevision })
+          : response.error === "ALREADY_CURRENT" ? messageError("errors.revisionAlreadyCurrent") : messageError("errors.restoreFailed");
       }
       setRevisionState(response.revision);
       if (selectedNodeId && !findNode(response.revision.document, selectedNodeId)) setSelectedNodeId(undefined);
       setStatus("saved"); await loadHistory();
       return true;
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Revision could not be restored."); setStatus("error");
+      setError(messageFromError(caught, "errors.restoreFailed")); setStatus("error");
       return false;
     }
   }, [loadHistory, reload, selectedNodeId, status]);

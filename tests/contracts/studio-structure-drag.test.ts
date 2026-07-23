@@ -20,7 +20,7 @@ describe("Studio structure drag intent", async () => {
 
   it("resolves compatible named slots and rejects cycles", () => {
     expect(resolveMoveTarget(project.document, catalog, "badge_popular", "pricing_card_business", 50, { y: 0, height: 100 })).toMatchObject({ valid: true, position: "inside", target: { parentId: "pricing_card_business", slot: "badge" } });
-    expect(resolveMoveTarget(project.document, catalog, "section_pricing", "grid_plans", 50, { y: 0, height: 100 })).toMatchObject({ valid: false, reason: expect.stringContaining("descendants") });
+    expect(resolveMoveTarget(project.document, catalog, "section_pricing", "grid_plans", 50, { y: 0, height: 100 })).toEqual({ valid: false, reason: "selfOrDescendant" });
   });
 
   it("resolves visible insert positions and component slots", () => {
@@ -36,7 +36,7 @@ describe("Studio structure drag intent", async () => {
   });
 
   it("prevents emptying a required source slot", () => {
-    expect(resolveMoveTarget(project.document, catalog, "button_pro", "stack_faq", 50, { y: 0, height: 100 })).toMatchObject({ valid: false, reason: expect.stringContaining("requires") });
+    expect(resolveMoveTarget(project.document, catalog, "button_pro", "stack_faq", 50, { y: 0, height: 100 })).toEqual({ valid: false, reason: "requiredSourceSlot" });
   });
 
   it("resolves keyboard sibling reordering", () => {
