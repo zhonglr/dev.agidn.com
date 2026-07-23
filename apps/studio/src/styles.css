@@ -2086,6 +2086,12 @@ kbd {
   pointer-events: auto;
 }
 
+/* While the selection is the drag source, hide the overlay so only the
+   in-preview target ghost reads as the single highlighted frame. */
+.canvas-selection.is-drag-source {
+  opacity: 0;
+}
+
 .canvas-selection.is-revealing-selection {
   transition:
     left var(--studio-motion-normal) ease-out,

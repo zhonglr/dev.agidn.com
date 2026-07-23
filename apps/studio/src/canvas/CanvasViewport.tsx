@@ -742,7 +742,9 @@ export function CanvasViewport() {
         </div>
         {selectionRect ? (
           <div
-            className={`canvas-selection${revealingSelection ? " is-revealing-selection" : ""}`}
+            className={`canvas-selection${revealingSelection ? " is-revealing-selection" : ""}${
+              session.activeNodeDragId === session.selectedNodeId ? " is-drag-source" : ""
+            }`}
             style={screenRectStyle(selectionRect)}
             draggable={Boolean(session.selectedNodeId)}
             onDragStart={(event) => {
