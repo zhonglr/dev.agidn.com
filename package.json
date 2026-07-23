@@ -14,8 +14,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
+    "test": "pnpm docs:check && vitest run",
     "test:watch": "vitest",
+    "docs:check": "node scripts/check-docs.mjs",
     "dev": "pnpm --parallel --filter @agidn/studio --filter @agidn/preview-host --filter @agidn/workspace-server run dev",
     "studio": "pnpm --filter @agidn/studio dev",
     "studio:build": "pnpm --filter @agidn/studio build",
