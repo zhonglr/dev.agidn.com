@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { type TokenRegistry } from "@agidn/design-tokens";
 import { checkPageDocument, type PageDocument } from "@agidn/document-schema";
 import {
@@ -35,6 +35,16 @@ function nodeElement(nodeId: string): HTMLElement | undefined {
   return [...document.querySelectorAll<HTMLElement>("[data-node-id]")].find(
     (element) => element.dataset.nodeId === nodeId
   );
+}
+
+const FLIP_ANIMATION_ID = "agidn-flip";
+const FLIP_DURATION_MS = 180;
+
+interface RectSnapshot {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
 }
 
 function rectFor(element: Element) {
@@ -233,6 +243,54 @@ export function PreviewApp() {
       observer.disconnect();
     };
   }, [post, state.breakpoint, state.document, state.initialized, state.revision]);
+
+  // FLIP: after every render, glide nodes from their previous position to
+  // their new one, so ghost reflow (and undo/breakpoint changes) animate
+  // instead of jumping. The ghost itself fades in on first appearance.
+  const restingRectsRef = useRef(new Map<string, RectSnapshot>());
+  useLayoutEffect(() => {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const previous = restingRectsRef.current;
+    const next = new Map<string, RectSnapshot>();
+    document.querySelectorAll<HTMLElement>("[data-node-id]").forEach((element) => {
+      const id = element.getAttribute("data-node-id");
+      if (!id) return;
+      const running = element
+        .getAnimations()
+        .filter((animation) => animation.id === FLIP_ANIMATION_ID && animation.playState !== "finished" && animation.playState !== "idle");
+      // An in-flight FLIP means the element is mid-glide: continue from its
+      // current visual position instead of the stored resting position.
+      const first: RectSnapshot | undefined = running.length > 0 ? element.getBoundingClientRect() : previous.get(id);
+      if (running.length > 0) for (const animation of running) animation.cancel();
+      const last = element.getBoundingClientRect();
+      next.set(id, { left: last.left, top: last.top, width: last.width, height: last.height });
+      if (reduceMotion) return;
+      if (!first) {
+        if (id.startsWith("ghost/")) {
+          const fade = element.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120, easing: "ease-out" });
+          fade.id = FLIP_ANIMATION_ID;
+        }
+        return;
+      }
+      // Skip elements reappearing from display:none (e.g. a canceled move
+      // source): their resting rect was 0x0 and gliding from it looks wrong.
+      if (first.width === 0 || first.height === 0) return;
+      const dx = first.left - last.left;
+      const dy = first.top - last.top;
+      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+      const scaleX = last.width > 0 ? first.width / last.width : 1;
+      const scaleY = last.height > 0 ? first.height / last.height : 1;
+      const flip = element.animate(
+        [
+          { transform: `translate(${dx}px, ${dy}px) scale(${scaleX}, ${scaleY})`, transformOrigin: "0 0" },
+          { transform: "translate(0px, 0px) scale(1, 1)", transformOrigin: "0 0" }
+        ],
+        { duration: FLIP_DURATION_MS, easing: "cubic-bezier(0.2, 0, 0, 1)" }
+      );
+      flip.id = FLIP_ANIMATION_ID;
+    });
+    restingRectsRef.current = next;
+  });
 
   if (!state.initialized) {
     return <div className="preview-pending" aria-hidden="true" />;
