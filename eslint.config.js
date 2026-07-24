@@ -64,7 +64,7 @@ export default tseslint.config(
     }
   },
   {
-    files: ["apps/studio/src/**/*.{ts,tsx}", "apps/preview-host/src/**/*.{ts,tsx}"],
+    files: ["apps/studio/src/**/*.{ts,tsx}"],
     rules: {
       "no-console": ["error", { allow: ["error", "info", "warn"] }]
     }

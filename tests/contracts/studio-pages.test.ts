@@ -19,23 +19,17 @@ describe("Studio workspace pages", () => {
     expect(checkPageDocument(second).valid).toBe(true);
   });
 
-  it("reuses the Preview iframe when the active page changes", async () => {
-    const [source, previewSource] = await Promise.all([
-      readFile("apps/studio/src/canvas/CanvasViewport.tsx", "utf8"),
-      readFile("apps/preview-host/src/PreviewApp.tsx", "utf8")
-    ]);
-
-    expect(source).toContain("key={frameAttempt}");
-    expect(source).not.toContain("key={`${frameAttempt}:${session.activePageId");
-    expect(source).toContain("previewContentHeights[contentHeightKey]");
-    expect(source).not.toContain("setPreviewContentHeight(0)");
-    expect(source).toContain("pendingDropsRef.current.clear()");
-    expect(source).toContain("moveRequestsRef.current.clear()");
-    expect(previewSource).toContain("const replacesDocument =");
-    expect(previewSource).toContain("initialized: false");
-    expect(previewSource).toContain('className="preview-pending"');
-    expect(previewSource).toContain(
-      "if (!replacesDocument && message.documentRevision < stateRef.current.revision) return;"
+  it("renders active pages directly without iframe or cross-window state", async () => {
+    const source = await readFile(
+      "apps/studio/src/canvas/CanvasViewport.tsx",
+      "utf8"
     );
+
+    expect(source).toContain("<PageRenderer");
+    expect(source).toContain('className="canvas-preview"');
+    expect(source).toContain("contentHeights[contentHeightKey]");
+    expect(source).not.toContain("<iframe");
+    expect(source).not.toContain("postMessage");
+    expect(source).not.toContain("VITE_PREVIEW_URL");
   });
 });

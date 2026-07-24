@@ -1,87 +1,180 @@
-import componentSource from "../../examples/golden-pricing/components.json" with { type: "json" };
+import componentSource from "../../examples/foundation/components.json" with { type: "json" };
 import type { GetCatalogResponse } from "@agidn/api-protocol";
-import { resolveInsertTarget, resolveMoveTarget, resolveSiblingMove } from "../../apps/studio/src/structure-drag.js";
-import { loadGoldenProject } from "../helpers.js";
+import {
+  resolveInsertSourcesTarget,
+  resolveInsertTarget,
+  resolveMoveTarget,
+  resolveSiblingMove
+} from "../../apps/studio/src/structure-drag.js";
+import { loadFoundationProject } from "../helpers.js";
 
 const catalog = {
-  protocolVersion: "1.0.0", ok: true,
+  protocolVersion: "2.0.0", ok: true,
   components: componentSource,
-  tokens: { version: "1.0.0", tokens: {} },
-  policies: {}, actions: { version: "1.0.0", actions: {} }, constraints: {}
+  tokens: { version: "2.0.0", tokens: {} },
+  policies: {}, actions: { version: "2.0.0", actions: {} }, constraints: {}
 } as unknown as GetCatalogResponse;
 
 const verticalRect = { x: 0, y: 0, width: 100, height: 100 };
 
 describe("Studio structure drag intent", async () => {
-  const project = await loadGoldenProject();
+  const project = await loadFoundationProject();
 
   it("resolves before and after positions in a layout collection", () => {
     expect(
-      resolveMoveTarget(project.document, catalog, "icon_secure", "image_hero", { x: 50, y: 1 }, verticalRect)
-    ).toMatchObject({ valid: true, position: "before", target: { parentId: "stack_hero", beforeNodeId: "image_hero" } });
+      resolveMoveTarget(project.document, catalog, "divider_foundation", "text_foundation", { x: 50, y: 1 }, verticalRect)
+    ).toMatchObject({ valid: true, position: "before", target: { parentId: "stack_foundation", beforeNodeId: "text_foundation" } });
     expect(
-      resolveMoveTarget(project.document, catalog, "heading_hero", "image_hero", { x: 50, y: 99 }, verticalRect)
-    ).toMatchObject({ valid: true, position: "after", target: { parentId: "stack_hero", beforeNodeId: "icon_secure" } });
+      resolveMoveTarget(project.document, catalog, "heading_foundation", "text_foundation", { x: 50, y: 99 }, verticalRect)
+    ).toMatchObject({ valid: true, position: "after", target: { parentId: "stack_foundation", beforeNodeId: "divider_foundation" } });
   });
 
   it("resolves compatible named slots and rejects cycles", () => {
     expect(
-      resolveMoveTarget(project.document, catalog, "badge_popular", "pricing_card_business", { x: 50, y: 50 }, verticalRect)
-    ).toMatchObject({ valid: true, position: "inside", target: { parentId: "pricing_card_business", slot: "badge" } });
+      resolveMoveTarget(project.document, catalog, "divider_foundation", "card_foundation", { x: 50, y: 50 }, verticalRect)
+    ).toMatchObject({ valid: true, position: "inside", target: { parentId: "card_foundation", slot: "content" } });
     expect(
-      resolveMoveTarget(project.document, catalog, "section_pricing", "grid_plans", { x: 50, y: 50 }, verticalRect)
+      resolveMoveTarget(project.document, catalog, "section_foundation", "grid_foundation", { x: 50, y: 50 }, verticalRect)
     ).toEqual({ valid: false, reason: "selfOrDescendant" });
   });
 
   it("resolves visible insert positions and component slots", () => {
     expect(
-      resolveInsertTarget(project.document, catalog, { kind: "component", componentRef: "Icon" }, "button_pro", { x: 50, y: 50 }, verticalRect)
+      resolveInsertTarget(project.document, catalog, { kind: "component", componentRef: "Icon" }, "button_foundation", { x: 50, y: 50 }, verticalRect)
     ).toMatchObject({
-      valid: true, position: "inside", target: { parentId: "button_pro", slot: "leading" }
+      valid: true, position: "inside", target: { parentId: "button_foundation", slot: "leadingIcon" }
     });
     expect(
-      resolveInsertTarget(project.document, catalog, { kind: "component", componentRef: "Text" }, "button_pro", { x: 50, y: 50 }, verticalRect)
+      resolveInsertTarget(project.document, catalog, { kind: "component", componentRef: "Badge" }, "button_foundation", { x: 50, y: 5 }, verticalRect)
     ).toMatchObject({
-      valid: true, position: "inside", target: { parentId: "button_pro", slot: "content" }
+      valid: true,
+      position: "before",
+      target: { parentId: "card_foundation", slot: "content", beforeNodeId: "button_foundation" }
+    });
+  });
+
+  it("validates every root of a multi-node Pattern against one target", () => {
+    expect(
+      resolveInsertSourcesTarget(
+        project.document,
+        catalog,
+        [
+          { kind: "component", componentRef: "Icon" },
+          { kind: "component", componentRef: "Icon" }
+        ],
+        "button_foundation",
+        { x: 50, y: 50 },
+        verticalRect
+      )
+    ).toEqual({ valid: false, reason: "maxItemsExceeded" });
+    expect(
+      resolveInsertSourcesTarget(
+        project.document,
+        catalog,
+        [
+          { kind: "component", componentRef: "Text" },
+          { kind: "layout", layout: "grid" }
+        ],
+        "text_foundation",
+        { x: 50, y: 99 },
+        verticalRect
+      )
+    ).toMatchObject({
+      valid: true,
+      target: { parentId: "stack_foundation" }
+    });
+  });
+
+  it("resolves layout insertion with layout-specific nesting rules", () => {
+    expect(
+      resolveInsertTarget(
+        project.document,
+        catalog,
+        { kind: "layout", layout: "grid" },
+        "text_foundation",
+        { x: 50, y: 50 },
+        verticalRect
+      )
+    ).toMatchObject({
+      valid: true,
+      position: "after",
+      target: { parentId: "stack_foundation" }
     });
     expect(
-      resolveInsertTarget(project.document, catalog, { kind: "component", componentRef: "Badge" }, "button_pro", { x: 50, y: 5 }, verticalRect)
+      resolveInsertTarget(
+        project.document,
+        catalog,
+        { kind: "layout", layout: "container" },
+        "text_foundation",
+        { x: 50, y: 50 },
+        verticalRect
+      )
     ).toMatchObject({
-      valid: true, position: "before", target: { parentId: "pricing_card_pro", slot: "action", beforeNodeId: "button_pro" }
+      valid: true,
+      target: { parentId: "section_foundation" }
+    });
+    expect(
+      resolveInsertTarget(
+        project.document,
+        catalog,
+        { kind: "layout", layout: "section" },
+        "text_foundation",
+        { x: 50, y: 50 },
+        verticalRect
+      )
+    ).toMatchObject({
+      valid: true,
+      target: { parentId: "page_foundation" }
+    });
+    expect(
+      resolveInsertTarget(
+        project.document,
+        catalog,
+        { kind: "layout", layout: "section" },
+        "card_foundation",
+        { x: 50, y: 50 },
+        verticalRect
+      )
+    ).toMatchObject({
+      valid: true,
+      target: { parentId: "page_foundation" }
     });
   });
 
   it("uses the horizontal axis inside row and grid collections", () => {
     const cardRect = { x: 400, y: 0, width: 200, height: 300 };
-    // Left half of the business card inserts before it, right half after it.
     expect(
-      resolveMoveTarget(project.document, catalog, "pricing_card_starter", "pricing_card_business", { x: 410, y: 290 }, cardRect)
+      resolveMoveTarget(project.document, catalog, "divider_foundation", "text_grid_b", { x: 410, y: 290 }, cardRect)
     ).toMatchObject({
       valid: true,
       position: "before",
-      target: { parentId: "grid_plans", beforeNodeId: "pricing_card_business" }
+      target: { parentId: "grid_foundation", beforeNodeId: "text_grid_b" }
     });
     expect(
-      resolveMoveTarget(project.document, catalog, "pricing_card_starter", "pricing_card_business", { x: 590, y: 290 }, cardRect)
-    ).toMatchObject({ valid: true, position: "after", target: { parentId: "grid_plans" } });
+      resolveMoveTarget(project.document, catalog, "divider_foundation", "text_grid_b", { x: 590, y: 290 }, cardRect)
+    ).toMatchObject({ valid: true, position: "after", target: { parentId: "grid_foundation" } });
     // Inserts follow the same axis even near the vertical edges of the card.
     expect(
-      resolveInsertTarget(project.document, catalog, { kind: "component", componentRef: "Card" }, "pricing_card_business", { x: 420, y: 10 }, cardRect)
+      resolveInsertTarget(project.document, catalog, { kind: "component", componentRef: "Card" }, "text_grid_b", { x: 420, y: 10 }, cardRect)
     ).toMatchObject({
       valid: true,
       position: "before",
-      target: { parentId: "grid_plans", beforeNodeId: "pricing_card_business" }
+      target: { parentId: "grid_foundation", beforeNodeId: "text_grid_b" }
     });
   });
 
-  it("prevents emptying a required source slot", () => {
+  it("falls back to the closest legal parent slot", () => {
     expect(
-      resolveMoveTarget(project.document, catalog, "button_pro", "stack_faq", { x: 50, y: 50 }, verticalRect)
-    ).toEqual({ valid: false, reason: "requiredSourceSlot" });
+      resolveInsertTarget(project.document, catalog, { kind: "component", componentRef: "Badge" }, "button_foundation", { x: 50, y: 50 }, verticalRect)
+    ).toMatchObject({
+      valid: true,
+      position: "after",
+      target: { parentId: "card_foundation", slot: "content" }
+    });
   });
 
   it("resolves keyboard sibling reordering", () => {
-    expect(resolveSiblingMove(project.document, "text_hero", "up")).toMatchObject({ valid: true, target: { parentId: "stack_hero", beforeNodeId: "heading_hero" } });
-    expect(resolveSiblingMove(project.document, "text_hero", "down")).toMatchObject({ valid: true, target: { parentId: "stack_hero", beforeNodeId: "icon_secure" } });
+    expect(resolveSiblingMove(project.document, "text_foundation", "up")).toMatchObject({ valid: true, target: { parentId: "stack_foundation", beforeNodeId: "heading_foundation" } });
+    expect(resolveSiblingMove(project.document, "text_foundation", "down")).toMatchObject({ valid: true, target: { parentId: "stack_foundation", beforeNodeId: "card_foundation" } });
   });
 });
