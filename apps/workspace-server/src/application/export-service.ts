@@ -3,11 +3,12 @@ import { createContextPackage } from "@agidn/context-exporter";
 import type { WorkspaceCatalog } from "./catalog-service.js";
 import type { ContextPackageWriterPort } from "./ports/context-package-writer.js";
 import type { ExportServicePort } from "./ports/export-service.js";
-import type { WorkspaceRevisionStorePort } from "./ports/revision-store.js";
+import type { WorkspaceProjectRevisionStorePort } from "./ports/project-revision-store.js";
+import { composeProjectComponentRegistry } from "@agidn/project-assets";
 
 export class ExportService implements ExportServicePort {
   constructor(
-    private readonly store: WorkspaceRevisionStorePort,
+    private readonly store: WorkspaceProjectRevisionStorePort,
     private readonly catalog: WorkspaceCatalog,
     private readonly writer: ContextPackageWriterPort
   ) {}
@@ -17,7 +18,7 @@ export class ExportService implements ExportServicePort {
     const revision = this.store.getRevision(requestedRevision);
     if (!revision) {
       return {
-        protocolVersion: "1.0.0",
+        protocolVersion: "2.0.0",
         ok: false,
         error: "REVISION_NOT_FOUND",
         requestedRevision,
@@ -26,16 +27,20 @@ export class ExportService implements ExportServicePort {
     }
 
     const contextPackage = createContextPackage({
-      document: revision.document,
-      components: this.catalog.components,
+      document: revision.project.document,
+      components: composeProjectComponentRegistry(
+        this.catalog.primitiveComponents,
+        revision.project.assets
+      ),
       tokens: this.catalog.tokens,
       policies: this.catalog.policies,
       actions: this.catalog.actions,
-      constraints: this.catalog.constraints
+      constraints: this.catalog.constraints,
+      assets: revision.project.assets
     });
     const outputDirectory = await this.writer.write(contextPackage);
     return {
-      protocolVersion: "1.0.0",
+      protocolVersion: "2.0.0",
       ok: true,
       revision: revision.revision,
       outputDirectory,

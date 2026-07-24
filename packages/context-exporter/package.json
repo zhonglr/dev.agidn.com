@@ -8,6 +8,7 @@
     "@agidn/design-tokens": "workspace:*",
     "@agidn/document-codec": "workspace:*",
     "@agidn/document-schema": "workspace:*",
+    "@agidn/project-assets": "workspace:*",
     "@agidn/rule-engine": "workspace:*"
   }
 }

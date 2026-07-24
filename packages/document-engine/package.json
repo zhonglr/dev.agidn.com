@@ -5,7 +5,9 @@
   "exports": "./src/index.ts",
   "dependencies": {
     "@agidn/command-engine": "workspace:*",
+    "@agidn/design-tokens": "workspace:*",
     "@agidn/document-schema": "workspace:*",
+    "@agidn/project-assets": "workspace:*",
     "@agidn/rule-engine": "workspace:*",
     "@sinclair/typebox": "^0.34.38"
   }

@@ -1,14 +1,35 @@
-export { InvalidInitialDocumentError, InvalidRevisionStoreStateError } from "./errors.js";
-export { InMemoryRevisionStore } from "./in-memory-revision-store.js";
-export type { CommitHistoryEntry, HistoryEntry, NavigationHistoryEntry } from "./history.js";
-export type { NavigationResult } from "./navigation.js";
-export type { ChangeSource, DocumentRevision, RevisionNumber, RevisionStore, RevisionStoreOptions } from "./revision.js";
+export { InvalidRevisionStoreStateError } from "./errors.js";
+export type {
+  ChangeSource,
+  RevisionNumber,
+  RevisionStoreOptions
+} from "./revision.js";
 export {
-  checkRevisionStoreState,
-  REVISION_STORE_FORMAT_VERSION,
-  RevisionStoreStateSchema,
-  type RevisionCheckpoint,
-  type RevisionStoreState,
-  type RevisionStoreStateIssue
-} from "./revision-store-state.js";
-export type { AppliedTransaction, CommitRequest, CommitResult } from "./transaction.js";
+  InMemoryProjectRevisionStore,
+  InvalidInitialProjectError,
+  type ProjectRevisionContext
+} from "./in-memory-project-revision-store.js";
+export {
+  cloneProjectRevision,
+  type ProjectNavigationHistoryEntry,
+  type ProjectRevision,
+  type ProjectRevisionCheckpoint,
+  type ProjectSnapshot
+} from "./project-revision.js";
+export {
+  checkProjectRevisionStoreState,
+  PROJECT_REVISION_STORE_FORMAT_VERSION,
+  ProjectRevisionStoreStateSchema,
+  type ProjectRevisionStoreState,
+  type ProjectRevisionStoreStateIssue
+} from "./project-revision-store-state.js";
+export type {
+  ProjectCommand,
+  ProjectCommandViolation,
+  ProjectCommitHistoryEntry,
+  ProjectCommitRequest,
+  ProjectCommitResult,
+  ProjectHistoryEntry,
+  ProjectNavigationResult,
+  ProjectPatch
+} from "./project-transaction.js";

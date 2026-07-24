@@ -1,23 +1,47 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, open, readFile, rename, unlink } from "node:fs/promises";
+import {
+  mkdir,
+  open,
+  readFile,
+  rename,
+  unlink
+} from "node:fs/promises";
 import type { FileHandle } from "node:fs/promises";
-import { basename, dirname, extname, join, resolve } from "node:path";
+import {
+  basename,
+  dirname,
+  extname,
+  join,
+  resolve
+} from "node:path";
 import { stableJson } from "@agidn/document-codec";
-import type { RevisionStoreState } from "@agidn/document-engine";
-import type { RevisionStatePersistencePort } from "../../application/ports/revision-state-persistence.js";
+import type { ProjectRevisionStoreState } from "@agidn/document-engine";
+import type { ProjectRevisionStatePersistencePort } from "../../application/ports/project-revision-state-persistence.js";
 
 function isMissingFile(error: unknown): boolean {
-  return error instanceof Error && "code" in error && error.code === "ENOENT";
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    error.code === "ENOENT"
+  );
 }
 
-export function defaultRevisionStatePath(documentPath: string): string {
+export function defaultProjectRevisionStatePath(
+  documentPath: string
+): string {
   const absoluteDocumentPath = resolve(documentPath);
   const extension = extname(absoluteDocumentPath);
   const documentName = basename(absoluteDocumentPath, extension);
-  return join(dirname(absoluteDocumentPath), ".revision-store", `${documentName}.revisions.json`);
+  return join(
+    dirname(absoluteDocumentPath),
+    ".revision-store",
+    `${documentName}.project-revisions.json`
+  );
 }
 
-export class AtomicJsonRevisionStateFile implements RevisionStatePersistencePort {
+export class AtomicJsonProjectRevisionStateFile
+  implements ProjectRevisionStatePersistencePort
+{
   readonly path: string;
 
   constructor(path: string) {
@@ -26,18 +50,27 @@ export class AtomicJsonRevisionStateFile implements RevisionStatePersistencePort
 
   async load(): Promise<unknown | undefined> {
     try {
-      return JSON.parse(await readFile(this.path, "utf8")) as unknown;
+      return JSON.parse(
+        await readFile(this.path, "utf8")
+      ) as unknown;
     } catch (error) {
       if (isMissingFile(error)) return undefined;
       throw error;
     }
   }
 
-  async save(state: RevisionStoreState): Promise<void> {
+  async save(state: ProjectRevisionStoreState): Promise<void> {
     const directory = dirname(this.path);
     await mkdir(directory, { recursive: true });
-    const temporaryPath = join(directory, `.${basename(this.path)}.${process.pid}.${randomUUID()}.tmp`);
-    let handle: FileHandle | undefined = await open(temporaryPath, "wx", 0o600);
+    const temporaryPath = join(
+      directory,
+      `.${basename(this.path)}.${process.pid}.${randomUUID()}.tmp`
+    );
+    let handle: FileHandle | undefined = await open(
+      temporaryPath,
+      "wx",
+      0o600
+    );
     try {
       await handle.writeFile(stableJson(state), "utf8");
       await handle.sync();

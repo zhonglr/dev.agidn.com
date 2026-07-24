@@ -6,6 +6,11 @@ import type { TokenRegistry } from "@agidn/design-tokens";
 import { parseDocument } from "@agidn/document-codec";
 import type { PageDocument } from "@agidn/document-schema";
 import {
+  composeProjectComponentRegistry,
+  validateProjectAssets,
+  type ProjectAssetRegistry
+} from "@agidn/project-assets";
+import {
   ActionRegistrySchema,
   checkProjectConfig,
   ComponentRegistrySchema,
@@ -18,11 +23,13 @@ import {
 export interface WorkspaceProject {
   documentPath: string;
   document: PageDocument;
+  primitiveComponents: ComponentRegistry;
   components: ComponentRegistry;
   tokens: TokenRegistry;
   policies: unknown;
   actions: ActionRegistry;
   constraints: unknown;
+  assets: ProjectAssetRegistry;
 }
 
 export class InvalidWorkspaceConfigError extends Error {
@@ -41,21 +48,31 @@ async function readJson<T>(path: string, schema: Parameters<typeof checkProjectC
 export async function loadWorkspaceProject(documentPath: string): Promise<WorkspaceProject> {
   const absoluteDocumentPath = resolve(documentPath);
   const directory = dirname(absoluteDocumentPath);
-  const [documentSource, components, tokens, policies, actions, constraints] = await Promise.all([
+  const [documentSource, components, tokens, policies, actions, constraints, assetSource] = await Promise.all([
     readFile(absoluteDocumentPath, "utf8"),
     readJson<ComponentRegistry>(join(directory, "components.json"), ComponentRegistrySchema),
     readJson<TokenRegistry>(join(directory, "tokens.json"), TokenRegistrySchema),
     readJson<unknown>(join(directory, "policies.json"), PolicyRegistrySchema),
     readJson<ActionRegistry>(join(directory, "interactions.json"), ActionRegistrySchema),
-    readJson<unknown>(join(directory, "constraints.json"), ConstraintRegistrySchema)
+    readJson<unknown>(join(directory, "constraints.json"), ConstraintRegistrySchema),
+    readFile(join(directory, "assets.json"), "utf8")
   ]);
+  const assetValue = JSON.parse(assetSource) as unknown;
+  const assetResult = validateProjectAssets(assetValue, components);
+  if (!assetResult.valid)
+    throw new InvalidWorkspaceConfigError(
+      join(directory, "assets.json"),
+      assetResult.issues.map(({ path, message }) => ({ path, message }))
+    );
   return {
     documentPath: absoluteDocumentPath,
     document: parseDocument(documentSource),
-    components,
+    primitiveComponents: components,
+    components: composeProjectComponentRegistry(components, assetResult.assets),
     tokens,
     policies,
     actions,
-    constraints
+    constraints,
+    assets: assetResult.assets
   };
 }

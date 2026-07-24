@@ -5,6 +5,7 @@ import { selectComponents, type ComponentRegistry } from "@agidn/component-regis
 import { selectTokens, type TokenRegistry } from "@agidn/design-tokens";
 import { stableJson } from "@agidn/document-codec";
 import type { PageDocument } from "@agidn/document-schema";
+import type { ProjectAssetRegistry } from "@agidn/project-assets";
 import { collectDocumentReferences, validateDocument, type RuleContext } from "@agidn/rule-engine";
 
 export interface ActionDefinition {
@@ -26,10 +27,11 @@ export interface ExportInput {
   policies: unknown;
   actions: ActionRegistry;
   constraints: unknown;
+  assets: ProjectAssetRegistry;
 }
 
 export interface ContextManifest {
-  protocolVersion: "1.0.0";
+  protocolVersion: "2.0.0";
   documentId: string;
   schemaVersion: string;
   hashAlgorithm: "sha256";
@@ -65,13 +67,14 @@ export function createContextPackage(input: ExportInput): ContextPackage {
     "tokens.json": selectTokens(input.tokens, references.tokens),
     "policies.json": input.policies,
     "actions.json": { version: input.actions.version, actions: selectedActions, dataSources: input.actions.dataSources ?? {} },
-    "constraints.json": input.constraints
+    "constraints.json": input.constraints,
+    "assets.json": input.assets
   };
   const files = Object.fromEntries(Object.entries(payloads).map(([name, payload]) => [name, stableJson(payload)]));
   const fileHashes = Object.fromEntries(Object.entries(files).sort(([left], [right]) => left.localeCompare(right)).map(([name, content]) => [name, hash(content)]));
   const contentHash = hash(Object.entries(fileHashes).map(([name, digest]) => `${name}:${digest}`).join("\n"));
   const manifest: ContextManifest = {
-    protocolVersion: "1.0.0",
+    protocolVersion: "2.0.0",
     documentId: input.document.id,
     schemaVersion: input.document.schemaVersion,
     hashAlgorithm: "sha256",

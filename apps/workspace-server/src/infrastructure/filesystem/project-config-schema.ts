@@ -1,62 +1,9 @@
 import { Type, type TSchema } from "@sinclair/typebox";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
+export { ComponentRegistrySchema } from "@agidn/component-registry";
 
 const IdentifierSchema = Type.String({ minLength: 1, pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]*$" });
 const VersionSchema = Type.String({ minLength: 1 });
-const LocalizedLabelSchema = Type.Union([
-  Type.String({ minLength: 1 }),
-  Type.Record(Type.String({ minLength: 2 }), Type.String({ minLength: 1 }))
-]);
-
-const PropDefinitionSchema = Type.Object(
-  {
-    type: Type.Union([Type.Literal("string"), Type.Literal("boolean"), Type.Literal("number"), Type.Literal("enum")]),
-    displayName: Type.Optional(LocalizedLabelSchema),
-    required: Type.Optional(Type.Boolean()),
-    values: Type.Optional(Type.Array(Type.Union([Type.String(), Type.Number()]))),
-    valueDisplayNames: Type.Optional(Type.Record(Type.String(), LocalizedLabelSchema))
-  },
-  { additionalProperties: false }
-);
-
-const SlotDefinitionSchema = Type.Object(
-  {
-    displayName: Type.Optional(LocalizedLabelSchema),
-    required: Type.Optional(Type.Boolean()),
-    accepts: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
-    minItems: Type.Optional(Type.Integer({ minimum: 0 })),
-    maxItems: Type.Optional(Type.Integer({ minimum: 0 }))
-  },
-  { additionalProperties: false }
-);
-
-const ComponentDefinitionSchema = Type.Object(
-  {
-    name: IdentifierSchema,
-    displayName: Type.Optional(LocalizedLabelSchema),
-    category: Type.Optional(IdentifierSchema),
-    categoryDisplayName: Type.Optional(LocalizedLabelSchema),
-    version: VersionSchema,
-    source: Type.String({ minLength: 1 }),
-    roles: Type.Array(IdentifierSchema),
-    props: Type.Record(Type.String(), PropDefinitionSchema),
-    slots: Type.Record(Type.String(), SlotDefinitionSchema),
-    variants: Type.Array(IdentifierSchema),
-    variantDisplayNames: Type.Optional(Type.Record(Type.String(), LocalizedLabelSchema)),
-    states: Type.Array(IdentifierSchema),
-    accessibleName: Type.Optional(Type.Union([Type.Literal("always"), Type.Literal("when-icon-only")]))
-  },
-  { additionalProperties: false }
-);
-
-export const ComponentRegistrySchema = Type.Object(
-  {
-    version: VersionSchema,
-    components: Type.Record(Type.String(), ComponentDefinitionSchema)
-  },
-  { additionalProperties: false }
-);
-
 const TokenDefinitionSchema = Type.Object(
   {
     type: Type.Union([

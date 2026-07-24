@@ -1,12 +1,12 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import {
-  checkCommitCommandsResponse,
   checkExportContextResponse,
   checkGetCatalogResponse,
-  checkGetDocumentResponse,
-  checkGetHistoryResponse,
-  checkNavigationResponse,
-  decodeCommitCommandsRequest,
+  checkCommitProjectCommandsResponse,
+  checkGetProjectHistoryResponse,
+  checkGetProjectResponse,
+  checkProjectNavigationResponse,
+  decodeCommitProjectCommandsRequest,
   decodeExportContextRequest,
   decodeNavigationRequest,
   decodeRestoreRevisionRequest,
@@ -22,11 +22,11 @@ function sendJson(response: ServerResponse, status: number, payload: unknown): v
 }
 
 function transportError(error: TransportErrorResponse["error"], message: string): TransportErrorResponse {
-  return { protocolVersion: "1.0.0", ok: false, error, message };
+  return { protocolVersion: "2.0.0", ok: false, error, message };
 }
 
 function protocolError(issues: ProtocolErrorResponse["issues"]): ProtocolErrorResponse {
-  return { protocolVersion: "1.0.0", ok: false, error: "PROTOCOL_INVALID", issues };
+  return { protocolVersion: "2.0.0", ok: false, error: "PROTOCOL_INVALID", issues };
 }
 
 function statusForApplicationResponse(response: { ok: boolean; error?: string }): number {
@@ -38,16 +38,24 @@ function statusForApplicationResponse(response: { ok: boolean; error?: string })
 
 async function route(request: IncomingMessage, response: ServerResponse, services: WorkspaceServices): Promise<void> {
   const path = new URL(request.url ?? "/", "http://workspace.local").pathname;
-  if (path === "/v1/document" && request.method === "GET") {
-    const payload = services.document.getCurrent();
-    if (!checkGetDocumentResponse(payload)) throw new Error("DocumentService returned an invalid GetDocument response.");
+  if (path === "/v1/project" && request.method === "GET") {
+    const payload = services.project.getCurrent();
+    if (!checkGetProjectResponse(payload)) {
+      throw new Error(
+        "ProjectService returned an invalid GetProject response."
+      );
+    }
     sendJson(response, 200, payload);
     return;
   }
 
-  if (path === "/v1/history" && request.method === "GET") {
-    const payload = services.history.getHistory();
-    if (!checkGetHistoryResponse(payload)) throw new Error("HistoryService returned an invalid response.");
+  if (path === "/v1/project/history" && request.method === "GET") {
+    const payload = services.project.getHistory();
+    if (!checkGetProjectHistoryResponse(payload)) {
+      throw new Error(
+        "ProjectService returned an invalid History response."
+      );
+    }
     sendJson(response, 200, payload);
     return;
   }
@@ -59,39 +67,81 @@ async function route(request: IncomingMessage, response: ServerResponse, service
     return;
   }
 
-  if (path === "/v1/commands" && request.method === "POST") {
-    const decoded = decodeCommitCommandsRequest(await readJsonBody(request));
+  if (
+    path === "/v1/project/commands" &&
+    request.method === "POST"
+  ) {
+    const decoded = decodeCommitProjectCommandsRequest(
+      await readJsonBody(request)
+    );
     if (!decoded.valid) {
       sendJson(response, 400, protocolError(decoded.issues));
       return;
     }
-    const payload = await services.document.commit(decoded.value);
-    if (!checkCommitCommandsResponse(payload)) throw new Error("DocumentService returned an invalid Commit response.");
-    sendJson(response, statusForApplicationResponse(payload), payload);
+    const payload = await services.project.commit(decoded.value);
+    if (!checkCommitProjectCommandsResponse(payload)) {
+      throw new Error(
+        "ProjectService returned an invalid Commit response."
+      );
+    }
+    sendJson(
+      response,
+      statusForApplicationResponse(payload),
+      payload
+    );
     return;
   }
 
-  if ((path === "/v1/undo" || path === "/v1/redo") && request.method === "POST") {
-    const decoded = decodeNavigationRequest(await readJsonBody(request));
+  if (
+    (path === "/v1/project/undo" ||
+      path === "/v1/project/redo") &&
+    request.method === "POST"
+  ) {
+    const decoded = decodeNavigationRequest(
+      await readJsonBody(request)
+    );
     if (!decoded.valid) {
       sendJson(response, 400, protocolError(decoded.issues));
       return;
     }
-    const payload = await (path === "/v1/undo" ? services.document.undo(decoded.value) : services.document.redo(decoded.value));
-    if (!checkNavigationResponse(payload)) throw new Error("DocumentService returned an invalid Navigation response.");
-    sendJson(response, statusForApplicationResponse(payload), payload);
+    const payload = await (path === "/v1/project/undo"
+      ? services.project.undo(decoded.value)
+      : services.project.redo(decoded.value));
+    if (!checkProjectNavigationResponse(payload)) {
+      throw new Error(
+        "ProjectService returned an invalid Navigation response."
+      );
+    }
+    sendJson(
+      response,
+      statusForApplicationResponse(payload),
+      payload
+    );
     return;
   }
 
-  if (path === "/v1/history/restore" && request.method === "POST") {
-    const decoded = decodeRestoreRevisionRequest(await readJsonBody(request));
+  if (
+    path === "/v1/project/history/restore" &&
+    request.method === "POST"
+  ) {
+    const decoded = decodeRestoreRevisionRequest(
+      await readJsonBody(request)
+    );
     if (!decoded.valid) {
       sendJson(response, 400, protocolError(decoded.issues));
       return;
     }
-    const payload = await services.document.restore(decoded.value);
-    if (!checkNavigationResponse(payload)) throw new Error("DocumentService returned an invalid Restore response.");
-    sendJson(response, statusForApplicationResponse(payload), payload);
+    const payload = await services.project.restore(decoded.value);
+    if (!checkProjectNavigationResponse(payload)) {
+      throw new Error(
+        "ProjectService returned an invalid Restore response."
+      );
+    }
+    sendJson(
+      response,
+      statusForApplicationResponse(payload),
+      payload
+    );
     return;
   }
 
@@ -107,7 +157,16 @@ async function route(request: IncomingMessage, response: ServerResponse, service
     return;
   }
 
-  const knownPath = ["/v1/document", "/v1/history", "/v1/history/restore", "/v1/catalog", "/v1/commands", "/v1/undo", "/v1/redo", "/v1/export"].includes(path);
+  const knownPath = [
+    "/v1/catalog",
+    "/v1/export",
+    "/v1/project",
+    "/v1/project/history",
+    "/v1/project/history/restore",
+    "/v1/project/commands",
+    "/v1/project/undo",
+    "/v1/project/redo"
+  ].includes(path);
   sendJson(
     response,
     knownPath ? 405 : 404,
