@@ -1,9 +1,9 @@
 {
   "$expected": "ACCESSIBLE_NAME_REQUIRED",
   "commandId": "cmd_invalid_accessible_name",
-  "protocolVersion": "1.0.0",
+  "protocolVersion": "2.0.0",
   "type": "node.setProp",
-  "nodeId": "button_pro",
+  "nodeId": "button_foundation",
   "property": "iconOnly",
   "value": true
 }

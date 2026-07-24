@@ -5,12 +5,17 @@ export type {
   InsertNodeCommand,
   MoveNodeCommand,
   RemoveNodeCommand,
+  SetAccessibilityCommand,
+  SetInteractionsCommand,
   SetLayoutPropertyCommand,
+  SetNameCommand,
+  SetPlacementCommand,
   SetPropCommand,
   SetResponsivePolicyCommand,
   SetRoleCommand,
-  SetTokenCommand,
-  SetVariantCommand
+  SetStyleBindingCommand,
+  SetVariantCommand,
+  SetVisibilityCommand
 } from "./command.js";
 export type { CommandResult } from "./command-result.js";
 export type { DocumentPatch, PatchOperation } from "./patch.js";

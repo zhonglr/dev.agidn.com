@@ -1,9 +1,9 @@
 {
   "$expected": "ABSOLUTE_POSITION_FORBIDDEN",
   "commandId": "cmd_invalid_absolute_position",
-  "protocolVersion": "1.0.0",
+  "protocolVersion": "2.0.0",
   "type": "node.setLayoutProperty",
-  "nodeId": "grid_plans",
+  "nodeId": "grid_foundation",
   "property": "top",
   "value": 12
 }

@@ -5,7 +5,7 @@ export type PatchOperation =
   | { op: "node.remove"; nodeId: string };
 
 export interface DocumentPatch {
-  protocolVersion: "1.0.0";
+  protocolVersion: "2.0.0";
   commandId: string;
   operations: PatchOperation[];
 }

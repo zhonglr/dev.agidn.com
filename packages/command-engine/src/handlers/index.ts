@@ -7,8 +7,15 @@ import { handleSetLayoutProperty } from "./set-layout-property.js";
 import { handleSetProp } from "./set-prop.js";
 import { handleSetResponsivePolicy } from "./set-responsive-policy.js";
 import { handleSetRole } from "./set-role.js";
-import { handleSetToken } from "./set-token.js";
+import { handleSetStyleBinding } from "./set-style-binding.js";
 import { handleSetVariant } from "./set-variant.js";
+import {
+  handleSetAccessibility,
+  handleSetInteractions,
+  handleSetName,
+  handleSetPlacement,
+  handleSetVisibility
+} from "./set-common-property.js";
 
 export function dispatchCommand(context: HandlerContext, command: DocumentCommand): HandlerResult {
   switch (command.type) {
@@ -17,9 +24,14 @@ export function dispatchCommand(context: HandlerContext, command: DocumentComman
     case "node.remove": return handleRemoveNode(context, command);
     case "node.setLayoutProperty": return handleSetLayoutProperty(context, command);
     case "node.setProp": return handleSetProp(context, command);
+    case "node.setName": return handleSetName(context, command);
     case "node.setResponsivePolicy": return handleSetResponsivePolicy(context, command);
     case "node.setRole": return handleSetRole(context, command);
-    case "node.setToken": return handleSetToken(context, command);
+    case "node.setStyleBinding": return handleSetStyleBinding(context, command);
     case "node.setVariant": return handleSetVariant(context, command);
+    case "node.setPlacement": return handleSetPlacement(context, command);
+    case "node.setVisibility": return handleSetVisibility(context, command);
+    case "node.setAccessibility": return handleSetAccessibility(context, command);
+    case "node.setInteractions": return handleSetInteractions(context, command);
   }
 }

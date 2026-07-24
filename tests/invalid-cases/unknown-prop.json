@@ -1,9 +1,9 @@
 {
   "$expected": "UNKNOWN_PROP",
   "commandId": "cmd_invalid_unknown_prop",
-  "protocolVersion": "1.0.0",
+  "protocolVersion": "2.0.0",
   "type": "node.setProp",
-  "nodeId": "button_pro",
+  "nodeId": "button_foundation",
   "property": "analyticsId",
   "value": "unregistered"
 }

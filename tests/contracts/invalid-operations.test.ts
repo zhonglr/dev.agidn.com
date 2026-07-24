@@ -2,7 +2,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { applyCommand, type DocumentCommand } from "@agidn/command-engine";
 import type { ViolationCode } from "@agidn/rule-engine";
-import { loadGoldenProject } from "../helpers.js";
+import { loadFoundationProject } from "../helpers.js";
 
 type InvalidFixture = DocumentCommand & { $expected: ViolationCode };
 
@@ -15,7 +15,7 @@ describe("illegal operation matrix", async () => {
   });
 
   it.each(fixtureNames)("rejects %s with its stable domain error", async (fixtureName) => {
-    const project = await loadGoldenProject();
+    const project = await loadFoundationProject();
     const fixture = JSON.parse(await readFile(resolve(directory, fixtureName), "utf8")) as InvalidFixture;
     const { $expected, ...command } = fixture;
     const result = applyCommand(project.document, command as DocumentCommand, project);

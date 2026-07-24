@@ -1,11 +1,6 @@
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "actions": {
-    "billing.selectPlan": {
-      "name": "Select billing plan",
-      "description": "Starts checkout for a registered plan.",
-      "arguments": { "planId": "string" }
-    },
     "navigation.openPage": {
       "name": "Open page",
       "description": "Navigates to a registered internal route.",

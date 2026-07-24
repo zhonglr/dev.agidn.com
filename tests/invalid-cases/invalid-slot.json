@@ -1,9 +1,9 @@
 {
   "$expected": "INVALID_SLOT",
   "commandId": "cmd_invalid_slot",
-  "protocolVersion": "1.0.0",
+  "protocolVersion": "2.0.0",
   "type": "node.insert",
-  "targetParentId": "pricing_card_pro",
+  "targetParentId": "card_foundation",
   "targetSlot": "footer",
   "node": {
     "id": "text_invalid_slot",

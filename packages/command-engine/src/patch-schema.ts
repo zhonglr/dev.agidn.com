@@ -19,7 +19,7 @@ export const PatchOperationSchema = Type.Union([
 
 export const DocumentPatchSchema = Type.Object(
   {
-    protocolVersion: Type.Literal("1.0.0"),
+    protocolVersion: Type.Literal("2.0.0"),
     commandId: identifier,
     operations: Type.Array(PatchOperationSchema, { minItems: 1 })
   },

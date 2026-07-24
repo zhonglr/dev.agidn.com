@@ -1,9 +1,9 @@
 {
   "$expected": "RAW_SPACING_FORBIDDEN",
   "commandId": "cmd_invalid_raw_spacing",
-  "protocolVersion": "1.0.0",
+  "protocolVersion": "2.0.0",
   "type": "node.setLayoutProperty",
-  "nodeId": "grid_plans",
+  "nodeId": "grid_foundation",
   "property": "gapToken",
   "value": 17
 }

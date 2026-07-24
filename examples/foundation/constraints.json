@@ -1,0 +1,20 @@
+{
+  "version": "2.0.0",
+  "constraints": [
+    {
+      "code": "RAW_STYLE_FORBIDDEN",
+      "description": "Arbitrary CSS and class names are forbidden.",
+      "approvalAllowed": false
+    },
+    {
+      "code": "ABSOLUTE_POSITION_FORBIDDEN",
+      "description": "Normal nodes cannot use coordinates or absolute positioning.",
+      "approvalAllowed": false
+    },
+    {
+      "code": "REGISTERED_REFERENCES_ONLY",
+      "description": "Every component, style binding, variant, event and action must be declared.",
+      "approvalAllowed": false
+    }
+  ]
+}

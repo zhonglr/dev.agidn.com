@@ -1,0 +1,13 @@
+{
+  "commandId": "insert_foundation_text",
+  "protocolVersion": "2.0.0",
+  "type": "node.insert",
+  "targetParentId": "stack_foundation",
+  "node": {
+    "id": "text_inserted",
+    "kind": "component",
+    "componentRef": "Text",
+    "variant": "body",
+    "props": { "text": "New text" }
+  }
+}

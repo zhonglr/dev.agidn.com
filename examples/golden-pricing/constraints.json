@@ -1,9 +1,0 @@
-{
-  "version": "1.0.0",
-  "constraints": [
-    { "code": "RAW_STYLE_FORBIDDEN", "description": "PageDocument cannot contain arbitrary CSS, className or style objects.", "approvalAllowed": false },
-    { "code": "ABSOLUTE_POSITION_FORBIDDEN", "description": "Normal nodes cannot use coordinates or absolute positioning.", "approvalAllowed": false },
-    { "code": "REGISTERED_REFERENCES_ONLY", "description": "Components, tokens, variants and actions must resolve through registries.", "approvalAllowed": false },
-    { "code": "RESPONSIVE_GRID_REQUIRED", "description": "Every Grid declares mobile, tablet and desktop columns.", "approvalAllowed": false }
-  ]
-}

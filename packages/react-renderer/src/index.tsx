@@ -1,17 +1,28 @@
 import type { CSSProperties, ComponentType, ReactNode } from "react";
 import type { TokenRegistry } from "@agidn/design-tokens";
 import type { ComponentNode, LayoutNode, PageDocument, PageNode } from "@agidn/document-schema";
+import {
+  instantiateComposite,
+  type CompositeAsset
+} from "@agidn/project-assets";
 
 export interface RuntimeComponentProps {
   node: ComponentNode;
   slots: Readonly<Record<string, ReactNode[]>>;
   style: CSSProperties;
   hostProps: {
-    "data-node-id": string;
-    "data-node-kind": "component";
-    "data-component-ref": string;
+    "data-node-id"?: string;
+    "data-node-kind"?: "component";
+    "data-component-ref"?: string;
+    "data-role"?: string;
+    "aria-label"?: string;
+    "aria-describedby"?: string;
+    "aria-hidden"?: true;
+    "data-visible-mobile"?: "false";
+    "data-visible-tablet"?: "false";
+    "data-visible-desktop"?: "false";
   };
-  onEvent: (event: "press" | "change" | "submit" | "open" | "close") => void;
+  onEvent: (event: string) => void;
 }
 
 export type RuntimeComponentRegistry = Readonly<Record<string, ComponentType<RuntimeComponentProps>>>;
@@ -20,6 +31,7 @@ export interface PageRendererProps {
   document: PageDocument;
   tokens: TokenRegistry;
   components: RuntimeComponentRegistry;
+  composites?: Readonly<Record<string, CompositeAsset>>;
   onAction?: (actionRef: string, argumentsValue: Record<string, unknown>, node: ComponentNode) => void;
 }
 
@@ -28,8 +40,8 @@ function tokenValue(tokens: TokenRegistry, reference: string | undefined): strin
 }
 
 function componentStyle(node: ComponentNode, tokens: TokenRegistry): CSSProperties {
-  const style: CSSProperties = {};
-  for (const [property, reference] of Object.entries(node.tokens ?? {})) {
+  const style = placementStyle(node);
+  for (const [property, reference] of Object.entries(node.styleBindings ?? {})) {
     const value = tokenValue(tokens, reference);
     if (!value) continue;
     if (/surface|background/i.test(property)) style.backgroundColor = value;
@@ -42,9 +54,48 @@ function componentStyle(node: ComponentNode, tokens: TokenRegistry): CSSProperti
   return style;
 }
 
+function placementStyle(node: PageNode): CSSProperties {
+  const style: CSSProperties & Record<`--agidn-${string}`, string | number | undefined> = {};
+  if (node.placement?.width === "fit") style.width = "fit-content";
+  if (node.placement?.width === "fill") style.width = "100%";
+  if (node.placement?.grow) style.flexGrow = 1;
+  if (node.placement?.alignSelf) {
+    style.alignSelf =
+      node.placement.alignSelf === "auto"
+        ? "auto"
+        : node.placement.alignSelf === "start"
+          ? "flex-start"
+          : node.placement.alignSelf === "end"
+            ? "flex-end"
+            : node.placement.alignSelf;
+  }
+  if (node.placement?.gridSpan?.mobile) style["--agidn-grid-span-mobile"] = node.placement.gridSpan.mobile;
+  if (node.placement?.gridSpan?.tablet) style["--agidn-grid-span-tablet"] = node.placement.gridSpan.tablet;
+  if (node.placement?.gridSpan?.desktop) style["--agidn-grid-span-desktop"] = node.placement.gridSpan.desktop;
+  return style;
+}
+
+function visibilityAttributes(node: PageNode) {
+  return {
+    ...(node.visibility?.mobile === false ? { "data-visible-mobile": "false" as const } : {}),
+    ...(node.visibility?.tablet === false ? { "data-visible-tablet": "false" as const } : {}),
+    ...(node.visibility?.desktop === false ? { "data-visible-desktop": "false" as const } : {})
+  };
+}
+
+function accessibilityAttributes(node: ComponentNode) {
+  return {
+    ...(node.accessibility?.label ? { "aria-label": node.accessibility.label } : {}),
+    ...(node.accessibility?.describedBy
+      ? { "aria-describedby": node.accessibility.describedBy }
+      : {}),
+    ...(node.accessibility?.decorative === true ? { "aria-hidden": true as const } : {})
+  };
+}
+
 function layoutStyle(node: LayoutNode, tokens: TokenRegistry): CSSProperties {
   const gap = tokenValue(tokens, node.gapToken);
-  const style: CSSProperties & Record<`--agidn-${string}`, string | number | undefined> = {};
+  const style = placementStyle(node) as CSSProperties & Record<`--agidn-${string}`, string | number | undefined>;
   if (gap) style.gap = gap;
   if (node.align) style.alignItems = node.align === "start" ? "flex-start" : node.align === "end" ? "flex-end" : node.align;
   if (node.layout === "grid") {
@@ -67,29 +118,103 @@ function layoutStyle(node: LayoutNode, tokens: TokenRegistry): CSSProperties {
   return style;
 }
 
-export function PageRenderer({ document, tokens, components, onAction }: PageRendererProps) {
-  const renderNode = (node: PageNode): ReactNode => {
+function collectNodeIds(nodes: readonly PageNode[]): Set<string> {
+  const result = new Set<string>();
+  const visit = (node: PageNode): void => {
+    result.add(node.id);
+    (node.kind === "layout"
+      ? node.children
+      : Object.values(node.slots ?? {}).flat()
+    ).forEach(visit);
+  };
+  nodes.forEach(visit);
+  return result;
+}
+
+export function PageRenderer({
+  document,
+  tokens,
+  components,
+  composites = {},
+  onAction
+}: PageRendererProps) {
+  const renderNode = (
+    node: PageNode,
+    selectableNodeIds?: ReadonlySet<string>,
+    boundary?: ComponentNode
+  ): ReactNode => {
+    const selectable = selectableNodeIds === undefined || selectableNodeIds.has(node.id);
+    const identity = boundary ?? (selectable ? node : undefined);
+    const visualNode = boundary ?? node;
+
     if (node.kind === "layout") {
-      const children = node.children.map(renderNode);
+      const children = node.children.map((child) => renderNode(child, selectableNodeIds));
       const className = `agidn-layout agidn-layout--${node.layout}${node.width ? ` agidn-layout--width-${node.width}` : ""}`;
       const attributes = {
         className,
-        style: layoutStyle(node, tokens),
-        "data-node-id": node.id,
-        "data-node-kind": "layout" as const,
-        "data-role": node.role
+        style: {
+          ...layoutStyle(node, tokens),
+          ...(boundary ? componentStyle(boundary, tokens) : {})
+        },
+        ...(identity
+          ? {
+              "data-node-id": identity.id,
+              "data-node-kind": identity.kind,
+              ...(identity.kind === "component"
+                ? { "data-component-ref": identity.componentRef }
+                : {})
+            }
+          : {}),
+        "data-role": visualNode.role,
+        ...visibilityAttributes(visualNode)
       };
       return node.layout === "section"
         ? <section key={node.id} {...attributes}>{children}</section>
         : <div key={node.id} {...attributes}>{children}</div>;
     }
 
+    const composite = composites[node.componentRef];
+    if (composite) {
+      const publicSlotIds =
+        selectableNodeIds ??
+        collectNodeIds(Object.values(node.slots ?? {}).flat());
+      const root = instantiateComposite(
+        composite,
+        node,
+        (templateId) => `${node.id}:${templateId}`
+      );
+      return renderNode(
+        root,
+        publicSlotIds,
+        identity?.kind === "component" ? identity : undefined
+      );
+    }
+
     const RuntimeComponent = components[node.componentRef];
     if (!RuntimeComponent) {
-      return <div key={node.id} className="agidn-component-missing" data-node-id={node.id}>Missing component: {node.componentRef}</div>;
+      return (
+        <div
+          key={node.id}
+          className="agidn-component-missing"
+          {...(identity
+            ? {
+                "data-node-id": identity.id,
+                "data-node-kind": identity.kind,
+                ...(identity.kind === "component"
+                  ? { "data-component-ref": identity.componentRef }
+                  : {})
+              }
+            : {})}
+        >
+          Missing component: {node.componentRef}
+        </div>
+      );
     }
     const slots = Object.fromEntries(
-      Object.entries(node.slots ?? {}).map(([name, children]) => [name, children.map(renderNode)])
+      Object.entries(node.slots ?? {}).map(([name, children]) => [
+        name,
+        children.map((child) => renderNode(child, selectableNodeIds))
+      ])
     );
     const onEvent: RuntimeComponentProps["onEvent"] = (event) => {
       for (const interaction of node.interactions ?? []) {
@@ -101,8 +226,27 @@ export function PageRenderer({ document, tokens, components, onAction }: PageRen
         key={node.id}
         node={node}
         slots={slots}
-        style={componentStyle(node, tokens)}
-        hostProps={{ "data-node-id": node.id, "data-node-kind": "component", "data-component-ref": node.componentRef }}
+        style={{
+          ...componentStyle(node, tokens),
+          ...(boundary ? componentStyle(boundary, tokens) : {})
+        }}
+        hostProps={{
+          ...(identity
+            ? {
+                "data-node-id": identity.id,
+                "data-node-kind": "component" as const,
+                "data-component-ref":
+                  identity.kind === "component"
+                    ? identity.componentRef
+                    : node.componentRef
+              }
+            : {}),
+          ...(visualNode.role ? { "data-role": visualNode.role } : {}),
+          ...accessibilityAttributes(
+            visualNode.kind === "component" ? visualNode : node
+          ),
+          ...visibilityAttributes(visualNode)
+        }}
         onEvent={onEvent}
       />
     );
@@ -110,7 +254,7 @@ export function PageRenderer({ document, tokens, components, onAction }: PageRen
 
   return (
     <div className="agidn-page" data-document-id={document.id} data-page-role={document.role}>
-      {document.children.map(renderNode)}
+      {document.children.map((node) => renderNode(node))}
     </div>
   );
 }

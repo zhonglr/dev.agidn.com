@@ -1,0 +1,108 @@
+{
+  "schemaVersion": "2.0.0",
+  "id": "page_foundation",
+  "kind": "page",
+  "role": "foundation-page",
+  "name": "Foundation",
+  "children": [
+    {
+      "id": "section_foundation",
+      "kind": "layout",
+      "layout": "section",
+      "children": [
+        {
+          "id": "container_foundation",
+          "kind": "layout",
+          "layout": "container",
+          "width": "md",
+          "children": [
+            {
+              "id": "stack_foundation",
+              "kind": "layout",
+              "layout": "stack",
+              "gapToken": "spacing.md",
+              "children": [
+                {
+                  "id": "heading_foundation",
+                  "kind": "component",
+                  "componentRef": "Heading",
+                  "variant": "display",
+                  "props": { "text": "Start with stable foundations", "level": 1 },
+                  "styleBindings": {
+                    "textColor": "color.text.default",
+                    "typography": "typography.display"
+                  }
+                },
+                {
+                  "id": "text_foundation",
+                  "kind": "component",
+                  "componentRef": "Text",
+                  "variant": "body",
+                  "props": { "text": "This workspace contains only the new component and canvas model." },
+                  "styleBindings": {
+                    "textColor": "color.text.muted",
+                    "typography": "typography.body"
+                  }
+                },
+                {
+                  "id": "divider_foundation",
+                  "kind": "component",
+                  "componentRef": "Divider",
+                  "variant": "horizontal",
+                  "styleBindings": { "color": "color.border.default" }
+                },
+                {
+                  "id": "card_foundation",
+                  "kind": "component",
+                  "componentRef": "Card",
+                  "variant": "outlined",
+                  "styleBindings": {
+                    "surfaceColor": "color.surface.default",
+                    "radius": "radius.card"
+                  },
+                  "slots": {
+                    "content": [
+                      {
+                        "id": "button_foundation",
+                        "kind": "component",
+                        "componentRef": "Button",
+                        "variant": "primary",
+                        "props": { "label": "Continue" },
+                        "interactions": [
+                          { "event": "press", "actionRef": "navigation.openPage", "arguments": { "route": "/" } }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "grid_foundation",
+                  "kind": "layout",
+                  "layout": "grid",
+                  "columns": { "mobile": 1, "tablet": 2, "desktop": 2 },
+                  "gapToken": "spacing.sm",
+                  "children": [
+                    {
+                      "id": "text_grid_a",
+                      "kind": "component",
+                      "componentRef": "Text",
+                      "variant": "body",
+                      "props": { "text": "Grid item A" }
+                    },
+                    {
+                      "id": "text_grid_b",
+                      "kind": "component",
+                      "componentRef": "Text",
+                      "variant": "body",
+                      "props": { "text": "Grid item B" }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

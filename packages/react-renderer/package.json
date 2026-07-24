@@ -5,7 +5,8 @@
   "exports": "./src/index.tsx",
   "dependencies": {
     "@agidn/design-tokens": "workspace:*",
-    "@agidn/document-schema": "workspace:*"
+    "@agidn/document-schema": "workspace:*",
+    "@agidn/project-assets": "workspace:*"
   },
   "peerDependencies": {
     "react": "^19.1.0"

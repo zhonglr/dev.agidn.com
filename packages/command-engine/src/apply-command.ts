@@ -33,6 +33,6 @@ export function applyCommand(document: PageDocument, input: unknown, rules: Rule
     accepted: true,
     document: candidate,
     command,
-    patch: { protocolVersion: "1.0.0", commandId: command.commandId, operations: handled.operations }
+    patch: { protocolVersion: "2.0.0", commandId: command.commandId, operations: handled.operations }
   };
 }

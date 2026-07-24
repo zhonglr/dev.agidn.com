@@ -1,11 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { applyCommand, checkDocumentCommand } from "@agidn/command-engine";
-import { loadGoldenProject } from "../helpers.js";
+import { loadFoundationProject } from "../helpers.js";
 
 describe("Command runtime protocol", () => {
   it("accepts a known, strictly shaped command", async () => {
-    const command = JSON.parse(await readFile(resolve("examples/golden-pricing/commands/add-card.json"), "utf8"));
+    const command = JSON.parse(await readFile(resolve("examples/foundation/commands/insert-text.json"), "utf8"));
     const result = checkDocumentCommand(command);
 
     expect(result.valid).toBe(true);
@@ -14,24 +14,24 @@ describe("Command runtime protocol", () => {
   it.each([
     {
       commandId: "cmd_unknown_type",
-      protocolVersion: "1.0.0",
+      protocolVersion: "2.0.0",
       type: "node.setCss",
-      nodeId: "grid_plans",
+      nodeId: "grid_foundation",
       value: "position:absolute"
     },
     {
       commandId: "cmd_extra_field",
-      protocolVersion: "1.0.0",
+      protocolVersion: "2.0.0",
       type: "node.setVariant",
-      nodeId: "pricing_card_pro",
+      nodeId: "card_foundation",
       variant: "default",
       directWrite: true
     },
     {
       commandId: "cmd_missing_field",
-      protocolVersion: "1.0.0",
+      protocolVersion: "2.0.0",
       type: "node.setProp",
-      nodeId: "button_pro",
+      nodeId: "button_foundation",
       property: "disabled"
     }
   ])("rejects unknown operations, extra fields and missing fields", (command) => {
@@ -39,12 +39,12 @@ describe("Command runtime protocol", () => {
   });
 
   it("returns a domain rejection without modifying the document", async () => {
-    const project = await loadGoldenProject();
+    const project = await loadFoundationProject();
     const command = {
       commandId: "cmd_extra_runtime",
-      protocolVersion: "1.0.0",
+      protocolVersion: "2.0.0",
       type: "node.setVariant",
-      nodeId: "pricing_card_pro",
+      nodeId: "card_foundation",
       variant: "default",
       directWrite: true
     };

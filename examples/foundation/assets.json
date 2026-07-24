@@ -1,0 +1,160 @@
+{
+  "schemaVersion": "2.0.0",
+  "composites": {
+    "project.foundation-callout": {
+      "id": "project.foundation-callout",
+      "kind": "composite",
+      "version": 1,
+      "displayName": {
+        "en-US": "Foundation callout",
+        "zh-CN": "基础提示区"
+      },
+      "description": {
+        "en-US": "A reusable callout assembled only from V2 layout and primitive nodes.",
+        "zh-CN": "仅由 V2 布局与基础组件组成的可复用提示区。"
+      },
+      "root": {
+        "id": "callout_card",
+        "kind": "component",
+        "componentRef": "Card",
+        "variant": "outlined",
+        "slots": {
+          "content": [
+            {
+              "id": "callout_stack",
+              "kind": "layout",
+              "layout": "stack",
+              "gapToken": "spacing.sm",
+              "children": [
+                {
+                  "id": "callout_title",
+                  "kind": "component",
+                  "componentRef": "Heading",
+                  "variant": "title",
+                  "props": {
+                    "text": "Callout title",
+                    "level": 2
+                  }
+                },
+                {
+                  "id": "callout_body",
+                  "kind": "component",
+                  "componentRef": "Text",
+                  "variant": "body",
+                  "props": {
+                    "text": "Callout body"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "publicProps": {
+        "title": {
+          "definition": {
+            "type": "string",
+            "displayName": {
+              "en-US": "Title",
+              "zh-CN": "标题"
+            },
+            "required": true,
+            "defaultValue": "Callout title",
+            "editor": "text"
+          },
+          "bindings": [
+            {
+              "targetNodeId": "callout_title",
+              "property": "text"
+            }
+          ]
+        },
+        "body": {
+          "definition": {
+            "type": "string",
+            "displayName": {
+              "en-US": "Body",
+              "zh-CN": "正文"
+            },
+            "required": true,
+            "defaultValue": "Callout body",
+            "editor": "textarea"
+          },
+          "bindings": [
+            {
+              "targetNodeId": "callout_body",
+              "property": "text"
+            }
+          ]
+        }
+      },
+      "publicSlots": {},
+      "variants": {
+        "default": {
+          "displayName": {
+            "en-US": "Default",
+            "zh-CN": "默认"
+          }
+        }
+      },
+      "editor": {
+        "icon": "callout",
+        "keywords": [
+          "callout",
+          "notice",
+          "提示"
+        ],
+        "defaultVariant": "default"
+      }
+    }
+  },
+  "patterns": {
+    "project.two-column-copy": {
+      "id": "project.two-column-copy",
+      "kind": "pattern",
+      "version": 1,
+      "displayName": {
+        "en-US": "Two-column copy",
+        "zh-CN": "双栏文案"
+      },
+      "description": {
+        "en-US": "A responsive two-column text structure that expands into ordinary nodes.",
+        "zh-CN": "插入后展开为普通节点的响应式双栏文本结构。"
+      },
+      "category": "content",
+      "nodes": [
+        {
+          "id": "pattern_grid",
+          "kind": "layout",
+          "layout": "grid",
+          "columns": {
+            "mobile": 1,
+            "tablet": 2,
+            "desktop": 2
+          },
+          "gapToken": "spacing.md",
+          "children": [
+            {
+              "id": "pattern_copy_a",
+              "kind": "component",
+              "componentRef": "Text",
+              "variant": "body",
+              "props": {
+                "text": "First column"
+              }
+            },
+            {
+              "id": "pattern_copy_b",
+              "kind": "component",
+              "componentRef": "Text",
+              "variant": "body",
+              "props": {
+                "text": "Second column"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

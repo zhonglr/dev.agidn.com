@@ -22,8 +22,11 @@ export type ViolationCode =
   | "ACCESSIBLE_NAME_REQUIRED"
   | "UNKNOWN_ACTION"
   | "INVALID_ACTION_ARGUMENT"
+  | "UNKNOWN_EVENT"
+  | "INVALID_ROLE"
+  | "INVALID_PLACEMENT"
+  | "ACCESSIBILITY_CONFLICT"
   | "UNKNOWN_VARIANT"
-  | "UNKNOWN_STATE"
   | "UNKNOWN_TOKEN"
   | "TOKEN_TYPE_MISMATCH"
   | "INVALID_LAYOUT_NESTING"
@@ -77,7 +80,7 @@ function rawValueViolations(value: unknown, nodeId?: string, path = ""): RuleVio
   const issues: RuleViolation[] = [];
   for (const [key, entry] of Object.entries(object)) {
     const entryPath = `${path}/${key}`;
-    if (key === "tokens") continue;
+    if (key === "styleBindings") continue;
     if (forbiddenPositionKeys.has(key)) {
       issues.push(violation("ABSOLUTE_POSITION_FORBIDDEN", `Normal nodes cannot set '${key}'; use a controlled Overlay.`, {
         nodeId: currentNodeId, path: entryPath,
@@ -139,6 +142,20 @@ function validateComponent(node: ComponentNode, definition: ComponentDefinition 
   }
 
   const issues: RuleViolation[] = [];
+  if (node.role && !definition.roles.includes(node.role)) {
+    issues.push(
+      violation("INVALID_ROLE", `Role '${node.role}' is not registered for ${definition.name}.`, {
+        nodeId: node.id,
+        suggestions: [
+          {
+            description: definition.roles.length
+              ? `Use one of: ${definition.roles.join(", ")}.`
+              : "Remove the role from this component."
+          }
+        ]
+      })
+    );
+  }
   for (const [name, value] of Object.entries(node.props ?? {})) {
     const prop = definition.props[name];
     if (!prop) {
@@ -152,14 +169,11 @@ function validateComponent(node: ComponentNode, definition: ComponentDefinition 
       issues.push(violation("INVALID_PROP_VALUE", `Required prop '${name}' is missing from ${definition.name}.`, { nodeId: node.id }));
     }
   }
-  if (node.variant && !definition.variants.includes(node.variant)) {
+  if (node.variant && !definition.variants[node.variant]) {
     issues.push(violation("UNKNOWN_VARIANT", `Variant '${node.variant}' is not registered for ${definition.name}.`, {
       nodeId: node.id,
-      suggestions: [{ description: `Use one of: ${definition.variants.join(", ")}.` }]
+      suggestions: [{ description: `Use one of: ${Object.keys(definition.variants).join(", ")}.` }]
     }));
-  }
-  if (node.state && !definition.states.includes(node.state)) {
-    issues.push(violation("UNKNOWN_STATE", `State '${node.state}' is not registered for ${definition.name}.`, { nodeId: node.id }));
   }
   for (const [slotName, children] of Object.entries(node.slots ?? {})) {
     const slot = definition.slots[slotName];
@@ -182,23 +196,48 @@ function validateComponent(node: ComponentNode, definition: ComponentDefinition 
       issues.push(violation("REQUIRED_SLOT_MISSING", `Required slot '${slotName}' is empty on ${definition.name}.`, { nodeId: node.id }));
     }
   }
-  const needsLabel = definition.accessibleName === "always" || (definition.accessibleName === "when-icon-only" && node.props?.iconOnly === true);
+  const needsLabel =
+    definition.accessibility.accessibleName === "always" ||
+    (
+      definition.accessibility.accessibleName === "when-icon-only" &&
+      node.props?.[definition.accessibility.iconOnlyProp ?? "iconOnly"] === true
+    );
   if (needsLabel && !node.accessibility?.label) {
     issues.push(violation("ACCESSIBLE_NAME_REQUIRED", `${definition.name} requires an accessible name.`, {
       nodeId: node.id,
       suggestions: [{ description: "Set accessibility.label to a concise user-facing name." }]
     }));
   }
-  for (const [property, reference] of Object.entries(node.tokens ?? {})) {
-    const expectedType: TokenType | undefined = property.toLowerCase().includes("color") ? "color" : property.toLowerCase().includes("spacing") ? "spacing" : undefined;
-    if (!hasToken(context.tokens, reference)) {
+  if (
+    node.accessibility?.decorative &&
+    (node.accessibility.label || node.accessibility.describedBy || (node.interactions?.length ?? 0) > 0)
+  ) {
+    issues.push(
+      violation(
+        "ACCESSIBILITY_CONFLICT",
+        `${definition.name} cannot be decorative while it has an accessible name, description, or interaction.`,
+        { nodeId: node.id }
+      )
+    );
+  }
+  for (const [property, reference] of Object.entries(node.styleBindings ?? {})) {
+    const tokenSlot = definition.tokenSlots[property];
+    if (!tokenSlot) {
+      issues.push(violation("UNKNOWN_TOKEN", `Style binding '${property}' is not registered for ${definition.name}.`, { nodeId: node.id }));
+    } else if (!hasToken(context.tokens, reference)) {
       issues.push(violation("UNKNOWN_TOKEN", `Token '${reference}' is not registered.`, { nodeId: node.id }));
-    } else if (expectedType && !hasToken(context.tokens, reference, expectedType)) {
+    } else if (!tokenSlot.tokenTypes.some((type) => hasToken(context.tokens, reference, type as TokenType))) {
       issues.push(violation("TOKEN_TYPE_MISMATCH", `Token '${reference}' cannot be used for '${property}'.`, { nodeId: node.id }));
     }
   }
   if (context.actions) {
     for (const interaction of node.interactions ?? []) {
+      if (!definition.events[interaction.event]) {
+        issues.push(violation("UNKNOWN_EVENT", `Event '${interaction.event}' is not registered for ${definition.name}.`, {
+          nodeId: node.id
+        }));
+        continue;
+      }
       const action = context.actions.actions[interaction.actionRef];
       if (!action) {
         issues.push(violation("UNKNOWN_ACTION", `Action '${interaction.actionRef}' is not registered.`, {
@@ -233,6 +272,14 @@ function semanticViolations(document: PageDocument, context: RuleContext): RuleV
   const walk = (node: PageNode, parent: PageNode | undefined, layoutDepth: number): void => {
     if (ids.has(node.id)) issues.push(violation("DUPLICATE_NODE_ID", `Node id '${node.id}' is duplicated.`, { nodeId: node.id }));
     ids.add(node.id);
+    if (node.placement?.gridSpan && (parent?.kind !== "layout" || parent.layout !== "grid")) {
+      issues.push(
+        violation("INVALID_PLACEMENT", "gridSpan can only be set for a direct child of Grid.", {
+          nodeId: node.id,
+          suggestions: [{ description: "Move the node into a Grid or clear gridSpan." }]
+        })
+      );
+    }
     if (node.kind === "component") {
       issues.push(...validateComponent(node, context.components.components[node.componentRef], context));
       Object.values(node.slots ?? {}).flat().forEach((child) => walk(child, node, layoutDepth));
@@ -240,10 +287,17 @@ function semanticViolations(document: PageDocument, context: RuleContext): RuleV
     }
     const nextDepth = layoutDepth + 1;
     if (nextDepth > maxDepth) issues.push(violation("LAYOUT_DEPTH_EXCEEDED", `Layout depth exceeds ${maxDepth}.`, { nodeId: node.id }));
-    if (node.layout === "section" && parent?.kind === "layout" && parent.layout !== "overlay") {
-      issues.push(violation("INVALID_LAYOUT_NESTING", "Section cannot be nested inside a normal layout node.", { nodeId: node.id }));
+    if (
+      node.layout === "section" &&
+      parent !== undefined &&
+      (parent.kind !== "layout" || parent.layout !== "overlay")
+    ) {
+      issues.push(violation("INVALID_LAYOUT_NESTING", "Section must be placed at the page root or inside a controlled Overlay.", { nodeId: node.id }));
     }
-    if (node.layout === "container" && parent?.kind === "layout" && !["section", "overlay"].includes(parent.layout)) {
+    if (
+      node.layout === "container" &&
+      (parent?.kind !== "layout" || !["section", "overlay"].includes(parent.layout))
+    ) {
       issues.push(violation("INVALID_LAYOUT_NESTING", "Container must be placed directly in a Section or controlled Overlay.", { nodeId: node.id }));
     }
     if (node.layout === "grid") {
@@ -308,7 +362,7 @@ export function collectDocumentReferences(document: PageDocument): { components:
       if (node.overlay) tokens.add(node.overlay.offsetToken);
     } else {
       components.add(node.componentRef);
-      Object.values(node.tokens ?? {}).forEach((reference) => tokens.add(reference));
+      Object.values(node.styleBindings ?? {}).forEach((reference) => tokens.add(reference));
       node.interactions?.forEach((interaction) => actions.add(interaction.actionRef));
     }
   });

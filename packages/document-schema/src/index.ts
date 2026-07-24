@@ -1,24 +1,106 @@
 import { Type, type Static } from "@sinclair/typebox";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 
-export const SCHEMA_VERSION = "1.0.0" as const;
+export const SCHEMA_VERSION = "2.0.0" as const;
 
-const IdentifierSchema = Type.String({ minLength: 1, pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]*$" });
-const TokenReferenceSchema = Type.String({
+export const IdentifierSchema = Type.String({ minLength: 1, pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]*$" });
+export const TokenReferenceSchema = Type.String({
   minLength: 3,
   pattern: "^[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)+$"
 });
 
 export const ResponsiveColumnsSchema = Type.Object(
   {
-    mobile: Type.Optional(Type.Union([Type.Literal(1), Type.Literal(2), Type.Literal(3), Type.Literal(4), Type.Literal(6), Type.Literal(12)])),
-    tablet: Type.Optional(Type.Union([Type.Literal(1), Type.Literal(2), Type.Literal(3), Type.Literal(4), Type.Literal(6), Type.Literal(12)])),
-    desktop: Type.Optional(Type.Union([Type.Literal(1), Type.Literal(2), Type.Literal(3), Type.Literal(4), Type.Literal(6), Type.Literal(12)]))
+    mobile: Type.Optional(
+      Type.Union([
+        Type.Literal(1),
+        Type.Literal(2),
+        Type.Literal(3),
+        Type.Literal(4),
+        Type.Literal(6),
+        Type.Literal(12)
+      ])
+    ),
+    tablet: Type.Optional(
+      Type.Union([
+        Type.Literal(1),
+        Type.Literal(2),
+        Type.Literal(3),
+        Type.Literal(4),
+        Type.Literal(6),
+        Type.Literal(12)
+      ])
+    ),
+    desktop: Type.Optional(
+      Type.Union([
+        Type.Literal(1),
+        Type.Literal(2),
+        Type.Literal(3),
+        Type.Literal(4),
+        Type.Literal(6),
+        Type.Literal(12)
+      ])
+    )
   },
   { additionalProperties: false }
 );
 
-const AccessibilitySchema = Type.Object(
+export const PlacementSchema = Type.Object(
+  {
+    width: Type.Optional(Type.Union([Type.Literal("auto"), Type.Literal("fit"), Type.Literal("fill")])),
+    grow: Type.Optional(Type.Boolean()),
+    alignSelf: Type.Optional(
+      Type.Union([
+        Type.Literal("auto"),
+        Type.Literal("start"),
+        Type.Literal("center"),
+        Type.Literal("end"),
+        Type.Literal("stretch")
+      ])
+    ),
+    gridSpan: Type.Optional(ResponsiveColumnsSchema)
+  },
+  { additionalProperties: false }
+);
+
+export const VisibilitySchema = Type.Object(
+  {
+    mobile: Type.Optional(Type.Boolean()),
+    tablet: Type.Optional(Type.Boolean()),
+    desktop: Type.Optional(Type.Boolean())
+  },
+  { additionalProperties: false }
+);
+
+export const OverlaySchema = Type.Object(
+  {
+    purpose: Type.Union([
+      Type.Literal("badge"),
+      Type.Literal("decoration"),
+      Type.Literal("content-overlay")
+    ]),
+    anchor: Type.Union([
+      Type.Literal("top-start"),
+      Type.Literal("top-end"),
+      Type.Literal("bottom-start"),
+      Type.Literal("bottom-end"),
+      Type.Literal("center")
+    ]),
+    boundary: Type.Union([Type.Literal("parent"), Type.Literal("viewport")]),
+    offsetToken: TokenReferenceSchema,
+    collision: Type.Optional(
+      Type.Union([
+        Type.Literal("flip"),
+        Type.Literal("shift"),
+        Type.Literal("hide"),
+        Type.Literal("none")
+      ])
+    )
+  },
+  { additionalProperties: false }
+);
+
+export const AccessibilitySchema = Type.Object(
   {
     label: Type.Optional(Type.String({ minLength: 1 })),
     describedBy: Type.Optional(IdentifierSchema),
@@ -27,24 +109,30 @@ const AccessibilitySchema = Type.Object(
   { additionalProperties: false }
 );
 
-const InteractionSchema = Type.Object(
+export const InteractionSchema = Type.Object(
   {
-    event: Type.Union([Type.Literal("press"), Type.Literal("change"), Type.Literal("submit"), Type.Literal("open"), Type.Literal("close")]),
+    event: IdentifierSchema,
     actionRef: IdentifierSchema,
     arguments: Type.Optional(Type.Record(Type.String(), Type.Unknown()))
   },
   { additionalProperties: false }
 );
 
+const CommonNodeFields = {
+  id: IdentifierSchema,
+  role: Type.Optional(IdentifierSchema),
+  name: Type.Optional(Type.String({ minLength: 1 })),
+  placement: Type.Optional(PlacementSchema),
+  visibility: Type.Optional(VisibilitySchema)
+};
+
 export const PageNodeSchema = Type.Recursive(
   (Node) =>
     Type.Union([
       Type.Object(
         {
-          id: IdentifierSchema,
+          ...CommonNodeFields,
           kind: Type.Literal("layout"),
-          role: Type.Optional(IdentifierSchema),
-          name: Type.Optional(Type.String({ minLength: 1 })),
           layout: Type.Union([
             Type.Literal("section"),
             Type.Literal("container"),
@@ -53,39 +141,27 @@ export const PageNodeSchema = Type.Recursive(
             Type.Literal("grid"),
             Type.Literal("overlay")
           ]),
-          width: Type.Optional(Type.Union([Type.Literal("sm"), Type.Literal("md"), Type.Literal("lg"), Type.Literal("full")])),
-          gapToken: Type.Optional(TokenReferenceSchema),
-          align: Type.Optional(Type.Union([Type.Literal("start"), Type.Literal("center"), Type.Literal("end"), Type.Literal("stretch")])),
-          columns: Type.Optional(ResponsiveColumnsSchema),
-          overlay: Type.Optional(
-            Type.Object(
-              {
-                purpose: Type.Union([Type.Literal("badge"), Type.Literal("decoration"), Type.Literal("content-overlay")]),
-                anchor: Type.Union([
-                  Type.Literal("top-start"), Type.Literal("top-end"), Type.Literal("bottom-start"), Type.Literal("bottom-end"), Type.Literal("center")
-                ]),
-                boundary: Type.Union([Type.Literal("parent"), Type.Literal("viewport")]),
-                offsetToken: TokenReferenceSchema,
-                collision: Type.Optional(Type.Union([Type.Literal("flip"), Type.Literal("shift"), Type.Literal("hide"), Type.Literal("none")]))
-              },
-              { additionalProperties: false }
-            )
+          width: Type.Optional(
+            Type.Union([Type.Literal("sm"), Type.Literal("md"), Type.Literal("lg"), Type.Literal("full")])
           ),
+          gapToken: Type.Optional(TokenReferenceSchema),
+          align: Type.Optional(
+            Type.Union([Type.Literal("start"), Type.Literal("center"), Type.Literal("end"), Type.Literal("stretch")])
+          ),
+          columns: Type.Optional(ResponsiveColumnsSchema),
+          overlay: Type.Optional(OverlaySchema),
           children: Type.Array(Node)
         },
         { additionalProperties: false }
       ),
       Type.Object(
         {
-          id: IdentifierSchema,
+          ...CommonNodeFields,
           kind: Type.Literal("component"),
-          role: Type.Optional(IdentifierSchema),
-          name: Type.Optional(Type.String({ minLength: 1 })),
           componentRef: IdentifierSchema,
           variant: Type.Optional(IdentifierSchema),
-          state: Type.Optional(IdentifierSchema),
           props: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
-          tokens: Type.Optional(Type.Record(Type.String(), TokenReferenceSchema)),
+          styleBindings: Type.Optional(Type.Record(Type.String(), TokenReferenceSchema)),
           slots: Type.Optional(Type.Record(Type.String(), Type.Array(Node))),
           interactions: Type.Optional(Type.Array(InteractionSchema)),
           accessibility: Type.Optional(AccessibilitySchema)
@@ -103,7 +179,7 @@ export const PageDocumentSchema = Type.Object(
     kind: Type.Literal("page"),
     role: IdentifierSchema,
     name: Type.Optional(Type.String({ minLength: 1 })),
-    children: Type.Array(PageNodeSchema, { minItems: 1 })
+    children: Type.Array(PageNodeSchema)
   },
   { $id: "PageDocument", additionalProperties: false }
 );
@@ -114,6 +190,11 @@ export type LayoutNode = Extract<PageNode, { kind: "layout" }>;
 export type ComponentNode = Extract<PageNode, { kind: "component" }>;
 export type NodeId = string;
 export type TokenReference = string;
+export type Placement = Static<typeof PlacementSchema>;
+export type Visibility = Static<typeof VisibilitySchema>;
+export type Overlay = Static<typeof OverlaySchema>;
+export type Accessibility = Static<typeof AccessibilitySchema>;
+export type Interaction = Static<typeof InteractionSchema>;
 
 const compiledPageDocument = TypeCompiler.Compile(PageDocumentSchema);
 
@@ -122,11 +203,10 @@ export interface SchemaIssue {
   message: string;
 }
 
-export function checkPageDocument(value: unknown): { valid: true; document: PageDocument } | { valid: false; issues: SchemaIssue[] } {
-  if (compiledPageDocument.Check(value)) {
-    return { valid: true, document: value };
-  }
-
+export function checkPageDocument(
+  value: unknown
+): { valid: true; document: PageDocument } | { valid: false; issues: SchemaIssue[] } {
+  if (compiledPageDocument.Check(value)) return { valid: true, document: value };
   return {
     valid: false,
     issues: [...compiledPageDocument.Errors(value)].map((error) => ({
@@ -139,11 +219,9 @@ export function checkPageDocument(value: unknown): { valid: true; document: Page
 export function visitNodes(document: PageDocument, visitor: (node: PageNode, parent?: PageNode) => void): void {
   const visit = (node: PageNode, parent?: PageNode): void => {
     visitor(node, parent);
-    if (node.kind === "layout") {
-      node.children.forEach((child) => visit(child, node));
-    } else {
-      Object.values(node.slots ?? {}).flat().forEach((child) => visit(child, node));
-    }
+    (node.kind === "layout" ? node.children : Object.values(node.slots ?? {}).flat()).forEach((child) =>
+      visit(child, node)
+    );
   };
   document.children.forEach((node) => visit(node));
 }

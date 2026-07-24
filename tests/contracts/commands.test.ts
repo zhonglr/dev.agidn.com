@@ -2,22 +2,22 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { applyCommand, type DocumentCommand } from "@agidn/command-engine";
 import { findNode } from "@agidn/document-schema";
-import { loadGoldenProject } from "../helpers.js";
+import { loadFoundationProject } from "../helpers.js";
 
 describe("Command → Rule Engine → Patch", () => {
   it("accepts a legal insert and emits a node-based patch", async () => {
-    const project = await loadGoldenProject();
-    const command = JSON.parse(await readFile(resolve("examples/golden-pricing/commands/add-card.json"), "utf8")) as DocumentCommand;
+    const project = await loadFoundationProject();
+    const command = JSON.parse(await readFile(resolve("examples/foundation/commands/insert-text.json"), "utf8")) as DocumentCommand;
     const result = applyCommand(project.document, command, project);
 
     expect(result.accepted).toBe(true);
     if (!result.accepted) return;
     expect(result.patch).toEqual({
-      protocolVersion: "1.0.0",
-      commandId: "cmd_add_enterprise_card",
-      operations: [{ op: "node.insert", nodeId: "pricing_card_enterprise", targetParentId: "grid_plans" }]
+      protocolVersion: "2.0.0",
+      commandId: "insert_foundation_text",
+      operations: [{ op: "node.insert", nodeId: "text_inserted", targetParentId: "stack_foundation" }]
     });
-    expect(findNode(result.document, "pricing_card_enterprise")).toBeDefined();
-    expect(findNode(project.document, "pricing_card_enterprise")).toBeUndefined();
+    expect(findNode(result.document, "text_inserted")).toBeDefined();
+    expect(findNode(project.document, "text_inserted")).toBeUndefined();
   });
 });

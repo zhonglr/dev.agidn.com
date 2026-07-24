@@ -1,9 +1,9 @@
 {
   "$expected": "MISSING_RESPONSIVE_RULE",
   "commandId": "cmd_invalid_responsive",
-  "protocolVersion": "1.0.0",
+  "protocolVersion": "2.0.0",
   "type": "node.setLayoutProperty",
-  "nodeId": "grid_plans",
+  "nodeId": "grid_foundation",
   "property": "columns",
   "value": { "mobile": 1, "desktop": 3 }
 }
