@@ -11,6 +11,7 @@
 ## 产品与架构
 
 - [产品设计](./product/ai-low-code-designer.md)：产品定位、核心能力和 MVP 验收标准。
+- [Studio Next 3.0 全面升级总纲](./architecture/studio-next-3-master-plan.md)：断代项目/资产模型、统一编辑上下文、Property/Preview/Interaction/扩展体系、删除清单和 S0–S9 实施门禁。
 - [Studio Authoring Model](./product/studio-authoring-model.md)：多页面根节点与 Editor Tab、自定义组件专注工作台、变量/Slot 及默认双面板布局。
 - [Logic / Integration Editor 产品设计](./product/logic-integration-editor.md)：前端事件连接业务 Action 与后端 Operation 的产品范围、首个闭环和验收标准。
 - [系统架构](./architecture/system-overview.md)：模块职责、依赖边界和核心数据流。
