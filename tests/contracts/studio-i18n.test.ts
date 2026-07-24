@@ -27,17 +27,16 @@ describe("Studio i18n", () => {
     expect(resolveStudioLocale(undefined, "invalid", "zh-CN")).toBe("zh-CN");
     expect(resolveStudioLocale(undefined, "invalid")).toBe("en-US");
     expect(translate("zh-CN", "common.revision", { revision: 12 })).toBe("版本 12");
-    expect(translate("en-US", "components.removeSaved", { name: "Hero" })).toBe("Remove Hero");
+    expect(translate("en-US", "components.dragToInsert")).toBe("Drag to insert");
   });
 
-  it("provides localized display metadata for every Golden Catalog control", () => {
-    const source = JSON.parse(readFileSync(new URL("../../examples/golden-pricing/components.json", import.meta.url), "utf8")) as {
+  it("provides localized display metadata for every Foundation Catalog control", () => {
+    const source = JSON.parse(readFileSync(new URL("../../examples/foundation/components.json", import.meta.url), "utf8")) as {
       components: Record<string, {
         displayName?: Record<string, string>;
         props: Record<string, { displayName?: Record<string, string> }>;
         slots: Record<string, { displayName?: Record<string, string> }>;
-        variants: string[];
-        variantDisplayNames?: Record<string, Record<string, string>>;
+        variants: Record<string, { displayName: Record<string, string> }>;
       }>;
     };
     for (const [componentName, component] of Object.entries(source.components)) {
@@ -51,9 +50,9 @@ describe("Studio i18n", () => {
         expect(slot.displayName?.["en-US"], `${componentName}.${slotName} English displayName`).toBeTruthy();
         expect(slot.displayName?.["zh-CN"], `${componentName}.${slotName} Chinese displayName`).toBeTruthy();
       }
-      for (const variant of component.variants) {
-        expect(component.variantDisplayNames?.[variant]?.["en-US"], `${componentName}.${variant} English variant`).toBeTruthy();
-        expect(component.variantDisplayNames?.[variant]?.["zh-CN"], `${componentName}.${variant} Chinese variant`).toBeTruthy();
+      for (const [variant, metadata] of Object.entries(component.variants)) {
+        expect(metadata.displayName["en-US"], `${componentName}.${variant} English variant`).toBeTruthy();
+        expect(metadata.displayName["zh-CN"], `${componentName}.${variant} Chinese variant`).toBeTruthy();
       }
     }
   });
@@ -65,7 +64,7 @@ describe("Studio i18n", () => {
       "../../apps/studio/src/panels.tsx",
       "../../apps/studio/src/canvas/CanvasViewport.tsx"
     ];
-    const allowedText = new Set(["AGIDN Studio", "English", "PageDocument 1.0.0", "UTF-8", "TypeScript"]);
+    const allowedText = new Set(["AGIDN Studio", "English", "PageDocument 2.0.0", "UTF-8", "TypeScript"]);
     const violations: string[] = [];
     for (const relativePath of files) {
       const url = new URL(relativePath, import.meta.url);

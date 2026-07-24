@@ -80,7 +80,7 @@ export const builtinThemePlugin: StudioThemePluginManifest = {
   id: "agidn.builtin-themes",
   name: "Built-in Themes",
   publisher: "AGIDN",
-  version: "1.0.0",
+  version: "2.0.0",
   engines: { studio: ">=0.1.0" },
   contributes: {
     themes: [

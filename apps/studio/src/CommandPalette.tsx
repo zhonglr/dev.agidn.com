@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import type { ActionRegistry, RegisteredAction } from "@agidn/studio-workbench";
+import { studioStorage } from "./browser-storage.js";
 import { SearchField, StudioUiProvider } from "./components/ui/index.js";
 import { useI18n, type StudioLocale } from "./i18n.js";
 import { rankItems } from "./palette-ranking.js";
 import type { ThemeKind } from "./themes/index.js";
 
-const RECENT_STORAGE_KEY = "agidn.studio.palette.recent.v1";
+const RECENT_STORAGE_KEY = "agidn.studio.v2.palette-recent";
 const RECENT_LIMIT = 8;
 const RESULT_LIMIT = 50;
 
@@ -26,7 +27,7 @@ interface PaletteSection {
 
 function loadRecentIds(): string[] {
   try {
-    const raw = globalThis.localStorage?.getItem(RECENT_STORAGE_KEY);
+    const raw = studioStorage.getItem(RECENT_STORAGE_KEY);
     const parsed: unknown = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
   } catch {
@@ -35,7 +36,7 @@ function loadRecentIds(): string[] {
 }
 
 function storeRecentIds(ids: readonly string[]): void {
-  globalThis.localStorage?.setItem(RECENT_STORAGE_KEY, JSON.stringify(ids.slice(0, RECENT_LIMIT)));
+  studioStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(ids.slice(0, RECENT_LIMIT)));
 }
 
 function optionId(actionId: string): string {

@@ -66,18 +66,6 @@ export function createStudioContextMenuRegistry(
         })
     },
     {
-      id: "studio.context.editComponent",
-      targetTypes: ["custom-component"],
-      section: editSection,
-      order: 10,
-      build: (target) =>
-        capabilityItem(target, "edit", {
-          id: "edit-component",
-          label: t("contextMenu.editComponent"),
-          icon: <ProductIcon name="settings" />
-        })
-    },
-    {
       id: "studio.context.copyIdentifier",
       targetTypes: "*",
       section: editSection,
@@ -165,7 +153,7 @@ export function createStudioContextMenuRegistry(
     },
     {
       id: "studio.context.remove",
-      targetTypes: ["node", "custom-component", "saved-component"],
+      targetTypes: ["node"],
       section: destructiveSection,
       order: 20,
       build: (target) =>

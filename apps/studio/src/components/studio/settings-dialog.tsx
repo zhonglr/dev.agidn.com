@@ -93,7 +93,7 @@ export default function SettingsDialog({
             <div className="settings-browser">{components.map((component) => (
               <div key={component.name}>
                 <strong>{component.name}</strong>
-                <span>{component.source} · {t("settings.variantCount", { count: component.variants.length })}</span>
+                <span>{component.source} · {t("settings.variantCount", { count: Object.keys(component.variants).length })}</span>
               </div>
             ))}</div>
           </section>

@@ -1,24 +1,42 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  checkCommitCommandsResponse,
+  checkCommitProjectCommandsResponse,
   checkExportContextResponse,
   checkGetCatalogResponse,
-  checkGetDocumentResponse,
-  checkGetHistoryResponse,
-  checkNavigationResponse,
-  type CommitCommandsResponse,
+  checkGetProjectHistoryResponse,
+  checkGetProjectResponse,
+  checkProjectNavigationResponse,
+  type CommitProjectCommandsResponse,
   type ExportContextResponse,
   type GetCatalogResponse,
-  type GetDocumentResponse,
-  type GetHistoryResponse,
-  type NavigationResponse
+  type GetProjectHistoryResponse,
+  type GetProjectResponse,
+  type ProjectNavigationResponse
 } from "@agidn/api-protocol";
-import type { DocumentCommand } from "@agidn/command-engine";
-import { findNode, type PageDocument, type PageNode } from "@agidn/document-schema";
+import {
+  applyCommand,
+  type DocumentCommand,
+  type SetLayoutPropertyCommand
+} from "@agidn/command-engine";
+import {
+  findNode,
+  type Accessibility,
+  type Interaction,
+  type PageDocument,
+  type PageNode,
+  type Placement,
+  type Visibility
+} from "@agidn/document-schema";
+import { layoutCanContain, type InsertSource } from "@agidn/layout-engine";
+import { studioStorage } from "./browser-storage.js";
 import { useI18n, type MessageDescriptor, type MessageKey } from "./i18n.js";
 import { message, messageError, messageFromError } from "./i18n/types.js";
+import {
+  createNodesForPayload,
+  insertSourcesForPayload,
+  type InsertDragPayload
+} from "./insert-source.js";
 import type { MoveTarget } from "./structure-drag.js";
-import { cloneNodeWithFreshIds, createComponentNode } from "./component-node-factory.js";
 
 type SessionStatus = "loading" | "saved" | "saving" | "error";
 
@@ -43,7 +61,10 @@ const VIOLATION_MESSAGE_KEYS: Readonly<Record<string, MessageKey>> = {
   UNKNOWN_ACTION: "errors.unknownAction",
   INVALID_ACTION_ARGUMENT: "errors.invalidActionArgument",
   UNKNOWN_VARIANT: "errors.unknownVariant",
-  UNKNOWN_STATE: "errors.unknownState",
+  UNKNOWN_EVENT: "errors.unknownEvent",
+  INVALID_ROLE: "errors.invalidRole",
+  INVALID_PLACEMENT: "errors.invalidPlacement",
+  ACCESSIBILITY_CONFLICT: "errors.accessibilityConflict",
   UNKNOWN_TOKEN: "errors.unknownToken",
   TOKEN_TYPE_MISMATCH: "errors.tokenTypeMismatch",
   INVALID_LAYOUT_NESTING: "errors.invalidLayoutNesting",
@@ -56,15 +77,7 @@ export interface InsertTarget {
   beforeNodeId?: string;
 }
 
-export interface SavedComponent {
-  id: string;
-  displayName: string;
-  node: PageNode;
-  createdAt: string;
-  customComponentId?: string;
-}
-
-export type InsertDragPayload = { type: "component" | "saved"; id: string };
+export type { InsertDragPayload } from "./insert-source.js";
 
 export interface WorkspacePage {
   id: string;
@@ -94,21 +107,29 @@ interface StudioSessionValue {
   error?: MessageDescriptor;
   canUndo: boolean;
   canRedo: boolean;
-  history: GetHistoryResponse["entries"];
-  savedComponents: readonly SavedComponent[];
+  history: GetProjectHistoryResponse["entries"];
   activeInsertDrag?: InsertDragPayload;
   activeNodeDragId?: string;
   createPage: () => string;
   activatePage: (pageId: string) => void;
   closePage: (pageId: string) => void;
   selectNode: (nodeId?: string) => void;
+  setName: (nodeId: string, name?: string) => Promise<boolean>;
+  setRole: (nodeId: string, role?: string) => Promise<boolean>;
   setProp: (nodeId: string, property: string, value: unknown) => Promise<boolean>;
-  setVariant: (nodeId: string, variant: string) => Promise<boolean>;
-  insertComponent: (componentRef: string, target?: InsertTarget) => Promise<boolean>;
-  insertSavedComponent: (savedId: string, target?: InsertTarget) => Promise<boolean>;
-  saveSelectedComponent: (displayName: string) => boolean;
-  upsertCustomComponentTemplate: (customComponentId: string, displayName: string, node: PageNode) => void;
-  removeSavedComponent: (savedId: string) => void;
+  setVariant: (nodeId: string, variant?: string) => Promise<boolean>;
+  setStyleBinding: (nodeId: string, property: string, tokenRef?: string) => Promise<boolean>;
+  setPlacement: (nodeId: string, placement?: Placement) => Promise<boolean>;
+  setVisibility: (nodeId: string, visibility?: Visibility) => Promise<boolean>;
+  setAccessibility: (nodeId: string, accessibility?: Accessibility) => Promise<boolean>;
+  setInteractions: (nodeId: string, interactions: Interaction[]) => Promise<boolean>;
+  setLayoutProperty: (
+    nodeId: string,
+    property: SetLayoutPropertyCommand["property"],
+    value: unknown
+  ) => Promise<boolean>;
+  insertNode: (payload: InsertDragPayload, target?: InsertTarget) => Promise<boolean>;
+  insertPattern: (patternId: string, target?: InsertTarget) => Promise<boolean>;
   beginInsertDrag: (payload: InsertDragPayload) => void;
   endInsertDrag: () => void;
   beginNodeDrag: (nodeId: string) => void;
@@ -128,10 +149,23 @@ function commandId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID().replaceAll("-", "")}`;
 }
 
+type JsonResponseResult =
+  | { ok: true; value: unknown }
+  | { ok: false };
+
+async function tryJsonResponse(response: Response): Promise<JsonResponseResult> {
+  if (!response.ok && response.status >= 500) return { ok: false };
+  try {
+    return { ok: true, value: await response.json() as unknown };
+  } catch {
+    return { ok: false };
+  }
+}
+
 async function jsonResponse(response: Response): Promise<unknown> {
-  const value: unknown = await response.json();
-  if (!response.ok && response.status >= 500) throw messageError("errors.workspaceRequest");
-  return value;
+  const result = await tryJsonResponse(response);
+  if (!result.ok) throw messageError("errors.workspaceRequest");
+  return result.value;
 }
 
 function allNodes(document: PageDocument): PageNode[] {
@@ -144,48 +178,9 @@ function allNodes(document: PageDocument): PageNode[] {
   return result;
 }
 
-function childCollections(node: PageNode): PageNode[][] {
-  return node.kind === "layout" ? [node.children] : Object.values(node.slots ?? {});
-}
-
-function insertNode(document: PageDocument, target: InsertTarget, node: PageNode): boolean {
-  let collection: PageNode[] | undefined;
-  if (target.parentId === document.id) collection = document.children;
-  else {
-    const parent = findNode(document, target.parentId);
-    if (parent?.kind === "layout" && !target.slot) collection = parent.children;
-    if (parent?.kind === "component" && target.slot) {
-      (parent.slots ??= {});
-      collection = (parent.slots[target.slot] ??= []);
-    }
-  }
-  if (!collection) return false;
-  const index = target.beforeNodeId
-    ? collection.findIndex(({ id }) => id === target.beforeNodeId)
-    : collection.length;
-  if (index < 0) return false;
-  collection.splice(index, 0, node);
-  return true;
-}
-
-function removeNode(document: PageDocument, nodeId: string): PageNode | undefined {
-  const remove = (collection: PageNode[]): PageNode | undefined => {
-    const index = collection.findIndex(({ id }) => id === nodeId);
-    if (index >= 0) return collection.splice(index, 1)[0];
-    for (const node of collection) {
-      for (const children of childCollections(node)) {
-        const removed = remove(children);
-        if (removed) return removed;
-      }
-    }
-    return undefined;
-  };
-  return remove(document.children);
-}
-
 function loadLocalPages(): LocalWorkspacePage[] {
   try {
-    const value: unknown = JSON.parse(localStorage.getItem("agidn.studio.workspace.pages") ?? "[]");
+    const value: unknown = JSON.parse(studioStorage.getItem("agidn.studio.v2.pages") ?? "[]");
     if (!Array.isArray(value)) return [];
     return value.filter(
       (page): page is LocalWorkspacePage =>
@@ -209,7 +204,7 @@ function loadLocalPages(): LocalWorkspacePage[] {
 function loadPageViewState(): { activePageId?: string; openPageIds: string[] } {
   try {
     const value: unknown = JSON.parse(
-      localStorage.getItem("agidn.studio.workspace.page-view") ?? "{}"
+      studioStorage.getItem("agidn.studio.v2.page-view") ?? "{}"
     );
     if (!value || typeof value !== "object") return { openPageIds: [] };
     const state = value as { activePageId?: unknown; openPageIds?: unknown };
@@ -227,7 +222,7 @@ function loadPageViewState(): { activePageId?: string; openPageIds: string[] } {
 export function createWorkspacePageDocument(name: string): PageDocument {
   const pageId = `page_${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     id: pageId,
     kind: "page",
     role: "page",
@@ -245,34 +240,44 @@ export function createWorkspacePageDocument(name: string): PageDocument {
   };
 }
 
-function loadSavedComponents(): SavedComponent[] {
-  try {
-    const value: unknown = JSON.parse(localStorage.getItem("agidn.studio.saved-components") ?? "[]");
-    if (!Array.isArray(value)) return [];
-    return value.filter((item): item is SavedComponent => Boolean(item && typeof item === "object" && "id" in item && "displayName" in item && "node" in item));
-  } catch { return []; }
-}
-
-function defaultInsertTarget(document: PageDocument, catalog: GetCatalogResponse, selectedNode: PageNode | undefined, componentRef: string): InsertTarget | undefined {
-  if (selectedNode?.kind === "layout") return { parentId: selectedNode.id };
+function defaultInsertTarget(
+  document: PageDocument,
+  catalog: GetCatalogResponse,
+  selectedNode: PageNode | undefined,
+  source: InsertSource
+): InsertTarget | undefined {
+  if (selectedNode?.kind === "layout" && layoutCanContain(selectedNode, source)) {
+    return { parentId: selectedNode.id };
+  }
   if (selectedNode?.kind === "component") {
     const definition = catalog.components.components[selectedNode.componentRef];
     for (const [slotName, slot] of Object.entries(definition?.slots ?? {})) {
       const accepts = slot.accepts ?? ["*"];
       const count = selectedNode.slots?.[slotName]?.length ?? 0;
-      if ((accepts.includes("*") || accepts.includes(componentRef)) && (slot.maxItems === undefined || count < slot.maxItems)) {
+      const accepted =
+        accepts.includes("*") ||
+        (source.kind === "component" && accepts.includes(source.componentRef));
+      if (accepted && (slot.maxItems === undefined || count < slot.maxItems)) {
         return { parentId: selectedNode.id, slot: slotName };
       }
     }
   }
-  const fallback = allNodes(document).find((node) => node.kind === "layout");
+  if (source.kind === "layout" && source.layout === "section") {
+    return { parentId: document.id };
+  }
+  const fallback = allNodes(document).find(
+    (node) => node.kind === "layout" && layoutCanContain(node, source)
+  );
   return fallback ? { parentId: fallback.id } : undefined;
 }
 
 export function StudioSessionProvider({ children }: { children: ReactNode }) {
   const { t } = useI18n();
-  const [revisionState, setRevisionState] = useState<GetDocumentResponse["revision"]>();
-  const revisionRef = useRef<GetDocumentResponse["revision"] | undefined>(undefined);
+  const [revisionState, setRevisionState] =
+    useState<GetProjectResponse["revision"]>();
+  const revisionRef = useRef<
+    GetProjectResponse["revision"] | undefined
+  >(undefined);
   revisionRef.current = revisionState;
   const [catalog, setCatalog] = useState<GetCatalogResponse>();
   const [selectedNodeId, setSelectedNodeId] = useState<string>();
@@ -286,29 +291,48 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
   );
   const [status, setStatus] = useState<SessionStatus>("loading");
   const [error, setError] = useState<MessageDescriptor>();
-  const [savedComponents, setSavedComponents] = useState<SavedComponent[]>(loadSavedComponents);
   const [activeInsertDrag, setActiveInsertDrag] = useState<InsertDragPayload>();
   const [activeNodeDragId, setActiveNodeDragId] = useState<string>();
-  const [historyState, setHistoryState] = useState<GetHistoryResponse>({
-    protocolVersion: "1.0.0", ok: true, currentRevision: 0, canUndo: false, canRedo: false, entries: []
+  const [historyState, setHistoryState] =
+    useState<GetProjectHistoryResponse>({
+    protocolVersion: "2.0.0", ok: true, currentRevision: 0, canUndo: false, canRedo: false, entries: []
   });
 
   const loadHistory = useCallback(async (): Promise<void> => {
-    const value = await jsonResponse(await fetch("/api/v1/history"));
-    if (!checkGetHistoryResponse(value)) throw messageError("errors.historyProtocol");
-    setHistoryState(value as GetHistoryResponse);
+    const value = await jsonResponse(
+      await fetch("/api/v1/project/history")
+    );
+    if (!checkGetProjectHistoryResponse(value)) {
+      throw messageError("errors.historyProtocol");
+    }
+    setHistoryState(value as GetProjectHistoryResponse);
   }, []);
 
   const reload = useCallback(async (): Promise<void> => {
     setStatus("loading");
     try {
-      const [documentValue, catalogValue] = await Promise.all([
-        jsonResponse(await fetch("/api/v1/document")),
-        jsonResponse(await fetch("/api/v1/catalog"))
+      const [documentResult, catalogResult] = await Promise.all([
+        fetch("/api/v1/project").then(tryJsonResponse),
+        fetch("/api/v1/catalog").then(tryJsonResponse)
       ]);
-      if (!checkGetDocumentResponse(documentValue)) throw messageError("errors.documentProtocol");
-      if (!checkGetCatalogResponse(catalogValue)) throw messageError("errors.catalogProtocol");
-      const response = documentValue as GetDocumentResponse;
+      if (!documentResult.ok || !catalogResult.ok) {
+        setError(message("errors.workspaceRequest"));
+        setStatus("error");
+        return;
+      }
+      const documentValue = documentResult.value;
+      const catalogValue = catalogResult.value;
+      if (!checkGetProjectResponse(documentValue)) {
+        setError(message("errors.documentProtocol"));
+        setStatus("error");
+        return;
+      }
+      if (!checkGetCatalogResponse(catalogValue)) {
+        setError(message("errors.catalogProtocol"));
+        setStatus("error");
+        return;
+      }
+      const response = documentValue as GetProjectResponse;
       setRevisionState(response.revision);
       setCatalog(catalogValue as GetCatalogResponse);
       setError(undefined);
@@ -323,33 +347,36 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => { void reload(); }, [reload]);
 
   useEffect(() => {
-    localStorage.setItem("agidn.studio.workspace.pages", JSON.stringify(localPages));
+    studioStorage.setItem("agidn.studio.v2.pages", JSON.stringify(localPages));
   }, [localPages]);
 
   useEffect(() => {
-    localStorage.setItem(
-      "agidn.studio.workspace.page-view",
+    studioStorage.setItem(
+      "agidn.studio.v2.page-view",
       JSON.stringify({ activePageId, openPageIds })
     );
   }, [activePageId, openPageIds]);
 
   useEffect(() => {
-    const primaryId = revisionState?.document.id;
+    const primaryId = revisionState?.project.document.id;
     if (!primaryId || activePageId) return;
     setActivePageId(primaryId);
     setOpenPageIds((current) => (current.includes(primaryId) ? current : [...current, primaryId]));
-  }, [activePageId, revisionState?.document.id]);
+  }, [activePageId, revisionState?.project.document.id]);
 
   const activeLocalPage = localPages.find(({ id }) => id === activePageId);
-  const activeDocument = activeLocalPage?.document ?? revisionState?.document;
+  const activeDocument =
+    activeLocalPage?.document ?? revisionState?.project.document;
   const activeRevision = activeLocalPage?.revision ?? revisionState?.revision ?? 0;
   const pages = useMemo<WorkspacePage[]>(() => {
     const primary = revisionState
       ? [
           {
-            id: revisionState.document.id,
-            name: revisionState.document.name ?? revisionState.document.id,
-            document: revisionState.document,
+            id: revisionState.project.document.id,
+            name:
+              revisionState.project.document.name ??
+              revisionState.project.document.id,
+            document: revisionState.project.document,
             revision: revisionState.revision,
             isPrimary: true
           }
@@ -400,18 +427,21 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
     [activeLocalPage]
   );
 
-  const commit = useCallback(async (command: DocumentCommand): Promise<boolean> => {
+  const commit = useCallback(async (input: DocumentCommand | readonly DocumentCommand[]): Promise<boolean> => {
     const current = revisionRef.current;
     if (!current || status === "saving") return false;
+    const commands = Array.isArray(input) ? [...input] : [input as DocumentCommand];
     setStatus("saving");
     setError(undefined);
     try {
-      const value = await jsonResponse(await fetch("/api/v1/commands", {
+      const value = await jsonResponse(await fetch("/api/v1/project/commands", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ protocolVersion: "1.0.0", baseRevision: current.revision, source: "human", commands: [command] })
+        body: JSON.stringify({ protocolVersion: "2.0.0", baseRevision: current.revision, source: "human", commands })
       }));
-      if (!checkCommitCommandsResponse(value)) throw messageError("errors.commitProtocol");
-      const response = value as CommitCommandsResponse;
+      if (!checkCommitProjectCommandsResponse(value)) {
+        throw messageError("errors.commitProtocol");
+      }
+      const response = value as CommitProjectCommandsResponse;
       if (!response.ok) {
         await reload();
         setError(response.error === "REVISION_CONFLICT"
@@ -431,16 +461,101 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
     }
   }, [loadHistory, reload, status]);
 
+  const dispatch = useCallback(
+    async (command: DocumentCommand): Promise<boolean> => {
+      if (!activeLocalPage) return commit(command);
+      if (!catalog) return false;
+      let rejectionCode: string | undefined;
+      const accepted = updateActiveLocalDocument((document) => {
+        const result = applyCommand(document, command, {
+          components: catalog.components,
+          tokens: catalog.tokens,
+          actions: catalog.actions
+        });
+        if (!result.accepted) {
+          rejectionCode = result.violations[0]?.code;
+          return false;
+        }
+        Object.assign(document, result.document);
+      });
+      if (!accepted) {
+        setError(
+          message(VIOLATION_MESSAGE_KEYS[rejectionCode ?? ""] ?? "errors.serverRejected")
+        );
+        setStatus("error");
+        return false;
+      }
+      setError(undefined);
+      setStatus("saved");
+      return true;
+    },
+    [activeLocalPage, catalog, commit, updateActiveLocalDocument]
+  );
+
+  const dispatchMany = useCallback(
+    async (commands: readonly DocumentCommand[]): Promise<boolean> => {
+      if (commands.length === 0) return false;
+      if (!activeLocalPage) return commit(commands);
+      if (!catalog) return false;
+      let rejectionCode: string | undefined;
+      const accepted = updateActiveLocalDocument((document) => {
+        let candidate = document;
+        for (const command of commands) {
+          const result = applyCommand(candidate, command, {
+            components: catalog.components,
+            tokens: catalog.tokens,
+            actions: catalog.actions
+          });
+          if (!result.accepted) {
+            rejectionCode = result.violations[0]?.code;
+            return false;
+          }
+          candidate = result.document;
+        }
+        Object.assign(document, candidate);
+      });
+      if (!accepted) {
+        setError(
+          message(VIOLATION_MESSAGE_KEYS[rejectionCode ?? ""] ?? "errors.serverRejected")
+        );
+        setStatus("error");
+        return false;
+      }
+      setError(undefined);
+      setStatus("saved");
+      return true;
+    },
+    [activeLocalPage, catalog, commit, updateActiveLocalDocument]
+  );
+
+  const setName = useCallback(
+    (nodeId: string, name?: string): Promise<boolean> =>
+      dispatch({
+        protocolVersion: "2.0.0",
+        commandId: commandId("set_name"),
+        type: "node.setName",
+        nodeId,
+        name: name || null
+      }),
+    [dispatch]
+  );
+
+  const setRole = useCallback(
+    (nodeId: string, role?: string): Promise<boolean> =>
+      dispatch({
+        protocolVersion: "2.0.0",
+        commandId: commandId("set_role"),
+        type: "node.setRole",
+        nodeId,
+        role: role || null
+      }),
+    [dispatch]
+  );
+
   const setProp = useCallback(
     async (nodeId: string, property: string, value: unknown): Promise<boolean> => {
-      if (activeLocalPage)
-        return updateActiveLocalDocument((document) => {
-          const node = findNode(document, nodeId);
-          if (node?.kind !== "component") return false;
-          (node.props ??= {})[property] = value;
-        });
-      return commit({
-        protocolVersion: "1.0.0",
+      return dispatch({
+        protocolVersion: "2.0.0",
         commandId: commandId("set_prop"),
         type: "node.setProp",
         nodeId,
@@ -448,130 +563,165 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
         value
       });
     },
-    [activeLocalPage, commit, updateActiveLocalDocument]
+    [dispatch]
   );
 
   const setVariant = useCallback(
-    async (nodeId: string, variant: string): Promise<boolean> => {
-      if (activeLocalPage)
-        return updateActiveLocalDocument((document) => {
-          const node = findNode(document, nodeId);
-          if (node?.kind !== "component") return false;
-          node.variant = variant;
-        });
-      return commit({
-        protocolVersion: "1.0.0",
+    async (nodeId: string, variant?: string): Promise<boolean> => {
+      return dispatch({
+        protocolVersion: "2.0.0",
         commandId: commandId("set_variant"),
         type: "node.setVariant",
         nodeId,
-        variant
+        variant: variant ?? null
       });
     },
-    [activeLocalPage, commit, updateActiveLocalDocument]
+    [dispatch]
   );
 
-  const insertComponent = useCallback(async (componentRef: string, explicitTarget?: InsertTarget): Promise<boolean> => {
+  const setStyleBinding = useCallback(
+    (nodeId: string, property: string, tokenRef?: string): Promise<boolean> =>
+      dispatch({
+        protocolVersion: "2.0.0",
+        commandId: commandId("set_style_binding"),
+        type: "node.setStyleBinding",
+        nodeId,
+        property,
+        tokenRef: tokenRef ?? null
+      }),
+    [dispatch]
+  );
+
+  const setPlacement = useCallback(
+    (nodeId: string, placement?: Placement): Promise<boolean> =>
+      dispatch({
+        protocolVersion: "2.0.0",
+        commandId: commandId("set_placement"),
+        type: "node.setPlacement",
+        nodeId,
+        placement: placement ?? null
+      }),
+    [dispatch]
+  );
+
+  const setVisibility = useCallback(
+    (nodeId: string, visibility?: Visibility): Promise<boolean> =>
+      dispatch({
+        protocolVersion: "2.0.0",
+        commandId: commandId("set_visibility"),
+        type: "node.setVisibility",
+        nodeId,
+        visibility: visibility ?? null
+      }),
+    [dispatch]
+  );
+
+  const setAccessibility = useCallback(
+    (nodeId: string, accessibility?: Accessibility): Promise<boolean> =>
+      dispatch({
+        protocolVersion: "2.0.0",
+        commandId: commandId("set_accessibility"),
+        type: "node.setAccessibility",
+        nodeId,
+        accessibility: accessibility ?? null
+      }),
+    [dispatch]
+  );
+
+  const setInteractions = useCallback(
+    (nodeId: string, interactions: Interaction[]): Promise<boolean> =>
+      dispatch({
+        protocolVersion: "2.0.0",
+        commandId: commandId("set_interactions"),
+        type: "node.setInteractions",
+        nodeId,
+        interactions
+      }),
+    [dispatch]
+  );
+
+  const setLayoutProperty = useCallback(
+    (
+      nodeId: string,
+      property: SetLayoutPropertyCommand["property"],
+      value: unknown
+    ): Promise<boolean> =>
+      dispatch({
+        protocolVersion: "2.0.0",
+        commandId: commandId("set_layout"),
+        type: "node.setLayoutProperty",
+        nodeId,
+        property,
+        value: value ?? null
+      } as DocumentCommand),
+    [dispatch]
+  );
+
+  const insertNode = useCallback(async (payload: InsertDragPayload, explicitTarget?: InsertTarget): Promise<boolean> => {
     const currentDocument = activeDocument;
     if (!currentDocument || !catalog) return false;
     const selected = selectedNodeId ? findNode(currentDocument, selectedNodeId) : undefined;
-    const target = explicitTarget ?? defaultInsertTarget(currentDocument, catalog, selected, componentRef);
-    const node = createComponentNode(catalog, componentRef, t("defaults.newContent"));
-    if (!target || !node) {
+    const source = insertSourcesForPayload(catalog, payload)[0];
+    const target =
+      explicitTarget ??
+      (source
+        ? defaultInsertTarget(currentDocument, catalog, selected, source)
+        : undefined);
+    const nodes = createNodesForPayload(
+      catalog,
+      payload,
+      t("defaults.newContent")
+    );
+    if (!target || nodes.length === 0) {
       setError(message("errors.noInsertTarget"));
       setStatus("error");
       return false;
     }
-    const accepted = activeLocalPage
-      ? updateActiveLocalDocument((document) => insertNode(document, target, node))
-      : await commit({
-      protocolVersion: "1.0.0", commandId: commandId("insert"), type: "node.insert",
-      targetParentId: target.parentId, ...(target.slot ? { targetSlot: target.slot } : {}),
-      ...(target.beforeNodeId ? { beforeNodeId: target.beforeNodeId } : {}), node
-    });
-    if (accepted) setSelectedNodeId(node.id);
+    const commands: DocumentCommand[] = nodes.map((node, index) => ({
+      protocolVersion: "2.0.0",
+      commandId: commandId(`insert_${payload.type}_${index}`),
+      type: "node.insert",
+      targetParentId: target.parentId,
+      ...(target.slot ? { targetSlot: target.slot } : {}),
+      ...(target.beforeNodeId ? { beforeNodeId: target.beforeNodeId } : {}),
+      node
+    }));
+    const accepted =
+      commands.length === 1
+        ? await dispatch(commands[0]!)
+        : await dispatchMany(commands);
+    if (accepted) setSelectedNodeId(nodes[0]!.id);
     return accepted;
-  }, [activeDocument, activeLocalPage, catalog, commit, selectedNodeId, t, updateActiveLocalDocument]);
+  }, [
+    activeDocument,
+    catalog,
+    dispatch,
+    dispatchMany,
+    selectedNodeId,
+    t
+  ]);
 
-  const insertSavedComponent = useCallback(async (savedId: string, explicitTarget?: InsertTarget): Promise<boolean> => {
-    const saved = savedComponents.find(({ id }) => id === savedId);
-    if (!activeDocument || !catalog || !saved) return false;
-    const selected = selectedNodeId ? findNode(activeDocument, selectedNodeId) : undefined;
-    const componentRef = saved.node.kind === "component" ? saved.node.componentRef : "";
-    const target = explicitTarget ?? (componentRef ? defaultInsertTarget(activeDocument, catalog, selected, componentRef) : selected?.kind === "layout" ? { parentId: selected.id } : undefined);
-    const node = cloneNodeWithFreshIds(saved.node);
-    if (!target) { setError(message("errors.noSavedInsertTarget")); setStatus("error"); return false; }
-    const accepted = activeLocalPage
-      ? updateActiveLocalDocument((document) => insertNode(document, target, node))
-      : await commit({
-      protocolVersion: "1.0.0", commandId: commandId("insert_saved"), type: "node.insert",
-      targetParentId: target.parentId, ...(target.slot ? { targetSlot: target.slot } : {}),
-      ...(target.beforeNodeId ? { beforeNodeId: target.beforeNodeId } : {}), node
-    });
-    if (accepted) setSelectedNodeId(node.id);
-    return accepted;
-  }, [activeDocument, activeLocalPage, catalog, commit, savedComponents, selectedNodeId, updateActiveLocalDocument]);
-
-  const persistSavedComponents = useCallback((update: (current: SavedComponent[]) => SavedComponent[]): void => {
-    setSavedComponents((current) => {
-      const next = update(current);
-      localStorage.setItem("agidn.studio.saved-components", JSON.stringify(next));
-      return next;
-    });
-  }, []);
-
-  const saveSelectedComponent = useCallback((displayName: string): boolean => {
-    const current = revisionRef.current;
-    const node = current && selectedNodeId ? findNode(current.document, selectedNodeId) : undefined;
-    const normalizedName = displayName.trim();
-    if (!node || !normalizedName) return false;
-    persistSavedComponents((items) => [...items, {
-      id: `saved_${crypto.randomUUID().replaceAll("-", "")}`,
-      displayName: normalizedName,
-      node: structuredClone(node),
-      createdAt: new Date().toISOString()
-    }]);
-    return true;
-  }, [persistSavedComponents, selectedNodeId]);
-
-  const upsertCustomComponentTemplate = useCallback((customComponentId: string, displayName: string, node: PageNode): void => {
-    persistSavedComponents((items) => {
-      const savedId = `custom_${customComponentId}`;
-      const existing = items.find(({ id }) => id === savedId);
-      const template: SavedComponent = {
-        id: savedId,
-        displayName,
-        node: structuredClone(node),
-        createdAt: existing?.createdAt ?? new Date().toISOString(),
-        customComponentId
-      };
-      return existing
-        ? items.map((item) => item.id === savedId ? template : item)
-        : [...items, template];
-    });
-  }, [persistSavedComponents]);
+  const insertPattern = useCallback(
+    async (patternId: string, explicitTarget?: InsertTarget): Promise<boolean> => {
+      return insertNode({ type: "pattern", id: patternId }, explicitTarget);
+    },
+    [insertNode]
+  );
 
   const moveNode = useCallback(async (nodeId: string, target: MoveTarget): Promise<boolean> => {
-    const accepted = activeLocalPage
-      ? updateActiveLocalDocument((document) => {
-          const node = removeNode(document, nodeId);
-          if (!node) return false;
-          if (!insertNode(document, target, node)) return false;
-        })
-      : await commit({
-      protocolVersion: "1.0.0", commandId: commandId("move"), type: "node.move", nodeId,
+    const accepted = await dispatch({
+      protocolVersion: "2.0.0", commandId: commandId("move"), type: "node.move", nodeId,
       targetParentId: target.parentId, ...(target.slot ? { targetSlot: target.slot } : {}),
       ...(target.beforeNodeId ? { beforeNodeId: target.beforeNodeId } : {})
     });
     if (accepted) setSelectedNodeId(nodeId);
     return accepted;
-  }, [activeLocalPage, commit, updateActiveLocalDocument]);
+  }, [dispatch]);
 
   const removeDocumentNode = useCallback(
     async (nodeId: string): Promise<boolean> => {
-      const accepted = activeLocalPage
-        ? updateActiveLocalDocument((document) => Boolean(removeNode(document, nodeId)))
-        : await commit({
-            protocolVersion: "1.0.0",
+      const accepted = await dispatch({
+            protocolVersion: "2.0.0",
             commandId: commandId("remove"),
             type: "node.remove",
             nodeId
@@ -579,7 +729,7 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
       if (accepted && selectedNodeId === nodeId) setSelectedNodeId(undefined);
       return accepted;
     },
-    [activeLocalPage, commit, selectedNodeId, updateActiveLocalDocument]
+    [dispatch, selectedNodeId]
   );
 
   const exportRevision = useCallback(async (): Promise<ExportContextResponse> => {
@@ -587,7 +737,7 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
     if (revision === undefined) throw messageError("errors.documentNotLoaded");
     const value = await jsonResponse(await fetch("/api/v1/export", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ protocolVersion: "1.0.0", revision })
+      body: JSON.stringify({ protocolVersion: "2.0.0", revision })
     }));
     if (!checkExportContextResponse(value)) throw messageError("errors.exportProtocol");
     return value as ExportContextResponse;
@@ -598,12 +748,14 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
     if (!current || status === "saving") return;
     setStatus("saving"); setError(undefined);
     try {
-      const value = await jsonResponse(await fetch(`/api/v1/${direction}`, {
+      const value = await jsonResponse(await fetch(`/api/v1/project/${direction}`, {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ protocolVersion: "1.0.0", baseRevision: current.revision, source: "human" })
+        body: JSON.stringify({ protocolVersion: "2.0.0", baseRevision: current.revision, source: "human" })
       }));
-      if (!checkNavigationResponse(value)) throw messageError("errors.navigationProtocol");
-      const response = value as NavigationResponse;
+      if (!checkProjectNavigationResponse(value)) {
+        throw messageError("errors.navigationProtocol");
+      }
+      const response = value as ProjectNavigationResponse;
       if (!response.ok) throw messageError(direction === "undo" ? "actions.nothingToUndo" : "actions.nothingToRedo");
       setRevisionState(response.revision); setStatus("saved"); await loadHistory();
     } catch (caught) {
@@ -617,12 +769,14 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
     if (!current || status === "saving" || targetRevision === current.revision) return false;
     setStatus("saving"); setError(undefined);
     try {
-      const value = await jsonResponse(await fetch("/api/v1/history/restore", {
+      const value = await jsonResponse(await fetch("/api/v1/project/history/restore", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ protocolVersion: "1.0.0", baseRevision: current.revision, targetRevision, source: "human" })
+        body: JSON.stringify({ protocolVersion: "2.0.0", baseRevision: current.revision, targetRevision, source: "human" })
       }));
-      if (!checkNavigationResponse(value)) throw messageError("errors.restoreProtocol");
-      const response = value as NavigationResponse;
+      if (!checkProjectNavigationResponse(value)) {
+        throw messageError("errors.restoreProtocol");
+      }
+      const response = value as ProjectNavigationResponse;
       if (!response.ok) {
         if (response.error === "REVISION_CONFLICT") await reload();
         throw response.error === "REVISION_NOT_FOUND"
@@ -630,7 +784,15 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
           : response.error === "ALREADY_CURRENT" ? messageError("errors.revisionAlreadyCurrent") : messageError("errors.restoreFailed");
       }
       setRevisionState(response.revision);
-      if (selectedNodeId && !findNode(response.revision.document, selectedNodeId)) setSelectedNodeId(undefined);
+      if (
+        selectedNodeId &&
+        !findNode(
+          response.revision.project.document,
+          selectedNodeId
+        )
+      ) {
+        setSelectedNodeId(undefined);
+      }
       setStatus("saved"); await loadHistory();
       return true;
     } catch (caught) {
@@ -701,12 +863,23 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
     canUndo: activeLocalPage ? false : historyState.canUndo,
     canRedo: activeLocalPage ? false : historyState.canRedo,
     history: activeLocalPage ? [] : historyState.entries,
-    savedComponents, ...(activeInsertDrag ? { activeInsertDrag } : {}), ...(activeNodeDragId ? { activeNodeDragId } : {}),
+    ...(activeInsertDrag ? { activeInsertDrag } : {}), ...(activeNodeDragId ? { activeNodeDragId } : {}),
     createPage,
     activatePage,
     closePage,
-    selectNode, setProp, setVariant, insertComponent, insertSavedComponent, saveSelectedComponent, upsertCustomComponentTemplate,
-    removeSavedComponent: (savedId) => persistSavedComponents((items) => items.filter(({ id }) => id !== savedId)),
+    selectNode,
+    setName,
+    setRole,
+    setProp,
+    setVariant,
+    setStyleBinding,
+    setPlacement,
+    setVisibility,
+    setAccessibility,
+    setInteractions,
+    setLayoutProperty,
+    insertNode,
+    insertPattern,
     beginInsertDrag: setActiveInsertDrag, endInsertDrag: () => setActiveInsertDrag(undefined),
     beginNodeDrag: setActiveNodeDragId, endNodeDrag: () => setActiveNodeDragId(undefined),
     moveNode,
@@ -730,25 +903,29 @@ export function StudioSessionProvider({ children }: { children: ReactNode }) {
     error,
     exportRevision,
     historyState,
-    insertComponent,
-    insertSavedComponent,
+    insertNode,
+    insertPattern,
     moveNode,
     navigate,
     openPageIds,
     pages,
-    persistSavedComponents,
     removeDocumentNode,
     reload,
     restoreRevision,
-    saveSelectedComponent,
-    savedComponents,
     selectNode,
     selectedNode,
     selectedNodeId,
     setProp,
+    setName,
+    setRole,
     setVariant,
-    status,
-    upsertCustomComponentTemplate
+    setStyleBinding,
+    setPlacement,
+    setVisibility,
+    setAccessibility,
+    setInteractions,
+    setLayoutProperty,
+    status
   ]);
 
   return <StudioSessionContext.Provider value={value}>{children}</StudioSessionContext.Provider>;

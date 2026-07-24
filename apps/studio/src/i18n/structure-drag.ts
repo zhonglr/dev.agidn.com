@@ -9,7 +9,12 @@ const messageKeys: Readonly<Record<StructureDragErrorCode, MessageKey>> = {
   alreadyAtPosition: "drag.alreadyAtPosition",
   nodeMissing: "drag.nodeMissing",
   alreadyFirst: "drag.alreadyFirst",
-  alreadyLast: "drag.alreadyLast"
+  alreadyLast: "drag.alreadyLast",
+  invalidTarget: "drag.invalidTarget",
+  slotRejected: "drag.slotRejected",
+  maxItemsExceeded: "drag.maxItemsExceeded",
+  layoutNestingRejected: "drag.layoutNestingRejected",
+  layoutDepthExceeded: "drag.layoutDepthExceeded"
 };
 
 export function translateStructureDragError(t: Translate, code: StructureDragErrorCode): string {

@@ -42,7 +42,7 @@ describe("Studio UI CSS boundary", () => {
     expect(actionButton).toContain('size="S"');
     expect(actionButton).toContain("isQuiet");
     expect(button).not.toContain('"quiet"');
-    expect(panels).toMatch(/<ActionButton[\s\S]*setSavedName\(title\)/);
+    expect(panels).toMatch(/<ActionButton[\s\S]*setQuery\(""\)/);
   });
 
   it("uses ToggleButton for persistent view and panel modes", async () => {

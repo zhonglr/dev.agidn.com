@@ -14,7 +14,7 @@ export interface ActionContribution {
   id: string;
   title: string;
   category?: string;
-  /** Canonical form "Mod+Shift+P"; legacy glyph form "⇧⌘P" is also accepted. */
+  /** Canonical form such as "Mod+Shift+P". */
   keybinding?: string;
   isEnabled?: () => boolean;
   execute: () => void | Promise<void>;
@@ -26,25 +26,9 @@ export interface RegisteredAction extends ActionContribution {
 
 const MODIFIER_ALIASES: Readonly<Record<string, "mod" | "ctrl" | "alt" | "shift">> = {
   mod: "mod",
-  cmd: "mod",
-  meta: "mod",
-  command: "mod",
-  "⌘": "mod",
   ctrl: "ctrl",
-  control: "ctrl",
-  "⌃": "ctrl",
   alt: "alt",
-  option: "alt",
-  "⌥": "alt",
-  shift: "shift",
-  "⇧": "shift"
-};
-
-const GLYPH_MODIFIERS: Readonly<Record<string, "mod" | "ctrl" | "alt" | "shift">> = {
-  "⌘": "mod",
-  "⌃": "ctrl",
-  "⌥": "alt",
-  "⇧": "shift"
+  shift: "shift"
 };
 
 function normalizeKey(key: string): string {
@@ -57,21 +41,15 @@ export function parseKeybinding(input: string): KeyStroke {
     if (stroke.key) throw new Error(`Keybinding '${input}' declares more than one key.`);
     stroke.key = normalizeKey(key);
     if (!stroke.key) throw new Error(`Keybinding '${input}' is missing a key.`);
+    if (!/^[a-z0-9 ]+$/.test(stroke.key)) {
+      throw new Error(`Keybinding '${input}' is not in canonical form.`);
+    }
   };
 
-  if (input.includes("+")) {
-    for (const part of input.split("+").map((token) => token.trim()).filter(Boolean)) {
-      const modifier = MODIFIER_ALIASES[part.toLowerCase()];
-      if (modifier) stroke[modifier] = true;
-      else assignKey(part);
-    }
-  } else {
-    let rest = input.trim();
-    while (rest.length && GLYPH_MODIFIERS[rest[0]!]) {
-      stroke[GLYPH_MODIFIERS[rest[0]!]!] = true;
-      rest = rest.slice(1);
-    }
-    if (rest) assignKey(rest);
+  for (const part of input.split("+").map((token) => token.trim()).filter(Boolean)) {
+    const modifier = MODIFIER_ALIASES[part.toLowerCase()];
+    if (modifier) stroke[modifier] = true;
+    else assignKey(part);
   }
   if (!stroke.key) throw new Error(`Keybinding '${input}' is missing a key.`);
   return stroke;

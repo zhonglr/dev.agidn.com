@@ -1,10 +1,11 @@
 import { THEME_COLOR_KEYS, THEME_CSS_VARIABLES, type RegisteredTheme } from "./types.js";
 import type { ThemeRegistry } from "./registry.js";
+import { studioStorage } from "../browser-storage.js";
 
 export const SYSTEM_THEME_SELECTION = "system";
 export const DEFAULT_LIGHT_THEME_ID = "light";
 export const DEFAULT_DARK_THEME_ID = "dark";
-export const THEME_STORAGE_KEY = "agidn.studio.colorTheme";
+export const THEME_STORAGE_KEY = "agidn.studio.v2.theme";
 
 export interface SystemThemeDefaults {
   light: string;
@@ -21,14 +22,12 @@ export function systemThemeDefaults(registry: ThemeRegistry): SystemThemeDefault
 }
 
 export function normalizeThemeSelection(value: unknown): string {
-  if (value === "github-light-default") return DEFAULT_LIGHT_THEME_ID;
-  if (value === "github-dark-dimmed") return DEFAULT_DARK_THEME_ID;
   return typeof value === "string" && value.trim() ? value : SYSTEM_THEME_SELECTION;
 }
 
 export function initialThemeSelection(): string {
   const configured = window.__AGIDN_STUDIO_CONFIG__?.theme ?? import.meta.env.VITE_STUDIO_THEME;
-  const persisted = localStorage.getItem(THEME_STORAGE_KEY) ?? localStorage.getItem("agidn.studio.theme");
+  const persisted = studioStorage.getItem(THEME_STORAGE_KEY);
   return normalizeThemeSelection(configured ?? persisted);
 }
 

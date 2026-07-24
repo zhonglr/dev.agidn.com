@@ -1,7 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 
-export const WORKBENCH_LAYOUT_VERSION = "1.0.0" as const;
+export const WORKBENCH_LAYOUT_VERSION = "2.0.0" as const;
 
 export interface SplitLayoutNode {
   type: "split";

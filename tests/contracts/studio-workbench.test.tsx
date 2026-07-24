@@ -213,7 +213,7 @@ describe("Studio Workbench", () => {
         canClose: false,
         canMove: true,
         canDock: false,
-        renderHeader: () => <span>pricing.ui</span>,
+        renderHeader: () => <span>foundation.ui</span>,
         render: () => <p>Canvas panel</p>
       }
     ]);
@@ -226,7 +226,7 @@ describe("Studio Workbench", () => {
     expect(html).toContain('role="tablist"');
     expect(html).toContain('data-panel-presentation="editor"');
     expect(html).toContain('class="wb-editor__tab"');
-    expect(html).toContain("pricing.ui");
+    expect(html).toContain("foundation.ui");
   });
 
   it("accepts localized accessibility and action messages from the host", () => {

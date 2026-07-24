@@ -68,11 +68,10 @@ describe("Studio context menu contributions", () => {
   });
 
   it("uses Spectrum menus and right-click handlers across editing surfaces", async () => {
-    const [facade, panels, canvas, workbench] = await Promise.all([
+    const [facade, panels, canvas] = await Promise.all([
       readFile("apps/studio/src/components/ui/context-menu.tsx", "utf8"),
       readFile("apps/studio/src/panels.tsx", "utf8"),
-      readFile("apps/studio/src/canvas/CanvasViewport.tsx", "utf8"),
-      readFile("apps/studio/src/ComponentWorkbench.tsx", "utf8")
+      readFile("apps/studio/src/canvas/CanvasViewport.tsx", "utf8")
     ]);
 
     expect(facade).toContain("@react-spectrum/s2/Menu");
@@ -81,6 +80,5 @@ describe("Studio context menu contributions", () => {
     expect(facade).toContain("<MenuSection");
     expect(panels).toContain("onContextMenu=");
     expect(canvas).toContain("onContextMenu=");
-    expect(workbench).toContain("onContextMenu=");
   });
 });

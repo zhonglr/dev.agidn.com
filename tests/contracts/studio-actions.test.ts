@@ -22,9 +22,9 @@ describe("keybinding parsing", () => {
     });
   });
 
-  it("parses legacy glyph form and normalizes keys", () => {
-    expect(parseKeybinding("⇧⌘P")).toEqual({ key: "p", mod: true, ctrl: false, alt: false, shift: true });
-    expect(parseKeybinding("⌘Z")).toEqual({ key: "z", mod: true, ctrl: false, alt: false, shift: false });
+  it("accepts only the canonical modifier form and normalizes keys", () => {
+    expect(parseKeybinding("Mod+Shift+P")).toEqual({ key: "p", mod: true, ctrl: false, alt: false, shift: true });
+    expect(() => parseKeybinding("⇧⌘P")).toThrow("canonical form");
     expect(parseKeybinding("Shift+Escape")).toEqual({
       key: "escape",
       mod: false,
@@ -59,7 +59,7 @@ describe("ActionRegistry", () => {
     const registry = new ActionRegistry([
       { id: "a", title: "A", keybinding: "Mod+Shift+P", execute: () => undefined }
     ]);
-    expect(() => registry.register({ id: "b", title: "B", keybinding: "⇧⌘P", execute: () => undefined })).toThrow(
+    expect(() => registry.register({ id: "b", title: "B", keybinding: "Mod+Shift+P", execute: () => undefined })).toThrow(
       /conflicts/
     );
     expect(() => registry.register({ id: "a", title: "Duplicate", execute: () => undefined })).toThrow(
@@ -73,7 +73,7 @@ describe("ActionRegistry", () => {
     dispose();
     expect(registry.get("a")).toBeUndefined();
     expect(() =>
-      registry.register({ id: "b", title: "B", keybinding: "⌘1", execute: () => undefined })
+      registry.register({ id: "b", title: "B", keybinding: "Mod+1", execute: () => undefined })
     ).not.toThrow();
   });
 

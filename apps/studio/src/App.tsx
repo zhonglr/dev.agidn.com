@@ -34,8 +34,6 @@ import {
   ToggleButton,
   useContextMenu
 } from "./components/ui/index.js";
-import { ComponentWorkbench } from "./ComponentWorkbench.js";
-import { ComponentWorkbenchNavigationProvider } from "./component-workbench-navigation.js";
 import { createStudioContextMenuRegistry } from "./context-menu/studio-context-menu.js";
 
 type PanelDefinition = Omit<PanelContribution, "title"> & { titleKey: MessageKey };
@@ -248,7 +246,6 @@ function StudioApp() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [componentEditor, setComponentEditor] = useState<{ id?: string } | null>(null);
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const isMac = useMemo(() => detectMacPlatform(), []);
   const commandPaletteFallbackRef = useRef<HTMLButtonElement>(null);
@@ -277,10 +274,6 @@ function StudioApp() {
       else commandPaletteFallbackRef.current?.focus();
     });
   }, []);
-  const openComponentWorkbench = useCallback((componentId?: string) => {
-    setComponentEditor(componentId ? { id: componentId } : {});
-  }, []);
-
   const setRegisteredPanelOpen = useCallback(
     (panelId: string, isOpen: boolean) => {
       const panel = panels.get(panelId);
@@ -386,12 +379,6 @@ function StudioApp() {
           execute: () => setExportOpen(true)
         },
         {
-          id: "studio.createComponent",
-          title: t("componentWorkbench.create"),
-          category: t("commandPalette.categoryStudio"),
-          execute: () => openComponentWorkbench()
-        },
-        {
           id: "studio.theme.system",
           title: t("commandPalette.colorTheme", { theme: t("commandPalette.followSystemTheme") }),
           category: t("commandPalette.categoryPreferences"),
@@ -416,11 +403,11 @@ function StudioApp() {
           }
         }))
       ]),
-    [layout, openCommandPalette, openComponentWorkbench, panels, resetLayout, session, setRegisteredPanelOpen, setLayout, setThemeSelection, t, themes, toggleablePanels]
+    [layout, openCommandPalette, panels, resetLayout, session, setRegisteredPanelOpen, setLayout, setThemeSelection, t, themes, toggleablePanels]
   );
 
   const overlayOpen =
-    paletteOpen || exportOpen || settingsOpen || Boolean(componentEditor) || contextMenuOpen;
+    paletteOpen || exportOpen || settingsOpen || contextMenuOpen;
   useActionKeybindings(actions, { suspended: overlayOpen, isMac });
   const keybindingFor = useCallback((actionId: string) => actions.formatKeybinding(actionId, isMac), [actions, isMac]);
   const contextMenuRegistry = useMemo(() => createStudioContextMenuRegistry(t, keybindingFor), [t, keybindingFor]);
@@ -481,12 +468,9 @@ function StudioApp() {
   return (
     <StudioUiProvider locale={locale} colorScheme={activeTheme.uiTheme}>
       <ContextMenuProvider registry={contextMenuRegistry} onOpenChange={setContextMenuOpen}>
-        <ComponentWorkbenchNavigationProvider openComponentWorkbench={openComponentWorkbench}>
-          <>
         <main
           className="studio-shell"
-          inert={paletteOpen || componentEditor ? true : undefined}
-          aria-hidden={componentEditor ? true : undefined}
+          inert={paletteOpen ? true : undefined}
         >
           <header className="main-toolbar">
             <div className="main-toolbar__start">
@@ -617,19 +601,10 @@ function StudioApp() {
                       : t("common.saved")}
               </span>
               <span>{t("common.revision", { revision: session.revision })}</span>
-              <span>PageDocument 1.0.0</span>
+              <span>PageDocument 2.0.0</span>
             </div>
           </footer>
         </main>
-        {componentEditor ? (
-          <div className="component-workbench-layer">
-            <ComponentWorkbench
-              {...(componentEditor.id ? { componentId: componentEditor.id } : {})}
-              onClose={() => setComponentEditor(null)}
-              onSaved={(id) => setComponentEditor({ id })}
-            />
-          </div>
-        ) : null}
         <Suspense fallback={null}>
           {paletteOpen ? (
             <CommandPalette
@@ -656,8 +631,6 @@ function StudioApp() {
             />
           ) : null}
         </Suspense>
-          </>
-        </ComponentWorkbenchNavigationProvider>
       </ContextMenuProvider>
     </StudioUiProvider>
   );

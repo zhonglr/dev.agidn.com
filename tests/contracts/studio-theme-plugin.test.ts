@@ -50,11 +50,11 @@ describe("Studio color theme plugins", () => {
     }
   });
 
-  it("resolves system dark mode to Dark and migrates the old branded id", () => {
+  it("resolves system dark mode without accepting legacy theme aliases", () => {
     const registry = new ThemeRegistry();
     registry.registerPlugin(builtinThemePlugin);
 
-    expect(normalizeThemeSelection("github-dark-dimmed")).toBe("dark");
+    expect(normalizeThemeSelection("github-dark-dimmed")).toBe("github-dark-dimmed");
     expect(resolveTheme(registry, "system", false, { light: "light", dark: "dark" }).id).toBe("dark");
   });
 
@@ -67,7 +67,7 @@ describe("Studio color theme plugins", () => {
       id: "example.incomplete",
       name: "Incomplete",
       publisher: "Example",
-      version: "1.0.0",
+      version: "2.0.0",
       engines: { studio: ">=0.1.0" },
       contributes: { themes: [{ id: "example-dark", label: "Example Dark", uiTheme: "dark", colors: {} }] }
     } as unknown as StudioThemePluginManifest;

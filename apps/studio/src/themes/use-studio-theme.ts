@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { studioStorage } from "../browser-storage.js";
 import { studioThemeRegistry } from "./index.js";
 import {
   applyTheme,
@@ -37,7 +38,7 @@ export function useStudioTheme(): StudioThemeState {
   useEffect(() => {
     applyTheme(activeTheme);
     document.documentElement.dataset.themeChoice = selection;
-    localStorage.setItem(THEME_STORAGE_KEY, selection);
+    studioStorage.setItem(THEME_STORAGE_KEY, selection);
   }, [activeTheme, selection]);
 
   return {

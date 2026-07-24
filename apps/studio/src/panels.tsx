@@ -10,26 +10,34 @@ import {
   type SetStateAction
 } from "react";
 import type { GetCatalogResponse } from "@agidn/api-protocol";
-import type { PageNode } from "@agidn/document-schema";
+import type {
+  Accessibility,
+  Interaction,
+  PageDocument,
+  PageNode,
+  Placement,
+  Visibility
+} from "@agidn/document-schema";
 import { useStudioSession } from "./studio-session.js";
 import {
   COMPONENT_DRAG_MIME,
+  LAYOUT_DRAG_MIME,
   NODE_DRAG_MIME,
-  resolveInsertTarget,
+  PATTERN_DRAG_MIME,
+  resolveInsertSourcesTarget,
   resolveMoveTarget,
   resolveSiblingMove,
-  SAVED_COMPONENT_DRAG_MIME,
   type StructureDragErrorCode
 } from "./structure-drag.js";
+import { insertSourcesForPayload } from "./insert-source.js";
+import { LAYOUT_KINDS, type LayoutKind } from "./layout-node-factory.js";
 import { displayLabel } from "./display-label.js";
-import { useComponentWorkbenchNavigation } from "./component-workbench-navigation.js";
-import { removeCustomComponent, useCustomComponents } from "./custom-components.js";
 import { useI18n, type MessageKey } from "./i18n.js";
 import { translateStructureDragError } from "./i18n/structure-drag.js";
 import {
   ActionButton,
   AlertDialog,
-  Button,
+  CatalogIcon,
   Checkbox,
   useContextMenu,
   Disclosure,
@@ -38,18 +46,21 @@ import {
   ProductIcon,
   SearchField,
   Select,
+  TextArea,
   TextField,
   type SelectOption
 } from "./components/ui/index.js";
+import {
+  componentPanelEntries,
+  filterComponentPanelEntries
+} from "./component-panel-model.js";
 
 const CATEGORY_KEYS: Readonly<Record<string, MessageKey>> = {
-  actions: "components.categoryActions",
+  action: "components.categoryActions",
   typography: "components.categoryTypography",
   media: "components.categoryMedia",
-  content: "components.categoryContent",
-  layout: "components.categoryLayout",
-  navigation: "components.categoryNavigation",
-  commerce: "components.categoryCommerce",
+  surface: "components.categoryContent",
+  composite: "components.categoryOther",
   other: "components.categoryOther"
 };
 
@@ -60,9 +71,32 @@ const COMMAND_KEYS: Readonly<Record<string, MessageKey>> = {
   "node.setLayoutProperty": "history.commandSetLayoutProperty",
   "node.setProp": "history.commandSetProp",
   "node.setVariant": "history.commandSetVariant",
-  "node.setToken": "history.commandSetToken",
+  "node.setStyleBinding": "history.commandSetStyleBinding",
   "node.setResponsivePolicy": "history.commandSetResponsivePolicy",
-  "node.setRole": "history.commandSetRole"
+  "node.setRole": "history.commandSetRole",
+  "node.setName": "history.commandSetName",
+  "node.setPlacement": "history.commandSetPlacement",
+  "node.setVisibility": "history.commandSetVisibility",
+  "node.setAccessibility": "history.commandSetAccessibility",
+  "node.setInteractions": "history.commandSetInteractions"
+};
+
+const LAYOUT_LABEL_KEYS: Readonly<Record<LayoutKind, MessageKey>> = {
+  section: "components.layoutSection",
+  container: "components.layoutContainer",
+  stack: "components.layoutStack",
+  row: "components.layoutRow",
+  grid: "components.layoutGrid",
+  overlay: "components.layoutOverlay"
+};
+
+const LAYOUT_DESCRIPTION_KEYS: Readonly<Record<LayoutKind, MessageKey>> = {
+  section: "components.layoutSectionDescription",
+  container: "components.layoutContainerDescription",
+  stack: "components.layoutStackDescription",
+  row: "components.layoutRowDescription",
+  grid: "components.layoutGridDescription",
+  overlay: "components.layoutOverlayDescription"
 };
 
 function childNodes(node: PageNode): PageNode[] {
@@ -147,17 +181,10 @@ function OutlineNodeRow({
   const insertSource = () => {
     const payload = session.activeInsertDrag;
     if (!payload) return undefined;
-    const saved =
-      payload.type === "saved"
-        ? session.savedComponents.find(({ id }) => id === payload.id)
-        : undefined;
-    const source =
-      payload.type === "component"
-        ? { kind: "component" as const, componentRef: payload.id }
-        : saved?.node.kind === "component"
-          ? { kind: "component" as const, componentRef: saved.node.componentRef }
-          : { kind: "layout" as const };
-    return { payload, source };
+    return {
+      payload,
+      sources: catalog ? insertSourcesForPayload(catalog, payload) : []
+    };
   };
   return (
     <div
@@ -209,7 +236,7 @@ function OutlineNodeRow({
           event.preventDefault();
           event.dataTransfer.dropEffect = "copy";
           const rect = event.currentTarget.getBoundingClientRect();
-          const resolution = resolveInsertTarget(document, catalog, insert.source, node.id, { x: event.clientX, y: event.clientY }, {
+          const resolution = resolveInsertSourcesTarget(document, catalog, insert.sources, node.id, { x: event.clientX, y: event.clientY }, {
             x: rect.left,
             y: rect.top,
             width: rect.width,
@@ -238,7 +265,7 @@ function OutlineNodeRow({
         if (insert && document && catalog) {
           event.preventDefault();
           const rect = event.currentTarget.getBoundingClientRect();
-          const resolution = resolveInsertTarget(document, catalog, insert.source, node.id, { x: event.clientX, y: event.clientY }, {
+          const resolution = resolveInsertSourcesTarget(document, catalog, insert.sources, node.id, { x: event.clientX, y: event.clientY }, {
             x: rect.left,
             y: rect.top,
             width: rect.width,
@@ -246,9 +273,7 @@ function OutlineNodeRow({
           });
           setDropIndicator(undefined);
           if (resolution.valid)
-            void (insert.payload.type === "component"
-              ? session.insertComponent(insert.payload.id, resolution.target)
-              : session.insertSavedComponent(insert.payload.id, resolution.target));
+            void session.insertNode(insert.payload, resolution.target);
           else setDragError(resolution.reason);
           return;
         }
@@ -412,6 +437,13 @@ export function PageOutlinePanel() {
     } else if ((event.key === "Enter" || event.key === " ") && node) {
       event.preventDefault();
       selectNode(node.id);
+    } else if (
+      node &&
+      (event.key === "Delete" || event.key === "Backspace") &&
+      session.status !== "saving"
+    ) {
+      event.preventDefault();
+      void session.removeNode(node.id);
     }
   };
 
@@ -559,24 +591,39 @@ export function PageOutlinePanel() {
 
 export function ComponentsPanel() {
   const session = useStudioSession();
-  const { locale, t } = useI18n();
-  const { openComponentWorkbench } = useComponentWorkbenchNavigation();
+  const { format, locale, t } = useI18n();
   const { openContextMenu } = useContextMenu();
-  const customComponents = useCustomComponents();
   const [query, setQuery] = useState("");
-  const definitions = Object.values(session.catalog?.components.components ?? {});
-  const filtered = definitions.filter((component) =>
-    [component.name, displayLabel(component.displayName, component.name, locale), component.source, ...component.roles]
+  const entries = componentPanelEntries(session.catalog);
+  const filtered = filterComponentPanelEntries(entries, query, locale);
+  const normalizedQuery = query.trim().toLocaleLowerCase(locale);
+  const layouts = LAYOUT_KINDS.filter((layout) =>
+    [
+      layout,
+      t(LAYOUT_LABEL_KEYS[layout]),
+      t(LAYOUT_DESCRIPTION_KEYS[layout])
+    ]
+      .join(" ")
+      .toLocaleLowerCase(locale)
+      .includes(normalizedQuery)
+  );
+  const patterns = Object.values(session.catalog?.assets.patterns ?? {}).filter((pattern) =>
+    [
+      pattern.id,
+      displayLabel(pattern.displayName, pattern.id, locale),
+      displayLabel(pattern.description, pattern.id, locale),
+      pattern.category
+    ]
       .join(" ")
       .toLowerCase()
       .includes(query.trim().toLowerCase())
   );
   const groups = useMemo(() => {
     const result = new Map<string, typeof filtered>();
-    for (const component of filtered) {
-      const key = component.category ?? "other";
+    for (const entry of filtered) {
+      const key = entry.component.category ?? "other";
       const values = result.get(key) ?? [];
-      values.push(component);
+      values.push(entry);
       result.set(key, values);
     }
     return [...result.entries()].sort(([a], [b]) => a.localeCompare(b));
@@ -592,163 +639,142 @@ export function ComponentsPanel() {
           placeholder={t("components.findPlaceholder")}
         />
       </div>
-      <div className="component-create-card">
-        <div>
-          <strong>{t("componentWorkbench.create")}</strong>
-          <span>{t("componentWorkbench.createDescription")}</span>
-        </div>
-        <Button onPress={() => openComponentWorkbench()}>{t("componentWorkbench.create")}</Button>
-      </div>
-      {customComponents.length ? (
-        <>
-          <p className="tool-section-title">{t("componentWorkbench.custom")}</p>
-          <div className="custom-component-list">
-            {customComponents.map((component) => {
-              const savedId = `custom_${component.id}`;
+      <p className="tool-section-title">{t("components.layouts")}</p>
+      {layouts.length ? (
+        <section className="component-group">
+          <div className="component-grid">
+            {layouts.map((layout) => {
+              const label = t(LAYOUT_LABEL_KEYS[layout]);
+              const description = t(LAYOUT_DESCRIPTION_KEYS[layout]);
               return (
-                <div key={component.id}>
-                  <div
-                    className="custom-component-tile"
-                    draggable
-                    title={`${component.name} · ${t("components.dragToInsert")}`}
-                    onDragStart={(event) => {
-                      session.beginInsertDrag({ type: "saved", id: savedId });
-                      event.dataTransfer.effectAllowed = "copy";
-                      event.dataTransfer.setData(SAVED_COMPONENT_DRAG_MIME, savedId);
-                    }}
-                    onDragEnd={session.endInsertDrag}
-                    onContextMenu={(event) =>
-                      openContextMenu(event, {
-                        type: "custom-component",
-                        id: component.id,
-                        label: component.name,
-                        capabilities: {
-                          edit: { execute: () => openComponentWorkbench(component.id) },
-                          remove: {
-                            execute: () => {
-                              removeCustomComponent(component.id);
-                              session.removeSavedComponent(savedId);
-                            }
-                          }
-                        }
-                      })
-                    }
-                  >
-                    <span>◇</span>
-                    <div><b>{component.name}</b><small>{component.variables.length} V · {component.slots.length} S</small></div>
-                  </div>
-                  <span className="custom-component-actions">
-                    <IconButton
-                      icon={<ProductIcon name="settings" />}
-                      label={t("componentWorkbench.create")}
-                      onPress={() => openComponentWorkbench(component.id)}
-                    />
-                    <IconButton
-                      icon={<ProductIcon name="close" />}
-                      label={t("components.removeSaved", { name: component.name })}
-                      onPress={() => {
-                        removeCustomComponent(component.id);
-                        session.removeSavedComponent(savedId);
-                      }}
-                    />
-                  </span>
+                <div
+                  className={`component-tile${session.status === "saving" ? " is-disabled" : ""}`}
+                  data-insert-type="layout"
+                  data-insert-id={layout}
+                  draggable={session.status !== "saving"}
+                  title={`${description} · ${t("components.dragToInsert")}`}
+                  key={layout}
+                  onDragStart={(event) => {
+                    session.beginInsertDrag({ type: "layout", id: layout });
+                    event.dataTransfer.effectAllowed = "copy";
+                    event.dataTransfer.setData(LAYOUT_DRAG_MIME, layout);
+                    event.dataTransfer.setData("text/plain", layout);
+                  }}
+                  onDragEnd={session.endInsertDrag}
+                >
+                  <span><CatalogIcon name={`layout-${layout}`} /></span>
+                  <b>{label}</b>
                 </div>
               );
             })}
           </div>
-        </>
+        </section>
       ) : null}
       <p className="tool-section-title">{t("components.registered")}</p>
       {groups.length ? (
-        groups.map(([category, components]) => (
+        groups.map(([category, componentEntries]) => (
           <section className="component-group" key={category}>
             <h3>
-              {components[0]?.categoryDisplayName
-                ? displayLabel(components[0].categoryDisplayName, category, locale)
-                : t(CATEGORY_KEYS[category] ?? "components.categoryOther")}
+              {t(CATEGORY_KEYS[category] ?? "components.categoryOther")}
             </h3>
             <div className="component-grid">
-              {components.map((component) => {
-                const label = displayLabel(component.displayName, component.name, locale);
+              {componentEntries.map(({ component, preset, presetId }) => {
+                const componentLabel = displayLabel(component.displayName, component.name, locale);
+                const presetCount = Object.keys(component.editor.presets).length;
+                const presetLabel = preset
+                  ? displayLabel(preset.displayName, presetId ?? component.name, locale)
+                  : componentLabel;
+                const label = presetCount > 1 ? `${componentLabel} · ${presetLabel}` : componentLabel;
                 return (
-                  <div
-                    className={`component-tile${session.status === "saving" ? " is-disabled" : ""}`}
-                    draggable={session.status !== "saving"}
-                    title={`${label} · ${t("components.dragToInsert")}`}
-                    key={component.name}
-                    onDragStart={(event) => {
-                      session.beginInsertDrag({ type: "component", id: component.name });
-                      event.dataTransfer.effectAllowed = "copy";
-                      event.dataTransfer.setData(COMPONENT_DRAG_MIME, component.name);
-                    }}
-                    onDragEnd={session.endInsertDrag}
-                    onContextMenu={(event) =>
-                      openContextMenu(event, {
-                        type: "registered-component",
-                        id: component.name,
-                        label
-                      })
-                    }
-                  >
-                    <span>{label.slice(0, 2)}</span>
-                    <b>{label}</b>
-                  </div>
+                    <div
+                      className={`component-tile${session.status === "saving" ? " is-disabled" : ""}`}
+                      data-insert-type="component"
+                      data-insert-id={component.name}
+                      draggable={session.status !== "saving"}
+                      title={`${label} · ${t("components.dragToInsert")}`}
+                      key={`${component.name}:${presetId ?? "default"}`}
+                      onDragStart={(event) => {
+                        session.beginInsertDrag({
+                          type: "component",
+                          id: component.name,
+                          ...(presetId ? { presetId } : {})
+                        });
+                        event.dataTransfer.effectAllowed = "copy";
+                        event.dataTransfer.setData(COMPONENT_DRAG_MIME, component.name);
+                      }}
+                      onDragEnd={session.endInsertDrag}
+                      onContextMenu={(event) =>
+                        openContextMenu(event, {
+                          type: "registered-component",
+                          id: component.name,
+                          label
+                        })
+                      }
+                    >
+                      <span><CatalogIcon name={component.editor.icon} /></span>
+                      <b>{label}</b>
+                    </div>
                 );
               })}
             </div>
           </section>
         ))
-      ) : (
+      ) : null}
+      {patterns.length ? (
+        <section className="component-group">
+          <h3>{t("components.patterns")}</h3>
+          <div className="component-grid">
+            {patterns.map((pattern) => {
+              const label = displayLabel(pattern.displayName, pattern.id, locale);
+              return (
+                <button
+                  type="button"
+                  className="component-tile pattern-tile"
+                  data-insert-type="pattern"
+                  data-insert-id={pattern.id}
+                  draggable={session.status !== "saving"}
+                  title={t("components.insertPattern", { pattern: label })}
+                  disabled={session.status === "saving"}
+                  key={pattern.id}
+                  onClick={() => void session.insertPattern(pattern.id)}
+                  onDragStart={(event) => {
+                    session.beginInsertDrag({
+                      type: "pattern",
+                      id: pattern.id
+                    });
+                    event.dataTransfer.effectAllowed = "copy";
+                    event.dataTransfer.setData(PATTERN_DRAG_MIME, pattern.id);
+                    event.dataTransfer.setData("text/plain", pattern.id);
+                  }}
+                  onDragEnd={session.endInsertDrag}
+                >
+                  <span><CatalogIcon name="pattern" /></span>
+                  <b>{label}</b>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+      {session.status === "loading" && !session.catalog ? (
+        <div className="tool-empty" role="status">{t("components.loading")}</div>
+      ) : null}
+      {session.status === "error" && !session.catalog ? (
+        <div className="tool-empty component-catalog-error" role="alert">
+          <p>{t("components.catalogUnavailable")}</p>
+          {session.error ? <small>{format(session.error)}</small> : null}
+          <ActionButton onPress={() => void session.reload()}>{t("components.retry")}</ActionButton>
+        </div>
+      ) : null}
+      {session.catalog && entries.length === 0 && patterns.length === 0 ? (
+        <div className="tool-empty">{t("components.emptyCatalog")}</div>
+      ) : null}
+      {session.catalog && entries.length > 0 && !layouts.length && !groups.length && !patterns.length ? (
         <div className="tool-empty">
           {t("components.noMatches", { query })}{" "}
           <ActionButton onPress={() => setQuery("")}>{t("common.clearSearch")}</ActionButton>
         </div>
-      )}
-      <p className="tool-section-title">{t("components.saved")}</p>
-      {session.savedComponents.some((saved) => !saved.customComponentId) ? (
-        <div className="saved-component-list">
-          {session.savedComponents.filter((saved) => !saved.customComponentId).map((saved) => (
-            <div key={saved.id}>
-              <div
-                className={`saved-component-tile${session.status === "saving" ? " is-disabled" : ""}`}
-                draggable={session.status !== "saving"}
-                title={`${saved.displayName} · ${t("components.dragToInsert")}`}
-                onDragStart={(event) => {
-                  session.beginInsertDrag({ type: "saved", id: saved.id });
-                  event.dataTransfer.effectAllowed = "copy";
-                  event.dataTransfer.setData(SAVED_COMPONENT_DRAG_MIME, saved.id);
-                }}
-                onDragEnd={session.endInsertDrag}
-                onContextMenu={(event) =>
-                  openContextMenu(event, {
-                    type: "saved-component",
-                    id: saved.id,
-                    label: saved.displayName,
-                    capabilities: {
-                      remove: {
-                        execute: () => session.removeSavedComponent(saved.id),
-                        isDisabled: session.status === "saving"
-                      }
-                    }
-                  })
-                }
-              >
-                <span>◆</span>
-                <b>{saved.displayName}</b>
-              </div>
-              <span className="saved-component-remove">
-                <IconButton
-                  icon={<ProductIcon name="close" />}
-                  label={t("components.removeSaved", { name: saved.displayName })}
-                  onPress={() => session.removeSavedComponent(saved.id)}
-                />
-              </span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="component-empty-note">{t("components.noSaved")}</p>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -779,7 +805,7 @@ function PropField({
       label: displayLabel(definition.valueDisplayNames?.[String(option)], String(option), locale)
     }));
     return (
-      <div className="inspector-field">
+      <div className="inspector-field" data-inspector-prop={name}>
         <Select
           label={label}
           options={options}
@@ -800,7 +826,7 @@ function PropField({
   }
   if (definition.type === "boolean") {
     return (
-      <div className="inspector-field">
+      <div className="inspector-field" data-inspector-prop={name}>
         <Checkbox
           label={label}
           isSelected={value === true}
@@ -814,10 +840,12 @@ function PropField({
   if (definition.type === "number") {
     const numberValue = Number(draft);
     return (
-      <div className="inspector-field">
-        <NumberField
-          label={label}
-          value={Number.isFinite(numberValue) ? numberValue : 0}
+      <div className="inspector-field" data-inspector-prop={name}>
+      <NumberField
+        label={label}
+        value={Number.isFinite(numberValue) ? numberValue : 0}
+        {...(definition.validation?.min === undefined ? {} : { minValue: definition.validation.min })}
+        {...(definition.validation?.max === undefined ? {} : { maxValue: definition.validation.max })}
           isDisabled={session.status === "saving"}
           {...(definition.required === undefined ? {} : { isRequired: definition.required })}
           onChange={(next) => setDraft(String(next))}
@@ -827,11 +855,36 @@ function PropField({
       </div>
     );
   }
+  if (definition.editor === "textarea") {
+    return (
+      <div className="inspector-field" data-inspector-prop={name}>
+        <TextArea
+          label={label}
+          value={draft}
+          isDisabled={session.status === "saving"}
+          isRequired={definition.required}
+          isInvalid={
+            definition.validation?.pattern !== undefined &&
+            draft.length > 0 &&
+            !new RegExp(definition.validation.pattern).test(draft)
+          }
+          onChange={setDraft}
+          onBlur={commitDraft}
+        />
+      </div>
+    );
+  }
   return (
-    <div className="inspector-field">
+    <div className="inspector-field" data-inspector-prop={name}>
       <TextField
         label={label}
+        type={definition.editor === "url" ? "url" : "text"}
         value={draft}
+        isInvalid={
+          definition.validation?.pattern !== undefined &&
+          draft.length > 0 &&
+          !new RegExp(definition.validation.pattern).test(draft)
+        }
         isDisabled={session.status === "saving"}
         {...(definition.required === undefined ? {} : { isRequired: definition.required })}
         onChange={setDraft}
@@ -842,14 +895,487 @@ function PropField({
   );
 }
 
+const EMPTY_OPTION = "__none__";
+const BREAKPOINTS = ["mobile", "tablet", "desktop"] as const;
+
+function DraftTextField({
+  label,
+  value,
+  disabled,
+  onCommit
+}: {
+  label: string;
+  value: string | undefined;
+  disabled: boolean;
+  onCommit: (value?: string) => void;
+}) {
+  const [draft, setDraft] = useState(value ?? "");
+  useEffect(() => setDraft(value ?? ""), [value]);
+  const commit = (): void => {
+    const next = draft.trim() || undefined;
+    if (next !== value) onCommit(next);
+  };
+  return (
+    <div className="inspector-field">
+      <TextField
+        label={label}
+        value={draft}
+        isDisabled={disabled}
+        onChange={setDraft}
+        onBlur={commit}
+        onSubmit={commit}
+      />
+    </div>
+  );
+}
+
+function findParentNode(document: PageDocument | undefined, nodeId: string): PageNode | undefined {
+  if (!document) return undefined;
+  let parent: PageNode | undefined;
+  const visit = (node: PageNode): boolean => {
+    const children = node.kind === "layout" ? node.children : Object.values(node.slots ?? {}).flat();
+    if (children.some(({ id }) => id === nodeId)) {
+      parent = node;
+      return true;
+    }
+    return children.some(visit);
+  };
+  document.children.some(visit);
+  return parent;
+}
+
+function GeneralFields({
+  node,
+  roles
+}: {
+  node: PageNode;
+  roles?: readonly string[];
+}) {
+  const session = useStudioSession();
+  const { t } = useI18n();
+  const disabled = session.status === "saving";
+  return (
+    <>
+      <DraftTextField
+        label={t("inspector.name")}
+        value={node.name}
+        disabled={disabled}
+        onCommit={(name) => void session.setName(node.id, name)}
+      />
+      {roles ? (
+        <div className="inspector-field">
+          <Select
+            label={t("inspector.role")}
+            options={[
+              { id: EMPTY_OPTION, label: t("common.none") },
+              ...roles.map((role) => ({ id: role, label: role }))
+            ]}
+            selectedKey={node.role ?? EMPTY_OPTION}
+            isDisabled={disabled}
+            onSelectionChange={(role) =>
+              void session.setRole(node.id, role === EMPTY_OPTION ? undefined : role)
+            }
+          />
+        </div>
+      ) : (
+        <DraftTextField
+          label={t("inspector.role")}
+          value={node.role}
+          disabled={disabled}
+          onCommit={(role) => void session.setRole(node.id, role)}
+        />
+      )}
+    </>
+  );
+}
+
+function TokenBindingFields({
+  node,
+  definition
+}: {
+  node: Extract<PageNode, { kind: "component" }>;
+  definition: GetCatalogResponse["components"]["components"][string];
+}) {
+  const session = useStudioSession();
+  const { locale, t } = useI18n();
+  return (
+    <>
+      {Object.entries(definition.tokenSlots).map(([name, tokenSlot]) => {
+        const options = Object.entries(session.catalog?.tokens.tokens ?? {})
+          .filter(([, token]) => tokenSlot.tokenTypes.includes(token.type))
+          .map(([reference]) => ({ id: reference, label: reference }));
+        return (
+          <div className="inspector-field" key={name}>
+            <Select
+              label={displayLabel(tokenSlot.displayName, name, locale)}
+              options={[{ id: EMPTY_OPTION, label: t("common.none") }, ...options]}
+              selectedKey={node.styleBindings?.[name] ?? EMPTY_OPTION}
+              isDisabled={session.status === "saving"}
+              onSelectionChange={(reference) =>
+                void session.setStyleBinding(
+                  node.id,
+                  name,
+                  reference === EMPTY_OPTION ? undefined : reference
+                )
+              }
+            />
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+function PlacementFields({
+  node,
+  parent
+}: {
+  node: PageNode;
+  parent: PageNode | undefined;
+}) {
+  const session = useStudioSession();
+  const { t } = useI18n();
+  const disabled = session.status === "saving";
+  const update = <K extends keyof Placement>(property: K, value: Placement[K] | undefined): void => {
+    const next: Placement = { ...(node.placement ?? {}) };
+    if (value === undefined) delete next[property];
+    else next[property] = value;
+    void session.setPlacement(node.id, Object.keys(next).length ? next : undefined);
+  };
+  return (
+    <>
+      <div className="inspector-field">
+        <Select
+          label={t("inspector.width")}
+          options={[
+            { id: EMPTY_OPTION, label: t("common.default") },
+            { id: "auto", label: t("inspector.widthAuto") },
+            { id: "fit", label: t("inspector.widthFit") },
+            { id: "fill", label: t("inspector.widthFill") }
+          ]}
+          selectedKey={node.placement?.width ?? EMPTY_OPTION}
+          isDisabled={disabled}
+          onSelectionChange={(value) =>
+            update("width", value === EMPTY_OPTION ? undefined : (value as Placement["width"]))
+          }
+        />
+      </div>
+      <div className="inspector-field">
+        <Select
+          label={t("inspector.alignSelf")}
+          options={[
+            { id: EMPTY_OPTION, label: t("common.default") },
+            ...["auto", "start", "center", "end", "stretch"].map((value) => ({
+              id: value,
+              label: value
+            }))
+          ]}
+          selectedKey={node.placement?.alignSelf ?? EMPTY_OPTION}
+          isDisabled={disabled}
+          onSelectionChange={(value) =>
+            update(
+              "alignSelf",
+              value === EMPTY_OPTION ? undefined : (value as Placement["alignSelf"])
+            )
+          }
+        />
+      </div>
+      <div className="inspector-field">
+        <Checkbox
+          label={t("inspector.grow")}
+          isSelected={node.placement?.grow === true}
+          isDisabled={disabled}
+          onChange={(selected) => update("grow", selected || undefined)}
+        />
+      </div>
+      {parent?.kind === "layout" && parent.layout === "grid"
+        ? BREAKPOINTS.map((breakpoint) => (
+            <div className="inspector-field" key={breakpoint}>
+              <Select
+                label={t("inspector.gridSpan", { breakpoint })}
+                options={[
+                  { id: EMPTY_OPTION, label: t("common.default") },
+                  ...[1, 2, 3, 4, 6, 12].map((span) => ({
+                    id: String(span),
+                    label: String(span)
+                  }))
+                ]}
+                selectedKey={
+                  node.placement?.gridSpan?.[breakpoint] === undefined
+                    ? EMPTY_OPTION
+                    : String(node.placement.gridSpan[breakpoint])
+                }
+                isDisabled={disabled}
+                onSelectionChange={(value) => {
+                  const gridSpan = { ...(node.placement?.gridSpan ?? {}) };
+                  if (value === EMPTY_OPTION) delete gridSpan[breakpoint];
+                  else gridSpan[breakpoint] = Number(value) as 1 | 2 | 3 | 4 | 6 | 12;
+                  update("gridSpan", Object.keys(gridSpan).length ? gridSpan : undefined);
+                }}
+              />
+            </div>
+          ))
+        : null}
+    </>
+  );
+}
+
+function VisibilityFields({ node }: { node: PageNode }) {
+  const session = useStudioSession();
+  const { t } = useI18n();
+  const update = (breakpoint: (typeof BREAKPOINTS)[number], selected: boolean): void => {
+    const next: Visibility = { ...(node.visibility ?? {}) };
+    if (selected) delete next[breakpoint];
+    else next[breakpoint] = false;
+    void session.setVisibility(node.id, Object.keys(next).length ? next : undefined);
+  };
+  return (
+    <>
+      {BREAKPOINTS.map((breakpoint) => (
+        <div className="inspector-field" key={breakpoint}>
+          <Checkbox
+            label={t("inspector.visibleAt", { breakpoint })}
+            isSelected={node.visibility?.[breakpoint] !== false}
+            isDisabled={session.status === "saving"}
+            onChange={(selected) => update(breakpoint, selected)}
+          />
+        </div>
+      ))}
+    </>
+  );
+}
+
+function AccessibilityFields({ node }: { node: Extract<PageNode, { kind: "component" }> }) {
+  const session = useStudioSession();
+  const { t } = useI18n();
+  const update = <K extends keyof Accessibility>(
+    property: K,
+    value: Accessibility[K] | undefined
+  ): void => {
+    const next: Accessibility = { ...(node.accessibility ?? {}) };
+    if (value === undefined || value === false) delete next[property];
+    else next[property] = value;
+    void session.setAccessibility(node.id, Object.keys(next).length ? next : undefined);
+  };
+  return (
+    <>
+      <DraftTextField
+        label={t("inspector.accessibleLabel")}
+        value={node.accessibility?.label}
+        disabled={session.status === "saving"}
+        onCommit={(label) => update("label", label)}
+      />
+      <DraftTextField
+        label={t("inspector.describedBy")}
+        value={node.accessibility?.describedBy}
+        disabled={session.status === "saving"}
+        onCommit={(describedBy) => update("describedBy", describedBy)}
+      />
+      <div className="inspector-field">
+        <Checkbox
+          label={t("inspector.decorative")}
+          isSelected={node.accessibility?.decorative === true}
+          isDisabled={session.status === "saving"}
+          onChange={(selected) => update("decorative", selected || undefined)}
+        />
+      </div>
+    </>
+  );
+}
+
+function InteractionFields({
+  node,
+  definition
+}: {
+  node: Extract<PageNode, { kind: "component" }>;
+  definition: GetCatalogResponse["components"]["components"][string];
+}) {
+  const session = useStudioSession();
+  const { locale, t } = useI18n();
+  const actions = session.catalog?.actions.actions ?? {};
+  const replaceInteraction = (event: string, interaction?: Interaction): void => {
+    const next = (node.interactions ?? []).filter((candidate) => candidate.event !== event);
+    if (interaction) next.push(interaction);
+    void session.setInteractions(node.id, next);
+  };
+  return (
+    <>
+      {Object.entries(definition.events).map(([event, eventDefinition]) => {
+        const interaction = node.interactions?.find((candidate) => candidate.event === event);
+        const action = interaction ? actions[interaction.actionRef] : undefined;
+        return (
+          <Fragment key={event}>
+            <div className="inspector-field">
+              <Select
+                label={displayLabel(eventDefinition.displayName, event, locale)}
+                options={[
+                  { id: EMPTY_OPTION, label: t("common.none") },
+                  ...Object.entries(actions).map(([reference, metadata]) => ({
+                    id: reference,
+                    label: metadata.name
+                  }))
+                ]}
+                selectedKey={interaction?.actionRef ?? EMPTY_OPTION}
+                isDisabled={session.status === "saving"}
+                onSelectionChange={(actionRef) => {
+                  if (actionRef === EMPTY_OPTION) {
+                    replaceInteraction(event);
+                    return;
+                  }
+                  const argumentsDefinition = actions[actionRef]?.arguments ?? {};
+                  const argumentValues = Object.fromEntries(
+                    Object.entries(argumentsDefinition).map(([name, type]) => [
+                      name,
+                      type === "number" ? 0 : type === "boolean" ? false : ""
+                    ])
+                  );
+                  replaceInteraction(event, {
+                    event,
+                    actionRef,
+                    ...(Object.keys(argumentValues).length ? { arguments: argumentValues } : {})
+                  });
+                }}
+              />
+            </div>
+            {interaction && action
+              ? Object.entries(action.arguments ?? {}).map(([name, type]) => {
+                  const value = interaction.arguments?.[name];
+                  const updateArgument = (nextValue: string | number | boolean): void =>
+                    replaceInteraction(event, {
+                      ...interaction,
+                      arguments: { ...(interaction.arguments ?? {}), [name]: nextValue }
+                    });
+                  if (type === "boolean")
+                    return (
+                      <div className="inspector-field inspector-subfield" key={name}>
+                        <Checkbox
+                          label={name}
+                          isSelected={value === true}
+                          isDisabled={session.status === "saving"}
+                          onChange={updateArgument}
+                        />
+                      </div>
+                    );
+                  if (type === "number")
+                    return (
+                      <div className="inspector-field inspector-subfield" key={name}>
+                        <NumberField
+                          label={name}
+                          value={typeof value === "number" ? value : 0}
+                          isDisabled={session.status === "saving"}
+                          onChange={updateArgument}
+                        />
+                      </div>
+                    );
+                  return (
+                    <div className="inspector-subfield" key={name}>
+                      <DraftTextField
+                        label={name}
+                        value={typeof value === "string" ? value : ""}
+                        disabled={session.status === "saving"}
+                        onCommit={(next) => updateArgument(next ?? "")}
+                      />
+                    </div>
+                  );
+                })
+              : null}
+          </Fragment>
+        );
+      })}
+      {Object.keys(definition.events).length === 0 ? (
+        <p className="inspector-muted">{t("inspector.noEvents")}</p>
+      ) : null}
+    </>
+  );
+}
+
+function LayoutFields({ node }: { node: Extract<PageNode, { kind: "layout" }> }) {
+  const session = useStudioSession();
+  const { t } = useI18n();
+  const disabled = session.status === "saving";
+  const spacingTokens = Object.entries(session.catalog?.tokens.tokens ?? {})
+    .filter(([, token]) => token.type === "spacing")
+    .map(([reference]) => ({ id: reference, label: reference }));
+  return (
+    <>
+      <div className="readonly-field">
+        <span>{t("inspector.layoutType")}</span>
+        <output>{node.layout}</output>
+      </div>
+      <div className="inspector-field">
+        <Select
+          label={t("inspector.gapToken")}
+          options={[{ id: EMPTY_OPTION, label: t("common.none") }, ...spacingTokens]}
+          selectedKey={node.gapToken ?? EMPTY_OPTION}
+          isDisabled={disabled}
+          onSelectionChange={(value) =>
+            void session.setLayoutProperty(
+              node.id,
+              "gapToken",
+              value === EMPTY_OPTION ? undefined : value
+            )
+          }
+        />
+      </div>
+      <div className="inspector-field">
+        <Select
+          label={t("inspector.align")}
+          options={["start", "center", "end", "stretch"].map((value) => ({
+            id: value,
+            label: value
+          }))}
+          selectedKey={node.align ?? "stretch"}
+          isDisabled={disabled}
+          onSelectionChange={(value) => void session.setLayoutProperty(node.id, "align", value)}
+        />
+      </div>
+      {node.layout === "section" || node.layout === "container" ? (
+        <div className="inspector-field">
+          <Select
+            label={t("inspector.contentWidth")}
+            options={["sm", "md", "lg", "full"].map((value) => ({ id: value, label: value }))}
+            selectedKey={node.width ?? "full"}
+            isDisabled={disabled}
+            onSelectionChange={(value) => void session.setLayoutProperty(node.id, "width", value)}
+          />
+        </div>
+      ) : null}
+      {node.layout === "grid"
+        ? BREAKPOINTS.map((breakpoint) => (
+            <div className="inspector-field" key={breakpoint}>
+              <Select
+                label={t("inspector.gridColumns", { breakpoint })}
+                options={[1, 2, 3, 4, 6, 12].map((count) => ({
+                  id: String(count),
+                  label: String(count)
+                }))}
+                selectedKey={String(node.columns?.[breakpoint] ?? (breakpoint === "mobile" ? 1 : 12))}
+                isDisabled={disabled}
+                onSelectionChange={(value) =>
+                  void session.setLayoutProperty(node.id, "columns", {
+                    ...(node.columns ?? {}),
+                    [breakpoint]: Number(value)
+                  })
+                }
+              />
+            </div>
+          ))
+        : null}
+    </>
+  );
+}
+
 export function InspectorPanel() {
   const session = useStudioSession();
   const { format, locale, t } = useI18n();
   const node = session.selectedNode;
+  const [generalOpen, setGeneralOpen] = useState(true);
   const [contentOpen, setContentOpen] = useState(true);
   const [appearanceOpen, setAppearanceOpen] = useState(true);
-  const [saveOpen, setSaveOpen] = useState(false);
-  const [savedName, setSavedName] = useState("");
+  const [placementOpen, setPlacementOpen] = useState(false);
+  const [visibilityOpen, setVisibilityOpen] = useState(false);
+  const [accessibilityOpen, setAccessibilityOpen] = useState(false);
+  const [interactionsOpen, setInteractionsOpen] = useState(false);
   if (!node)
     return (
       <div className="tool-panel inspector inspector-empty">
@@ -863,21 +1389,24 @@ export function InspectorPanel() {
     node.kind === "component"
       ? displayLabel(definition?.displayName, node.componentRef, locale)
       : displayLabel(undefined, node.layout, locale);
-  const saveReusable = (): void => {
-    if (!savedName.trim()) return;
-    if (session.saveSelectedComponent(savedName)) {
-      setSaveOpen(false);
-      setSavedName("");
-    }
-  };
+  const parent = findParentNode(session.document, node.id);
   return (
-    <div className="tool-panel inspector">
+    <div className="tool-panel inspector" data-selected-node-id={node.id}>
       <div className="selection-summary">
         <span className="selection-icon">{title[0]?.toUpperCase()}</span>
         <div>
           <strong>{title}</strong>
           <small>{node.kind === "component" ? t("common.component") : t("common.layout")}</small>
         </div>
+      </div>
+      <div className="inspector-section">
+        <Disclosure
+          title={t("inspector.general")}
+          isExpanded={generalOpen}
+          onExpandedChange={setGeneralOpen}
+        >
+          <GeneralFields node={node} {...(definition ? { roles: definition.roles } : {})} />
+        </Disclosure>
       </div>
       {node.kind === "component" && definition ? (
         <>
@@ -897,65 +1426,79 @@ export function InspectorPanel() {
               isExpanded={appearanceOpen}
               onExpandedChange={setAppearanceOpen}
             >
-              {definition.variants.length ? (
+              {Object.keys(definition.variants).length ? (
                 <div className="inspector-field">
                   <Select
                     label={t("inspector.variant")}
-                    options={definition.variants.map((variant) => ({
-                      id: variant,
-                      label: displayLabel(definition.variantDisplayNames?.[variant], variant, locale)
-                    }))}
-                    selectedKey={node.variant ?? definition.variants[0]!}
+                    options={[
+                      { id: EMPTY_OPTION, label: t("common.default") },
+                      ...Object.entries(definition.variants).map(([variant, metadata]) => ({
+                        id: variant,
+                        label: displayLabel(metadata.displayName, variant, locale)
+                      }))
+                    ]}
+                    selectedKey={node.variant ?? EMPTY_OPTION}
                     isDisabled={session.status === "saving"}
-                    onSelectionChange={(key) => void session.setVariant(node.id, key)}
+                    onSelectionChange={(key) =>
+                      void session.setVariant(node.id, key === EMPTY_OPTION ? undefined : key)
+                    }
                   />
                 </div>
               ) : null}
-              {Object.entries(node.tokens ?? {}).map(([name, token]) => (
-                <div className="readonly-field" key={name}>
-                  <span>{displayLabel(undefined, name, locale)}</span>
-                  <output title={t("inspector.tokenReadOnlyTitle")}>{displayLabel(undefined, token, locale)}</output>
-                </div>
-              ))}
+              <TokenBindingFields node={node} definition={definition} />
             </Disclosure>
           </div>
-          <div className="inspector-note">{t("inspector.componentNote")}</div>
+          <div className="inspector-section">
+            <Disclosure
+              title={t("inspector.accessibility")}
+              isExpanded={accessibilityOpen}
+              onExpandedChange={setAccessibilityOpen}
+            >
+              <AccessibilityFields node={node} />
+            </Disclosure>
+          </div>
+          <div className="inspector-section">
+            <Disclosure
+              title={t("inspector.interactions")}
+              isExpanded={interactionsOpen}
+              onExpandedChange={setInteractionsOpen}
+            >
+              <InteractionFields node={node} definition={definition} />
+            </Disclosure>
+          </div>
         </>
       ) : (
-        <div className="inspector-note">{t("inspector.layoutNote")}</div>
-      )}
-      <div className="inspector-save">
-        {saveOpen ? (
-          <>
-            <div className="inspector-save-field">
-              <TextField
-                label={t("components.saveReusable")}
-                autoFocus
-                value={savedName}
-                onChange={setSavedName}
-                onSubmit={saveReusable}
-                placeholder={title}
-              />
-            </div>
-            <div className="inspector-save-actions">
-              <Button isDisabled={!savedName.trim()} onPress={saveReusable}>
-                {t("common.save")}
-              </Button>
-              <Button variant="secondary" onPress={() => setSaveOpen(false)}>
-                {t("common.cancel")}
-              </Button>
-            </div>
-          </>
+        node.kind === "layout" ? (
+          <div className="inspector-section">
+            <Disclosure
+              title={t("inspector.layout")}
+              isExpanded={contentOpen}
+              onExpandedChange={setContentOpen}
+            >
+              <LayoutFields node={node} />
+            </Disclosure>
+          </div>
         ) : (
-          <ActionButton
-            onPress={() => {
-              setSavedName(title);
-              setSaveOpen(true);
-            }}
-          >
-            {t("components.saveReusable")}
-          </ActionButton>
-        )}
+          <div className="inspector-note">{t("inspector.unknownComponent")}</div>
+        )
+      )}
+      <div className="inspector-section">
+        <Disclosure
+          title={t("inspector.placement")}
+          isExpanded={placementOpen}
+          onExpandedChange={setPlacementOpen}
+        >
+          <PlacementFields node={node} parent={parent} />
+        </Disclosure>
+      </div>
+      <div className="inspector-section">
+        <Disclosure
+          title={t("inspector.visibility")}
+          isExpanded={visibilityOpen}
+          onExpandedChange={setVisibilityOpen}
+        >
+          <VisibilityFields node={node} />
+        </Disclosure>
       </div>
       {session.error ? (
         <div className="inspector-error" role="alert">

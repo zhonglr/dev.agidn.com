@@ -9,7 +9,7 @@ The built-in `agidn.builtin-themes` plugin contributes:
 
 ## Select and configure themes
 
-Users can select an installed theme in **Studio settings → Editor appearance** or through the `Color Theme:` commands. The selection is persisted under `agidn.studio.colorTheme`.
+Users can select an installed theme in **Studio settings → Editor appearance** or through the `Color Theme:` commands. The selection is persisted under `agidn.studio.v2.theme`.
 
 Runtime configuration can supply defaults before Studio starts:
 

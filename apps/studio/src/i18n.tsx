@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { studioStorage } from "./browser-storage.js";
 import { resolveStudioLocale, translate, type StudioLocale } from "./i18n/runtime.js";
 import type { MessageDescriptor, Translate } from "./i18n/types.js";
 
@@ -12,7 +13,7 @@ function initialLocale(): StudioLocale {
   return resolveStudioLocale(
     window.__AGIDN_STUDIO_CONFIG__?.locale,
     import.meta.env.VITE_STUDIO_LOCALE,
-    localStorage.getItem("agidn.studio.locale")
+    studioStorage.getItem("agidn.studio.v2.locale")
   );
 }
 
@@ -21,7 +22,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   useEffect(() => { document.documentElement.lang = locale; }, [locale]);
   const value = useMemo<I18nValue>(() => ({
     locale,
-    setLocale: (next) => { updateLocale(next); localStorage.setItem("agidn.studio.locale", next); document.documentElement.lang = next; },
+    setLocale: (next) => { updateLocale(next); studioStorage.setItem("agidn.studio.v2.locale", next); document.documentElement.lang = next; },
     t: (key, variables) => translate(locale, key, variables),
     format: (descriptor) => translate(locale, descriptor.key, descriptor.variables)
   }), [locale]);
