@@ -19,7 +19,7 @@ React Spectrum 2 能为当前阶段提供完整且可访问的组件，React Ari
 4. 当前主题插件仍是 Studio 主题选择的唯一事实来源。UI Provider 只把活动主题的 `uiTheme: "light" | "dark"` 和当前 locale 映射给 Spectrum Provider；Spectrum 控制其组件内部视觉，主题插件继续控制 Studio Shell、Workbench 和 Canvas chrome。
 5. Spectrum 阶段不为了未来迁移而预装 Tailwind、`clsx` 或 `tailwind-merge`。开始 RAC 迁移时再依据已经确认的设计系统选择 CSS 方案。
 6. RAC 迁移只发生在 UI 门面内部，按基础控件、Overlay/导航、集合组件的风险顺序逐个替换。迁移期间不使用会把 Spectrum 和 RAC 同时打入生产包的长期运行时后端开关。
-7. Workbench 布局、Dock、Canvas Viewport、Preview 协议、文档命令和领域状态继续由项目自研。组件库只提供这些能力内部使用的通用控件，不接管其领域模型。
+7. Workbench 布局、Dock、Canvas Viewport、直接 DOM Canvas Runtime、文档命令和领域状态继续由项目自研。组件库只提供这些能力内部使用的通用控件，不接管其领域模型。
 8. `packages/studio-workbench` 保持组件库无关。若它需要消费 UI 门面，优先通过渲染槽位或应用层组合；只有出现第二个真实消费者后，才评估把门面提升为 `packages/studio-ui`。
 9. 通过契约测试强制第三方 UI 依赖边界，并为每个公开组件维护行为测试和 Light/Dark、中文/英文视觉矩阵。
 

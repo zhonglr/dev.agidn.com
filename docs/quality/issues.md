@@ -1,7 +1,7 @@
 # Studio Issue 索引
 
 > 创建日期：2026-07-23
-> 最后更新：2026-07-23
+> 最后更新：2026-07-24
 > 来源：Studio 用户验收与后续反馈
 > 验收基线：`2eeb35f` 及其之前的 Studio / Preview / Workbench 实现
 > 追踪范围：30 个稳定 Issue；第一轮 17 项、第二轮新增 Dock 交互问题、第三批反馈去重后新增 7 项、第四批反馈新增 4 项、后续新增上下文菜单能力
@@ -45,8 +45,8 @@
 | ID         | 来源编号                        | 类型                                        | 优先级 | 状态                   | 标题                                                    |
 | ---------- | ------------------------------- | ------------------------------------------- | ------ | ---------------------- | ------------------------------------------------------- |
 | STUDIO-001 | 0                               | Missing integration                         | P1     | Ready for Verification | Export 按钮未连接导出流程                               |
-| STUDIO-002 | 1 / B4-1                        | Functional bug                              | P0     | Ready for Verification | 画布点击与大纲选中无法稳定同步 Preview 节点             |
-| STUDIO-003 | 2                               | Functional bug / incomplete capability      | P0     | Ready for Verification | Inspector 控件与 Preview 更新链路不可靠                 |
+| STUDIO-002 | 1 / B4-1                        | Functional bug                              | P0     | Ready for Verification | 画布点击与大纲选中无法稳定同步 Canvas 节点              |
+| STUDIO-003 | 2                               | Functional bug / incomplete capability      | P0     | Ready for Verification | Inspector 控件与 Canvas 更新链路不可靠                  |
 | STUDIO-004 | 3 / R2-1～2 / B3-1～3 / B4-3、5 | Missing capability / interaction            | P1     | Ready for Verification | 组件插入、移动与 Slot 拖放链路不完整                    |
 | STUDIO-005 | 4                               | Missing capability                          | P2     | Ready for Verification | Page 和 Component 搜索框不执行过滤                      |
 | STUDIO-006 | 5                               | Missing capability                          | P2     | Ready for Verification | Page Outline 节点无法折叠或展开                         |
@@ -91,50 +91,45 @@
   - 成功时显示输出位置和 manifest 摘要；失败时提供可重试的错误信息。
   - 包含 Studio 交互测试和 Workspace HTTP 集成测试。
 
-### STUDIO-002：画布点击与大纲选中无法稳定同步 Preview 节点
+### STUDIO-002：画布点击与大纲选中无法稳定同步 Canvas 节点
 
 - **原始编号**：1
 - **类型 / 优先级 / 状态**：Functional bug / P0 / Ready for Verification
-- **影响范围**：Canvas Viewport、sandboxed iframe、Preview 协议、Selection Overlay、Inspector
+- **影响范围**：Canvas Viewport、直接 DOM Runtime、Selection Overlay、Inspector
 - **实际行为**：画布中的元素可见，但鼠标点击后不会稳定更新当前选中节点、Outline 选中态和 Inspector。
-- **代码证据**：
-  - iframe 使用 `sandbox="allow-scripts"`，Preview 文档因此是 opaque origin；开发服务需要明确处理 `Origin: null`。
-  - `CanvasViewport` 依赖 `preview.ready` 后才发送 `preview.hitTest`，但 iframe `onLoad` 会将 `previewReady` 重置为 `false`。如果 `preview.ready` 早于父页 `onLoad` 处理，就会丢失就绪状态。
-  - 当前没有 ready 超时、重试、心跳或用户可见的“Preview 未连接”状态。
-- **已修复的子问题（2026-07-23）**：Preview Host 未允许 sandbox iframe 的 `Origin: null`，导致 Vite 的 `@vite/client`、`@react-refresh` 和 `src/main.tsx` 被 CORS 拦截，画布完全无法加载。`apps/preview-host/vite.config.ts` 现仅允许该 opaque origin，同时保留 `sandbox="allow-scripts"` 隔离；三个开发模块均已验证返回 HTTP 200 和 `Access-Control-Allow-Origin: null`。Preview Host 生产构建、全仓类型检查和 74 项测试通过。
-- **本轮修复（2026-07-23）**：Preview 在挂载期间周期性重发 `preview.ready`，Studio 使用显式 connecting / ready / error 状态、5 秒超时和 Retry 重建 iframe；`load` 即使晚于首次 ready 也会在下一次公告恢复握手。点击与拖放都经版本化 Preview 协议返回命中意图，Canvas 对断点、缩放和平移统一使用坐标转换服务。
+- **旧根因（已删除）**：早期 iframe 的 opaque origin、`load` / `ready` 竞态和跨窗口 hit-test 使选择链路依赖异步握手。
+- **本轮修复（2026-07-24）**：已删除 Preview Host、iframe 和跨窗口协议。`CanvasViewport` 在 Studio 内直接挂载 `PageRenderer`，使用 `elementFromPoint`、`closest` 和 `getBoundingClientRect` 同步完成命中与边界读取；独立 Chrome 冒烟已覆盖选择与基础编辑。
 - **第四批反馈**：从左侧 Outline 选择节点时，如果目标当前不在 Canvas 视口内，画布必须用一次短暂、可感知的平移把目标带入视口；不能瞬间跳转，也不能在节点已经可见时产生不必要移动。
-- **剩余复验**：自动化协议与坐标测试通过；当前执行环境没有可用的内置浏览器实例，仍需按验收矩阵完成真实浏览器点击、手势和 opaque-origin 复验，因此状态为 Ready for Verification。
+- **剩余复验**：自动化坐标与真实 Chrome 基础编辑通过；仍需按验收矩阵完成人工触控板、缩放和 Outline 聚焦动画复验。
 - **期望行为**：画布点击通过统一坐标服务命中最深层可编辑节点，并在任意缩放、平移和断点下同步 Outline、Overlay 和 Inspector。
 - **验收条件**：
-  - Preview 握手只有一个明确的状态机，不受 `load` / `ready` 时序影响。
-  - 连接失败时 Canvas 显示错误和重试入口，而不是静默忽略点击。
+  - Canvas 不依赖跨窗口握手，渲染错误由同树 Error Boundary 显示和恢复。
   - Desktop、Tablet、Mobile 以及 50%、100%、150% 缩放下点击选择正确。
   - Outline 选中视口外节点时，Canvas 使用约 150～250ms 的短平移动画将其完整带入安全可视区；已在安全可视区内的节点不移动。
   - 连续快速选中不同节点时，新动作接管旧动画且不抖动；用户主动缩放或平移时可立即接管。
   - `prefers-reduced-motion: reduce` 下取消空间动画但仍保证目标进入视口。
   - 点击、空格拖动平移和触控板手势不互相触发。
-  - 增加覆盖 opaque-origin sandbox 的浏览器级交互测试。
+  - 浏览器级交互测试覆盖直接 DOM 选择、移动、删除、刷新和服务拒绝。
 
 ### STUDIO-003：Inspector 控件与 Preview 更新链路不可靠
 
 - **原始编号**：2
 - **类型 / 优先级 / 状态**：Functional bug / incomplete capability / P0 / Ready for Verification
 - **第二轮复验**：Registry 已能生成 variant 选项并提交 `node.setVariant`，但 Preview 只实现少量 modifier，多数组件切换后没有可辨识视觉差异。详见 [STUDIO-R2-004](./uat/2026-07-23-studio-round-02.md#studio-r2-004registry-variant-可以提交但多数变体在-preview-中没有可辨识差异)。
-- **影响范围**：Inspector、Component Registry、Command 提交、Revision、Preview 同步
-- **实际行为**：部分字段可产生保存状态，但 Preview 没有可见变化；部分看起来可操作的设置点击后没有任何行为。
+- **影响范围**：Inspector、Component Registry、Command 提交、Revision、Canvas 同步
+- **实际行为**：部分字段可产生保存状态，但 Canvas 没有可见变化；部分看起来可操作的设置点击后没有任何行为。
 - **代码证据**：
   - Inspector 只对 `Heading` 和 `Text` 开放真实编辑，其他节点全部只读。
   - `Text color` 和 `Typography` 使用 disabled button；Content / Appearance 标题看起来是可折叠按钮，但没有点击处理。
-  - Preview 更新依赖 STUDIO-002 中同一个 ready / message 链路；一旦该链路未就绪，Workspace Revision 仍可能成功增加，但画布不会同步。
+  - 旧 Preview ready/message 依赖已经随直接 DOM 改造删除；仍需复验所有 Inspector 字段的可见结果。
   - 界面未明确区分“可编辑”、“只读”、“未实现”和“提交失败”。
 - **期望行为**：Inspector 由 Component Registry 的 Props、Variants 和 Token 能力生成；所有显示为可操作的控件都必须产生可见结果或清晰错误。
 - **验收条件**：
-  - 先修复 STUDIO-002，再验证 Inspector 与 Preview 同步。
+  - 先修复 STUDIO-002，再验证 Inspector 与 Canvas 同步。
   - 可编辑字段的值、类型、枚举和必填规则来自 Registry，不在 Inspector 中重复硬编码。
-  - 每次成功修改后，Revision、Outline 文本、Inspector 值、Preview DOM 和 Overlay 均保持一致。
+  - 每次成功修改后，Revision、Outline 文本、Inspector 值、Canvas DOM 和 Overlay 均保持一致。
   - 禁用或尚未实现的能力不使用伪装的可点击样式，并提供原因。
-  - 服务端拒绝、Revision 冲突和 Preview 同步失败分别显示，不共用模糊的保存状态。
+  - 服务端拒绝、Revision 冲突和 Canvas 渲染失败分别显示，不共用模糊的保存状态。
 
 ### STUDIO-004：组件插入、移动与 Slot 拖放链路不完整
 
@@ -148,19 +143,25 @@
 - **本批实现证据**：`f22f34f` 为 Button 注册 leading Icon、content Text 和 trailing Icon Slot；`90afce7` 将拖动源状态移入 Studio Session，统一 Canvas / Outline 的 MoveTarget，并增加 before / inside / after 几何提示。
 - **第四批实现证据**：选择、移动与插入 Overlay 已移出缩放的 `.canvas-surface`，统一使用 `previewRectToScreen` 映射到 Canvas 视口坐标，因此矩形尺寸只乘一次 zoom，边框本身不再随画布缩放；Components、Saved components 和自定义组件卡片均保持为纯拖拽源。`canvas-coordinates.test.ts` 覆盖 50%、100%、150%、200% 几何矩阵。
 - **后续实现证据**：Preview 的 Layout 节点和 Container / Stack / Row / Grid 布局组件具有 72px 默认最小高度，完全为空时提供 96px 插入面，避免只有一行文字或没有子节点时难以命中拖放目标。
-- **实际行为**：历史基线中的 Component Grid 只有抓取光标而没有完整拖放；后续实现补上了结构拖动，但缩放状态下蓝色落点边框的尺寸仍会偏离 Preview DOM。组件卡片单击行为也需要按最新产品决定保持为无文档副作用。
+- **Canvas 重建阶段一反馈（2026-07-24）**：新 Layout Engine 接入后，拖拽已经可用且整体体验优于此前实现；但元素完成拖拽后会在不同位置之间来回跳动，最终位置缺少视觉稳定性，因此本 Issue 从 Ready for Verification 重开。
+- **旧根因（2026-07-24，已删除）**：跨窗口 `resolveMove` / `resolveDrop` 的异步 intent、`dragend` 和正式 Revision 按不同顺序到达，形成“目标位置 → 旧位置 → 目标位置”的往返跳动。
+- **当前修复（2026-07-24）**：Canvas 改为同文档 DOM 同步命中和目标解析，不再存在跨窗口迟到 intent；同一 Ghost 候选去重，Drop 只发出一个正式 Command。为旧协议设计的孤立 Drop Commit Guard 已随旧边界删除。
+- **修复验证（2026-07-24）**：全仓 39 个测试文件 189 项测试、类型检查、Lint、生产构建和文档门禁通过；独立 Chrome 在不启动 Preview Host 的情况下覆盖 Page 根空白区域 Drop、全部 17 类插入源与基础创建、选择、修改、移动、删除、undo/redo、刷新和拒绝回滚。
+- **当前实际行为**：拖动使用直接 DOM 几何产生 Ghost，Drop 后由正式 Revision 接管；自动化与 Chrome 冒烟未观察到旧布局回闪。完整缩放、跨 Slot 和快速连续拖动矩阵仍等待用户复验，因此状态为 Ready for Verification。
 - **反馈基线代码证据**：最初 `ComponentsPanel` 中的 button 没有 `onClick`、`draggable`、drag payload 或键盘插入命令；`StudioSessionValue` 也没有 `node.insert` / `node.move` 提交方法。CSS 却使用 `cursor: grab`，导致错误的功能暗示。当前实现已变化，此条只保留为历史根因；最新未通过项以第四批反馈和验收矩阵为准。
 - **期望行为**：组件卡片只通过拖拽进入画布；拖动时仅显示符合 Slot Policy 的合法落点，并且蓝色组件边框与 Preview 中真实目标边界精确一致。
 - **验收条件**：
   - 单击、双击或聚焦 Components 卡片都不修改 PageDocument、不产生 Revision；从 Components 面板插入组件只由明确拖拽触发。
   - 键盘用户如需插入，应使用独立、明确命名的插入命令或无障碍拖放替代流程，不把普通卡片单击重新解释为插入。
-  - Preview 回传可命中的父节点、Slot 和 before-node 意图，Studio 生成 `node.insert` / `node.move` Command。
+  - Canvas 直接 DOM 命中返回父节点、Slot 和 before-node 意图，Studio 生成 `node.insert` / `node.move` Command。
   - 非法 Slot 不允许放置，并显示原因；不允许绕过 Rule Engine。
   - 插入成功后选中新节点，并可 undo/redo。
   - 覆盖布局 children 和命名 Slot 两种结构。
   - 在 Desktop、Tablet、Mobile 及 50%、100%、150%、200% 缩放下，蓝色边框的 `x/y/width/height` 与目标 Preview DOM 的可视边界一致，容差不超过 1 个 CSS 像素。
   - 同一目标从 100% 放大到 150% 或 200% 后，指示器只随画布变换一次；不得再次把已经换算过的 rect 乘除 zoom。
   - 平移、缩放、滚动、断点切换和拖动自动滚屏期间，边框持续贴合；取消拖动或离开合法目标后立即清除。
+  - Drop 后元素直接稳定在最终合法位置；临时 ghost、FLIP、Preview 消息和正式 Revision 不得相互覆盖并造成来回跳动。
+  - 快速连续拖动、同组排序、跨父节点移动和跨 Slot 移动后都只能出现一次可解释的落位过渡，不得先回旧位置再跳回新位置。
   - Outline 支持同组排序、跨父节点移动、进入和离开命名 Slot；取消、非法目标及 undo/redo 均保持文档一致。
 
 ### STUDIO-005：Page 和 Component 搜索框不执行过滤
@@ -202,7 +203,7 @@
   - 所有 Studio 颜色转换为语义 Token，不在组件选择器中散布主题字面量。
   - 主题可从 Settings 切换，本地持久化，Follow System 响应系统变化。
   - Light / Dark 的普通、hover、selected、disabled、focus 和 error 状态均达到可读对比度。
-  - Preview iframe 主题与 Studio Chrome 主题保持解耦。
+  - Canvas 页面主题与 Studio Chrome 主题保持解耦。
 
 ### STUDIO-008：图标语义不清且尺寸不一致
 
@@ -377,7 +378,7 @@
 - **实际行为**：History 只能查看 Revision，不能从旧快照恢复；现有 undo/redo 不能替代选择任意历史 Revision。
 - **反馈基线复现**：产生多个 Revision 后打开 History，选择 Revision 0 或中间 Revision；列表只提供查看信息，没有恢复和确认操作。
 - **根因**：反馈基线的 Document Service、HTTP API 和 History Panel 都没有 restore 操作。
-- **实现证据**：`4165e71` 增加 `POST /v1/history/restore`、协议校验、持久化恢复和集成测试；`90afce7` 增加 History 二次确认与恢复 UI。恢复会创建新的单调 Revision，并将恢复前状态保留在 undo 栈。
+- **实现证据**：最初由 `4165e71` 建立恢复能力，当前正式 Endpoint 为 `POST /v1/project/history/restore`；协议校验、项目级持久化恢复和集成测试均已覆盖。`90afce7` 增加 History 二次确认与恢复 UI。恢复会创建新的单调 Revision，并将恢复前状态保留在 undo 栈。
 - **验收条件**：
   - 可恢复 Revision 0 和任意存在的中间 Revision，不覆盖或删除既有历史。
   - 恢复产生新的单调 Revision，并在 History 中记录目标 Revision。
@@ -465,13 +466,14 @@
 - **来源**：第四批反馈 4、6；产品模型见 [Studio Authoring Model](../product/studio-authoring-model.md#3-自定义组件资产与专注工作台)
 - **类型 / 优先级 / 状态**：Product capability / authoring model / P1 / In Progress
 - **影响范围**：自定义组件资产、专注工作台、结构树、组件库、Preview、变量与 Slot 配置、Workspace 持久化
-- **实际行为**：当前代码已有独立的 Component Workbench、组件拖入、变量/Slot 表单和浏览器本地保存原型，但左侧 Layers 是扁平列表，无法表达嵌套父子关系与命名 Slot；资产仍保存在 `localStorage`，没有成为项目级、可校验、可 Revision、可导出的正式资产。
+- **实际行为**：旧 Component Workbench、Saved/Custom `localStorage` 资产和专用拖拽入口已经按硬重置要求全部删除。当前已建立正式 `assets.json`、Composite/Pattern Schema、绑定和循环引用校验、Catalog/Context Export 输出及 Pattern 事务插入，但还没有 Composite 实例运行时、资产写入 Revision Command 和复用 Page Canvas 的专注编辑器。
 - **代码证据**：
-  - `apps/studio/src/ComponentWorkbench.tsx` 提供专注页面、Preview、Building Blocks、Variables 和 Slots 配置。
-  - 当前 Layers 通过深度遍历后直接渲染为平面 button 列表，没有 disclosure、层级缩进、Slot 行、树键盘语义或结构拖动。
-  - `apps/studio/src/custom-components.ts` 使用 `agidn.studio.custom-components` 本地存储键；该格式未进入 Workspace Server、项目 Schema、Revision Store 或 Context Export。
-- **第四批实现证据**：专注工作台的扁平 Layers 已替换为包含组件根、嵌套节点和命名 Slot 的紧凑结构树；支持 disclosure、Tree 键盘移动、Tree/Preview 选中同步、祖先自动展开、节点排序、跨命名 Slot 移动以及视口外选中的短平滑聚焦。工作区主体与页面编辑器保持相同的“结构树、组件库、画布、配置”四列顺序，窄桌面布局不再隐藏组件库。专注页作为覆盖层挂载，主工作台和 Canvas iframe 在进入、退出期间保持同一 DOM 实例；Preview 未初始化时只渲染中性空白，并在组件文档首帧完成后原子地从加载提示切换到空组件引导，不再泄露内置示例页的深色内容。变量/Slot 的类型、初始值、绑定和实例配置继续由同一工作台编辑。
-- **剩余边界**：用户可见创建/修改链路已经可用并通过开发门禁，但资产仍使用浏览器本地持久化；进入 Workspace 项目 Schema、Revision Store 和导出协议后才满足本 Issue 的项目级关闭条件，因此保持 In Progress。
+  - `packages/project-assets/src/index.ts` 定义正式 Composite/Pattern Schema、公开 Prop/Slot binding、依赖循环校验和 Pattern 实例化。
+  - `examples/foundation/assets.json` 是从零建立的最小正式资产 Fixture。
+  - Workspace Project Loader、Catalog Service 和 Context Exporter 读取、校验和输出同一资产快照。
+  - 旧 `ComponentWorkbench.tsx`、`custom-components.ts`、Saved Component 状态/MIME、样式与契约测试已删除。
+- **本轮实现证据**：Pattern 已在 Components Panel 显示，插入时刷新模板节点 ID，并用一组 `node.insert` Command 在单个 Revision 中展开；Composite 校验拒绝资产键不一致、重复模板 ID、未知绑定目标、无效 Prop/Slot 绑定、必填默认值缺失和直接/间接循环引用。
+- **剩余边界**：正式资产读模型已经进入 Workspace 项目与导出协议；写模型、Revision/History、Composite 页面实例、影响分析和专注编辑器仍未完成，因此保持 In Progress。
 - **期望行为**：用户进入只关注一个自定义组件的编辑状态，复用页面编辑器的选择、树、Preview、拖放、Inspector 和规则逻辑；变量与 Slot 是资产的正式公开接口，而不是仅存在于当前浏览器的临时配置。
 - **验收条件**：
   - 可从 Components 面板新建自定义组件，也可打开已有资产继续编辑；专注模式明确显示资产身份、保存状态和返回工作区入口。
@@ -480,10 +482,10 @@
   - 变量至少支持 string、number、boolean、enum 的稳定 ID、展示名称、值类型、初始值、约束和节点属性绑定。
   - Slot 至少支持单组件、组件列表和文本的稳定 ID、展示名称、值类型、初始值/默认内容、数量约束、可接受类型和内部命名 Slot 绑定。
   - 删除、重命名或改类型时先检查现有实例和绑定，提供迁移或阻止破坏性保存，不静默留下悬空引用。
-  - 自定义组件资产由 Workspace 项目持久化并纳入 Schema 校验、Revision、undo/redo、导出和重启恢复；`localStorage` 只能作为原型或可迁移缓存。
+  - 自定义组件资产由 Workspace 项目持久化并纳入 Schema 校验、Revision、undo/redo、导出和重启恢复；禁止再建立 `localStorage` 资产格式。
   - 保存后的资产通过正式 Catalog/Registry 链路出现在 Components 面板，页面实例使用稳定资产引用；插入后实例可覆盖公开变量并向 Slot 提供内容。
   - 专注模式不显示与当前组件无关的页面噪音，但不能另造一套选择、坐标、规则或拖放实现。
-  - 增加资产 Schema、迁移、绑定、Revision、导出契约测试，以及真实浏览器中的创建、编辑、保存、刷新、复用和错误恢复场景。
+  - 增加资产 Schema、绑定、Revision、导出契约测试，以及真实浏览器中的创建、编辑、保存、刷新、复用和错误恢复场景；不增加旧资产迁移测试。
 
 ### STUDIO-027：默认布局未同时展示 Outline 与 Components 面板
 
@@ -508,7 +510,7 @@
 - **影响范围**：Workspace 项目模型、Page Outline、Editor Tab、页面创建与命名、Revision、路由和持久化
 - **实际行为**：当前 Workspace 只加载一个 `PageDocument`；界面没有可发现的新建页面按钮，Page Outline 只有单页面根，Editor 顶部也不能为多个页面分别打开 Tab。
 - **期望行为**：一个项目可包含多个页面；Page Outline 的第一层是多个页面根节点，每个已打开页面在 Editor 顶部拥有独立 Tab，新建页面入口在页面上下文中清晰可见。
-- **第四批实现证据**：Page Outline 已显示多个页面根，并在搜索框旁提供新建页面按钮；Editor Header 可同时打开、切换和关闭多个页面 Tab。页面具有稳定 ID、合法初始根结构和独立本地 revision，页面与 Tab 会话均可在刷新后恢复；切换页面复用同一个 Preview iframe，通过文档 ID 区分跨页面 revision 回退，并按“页面 + 断点”缓存内容高度，不再销毁 iframe、回到“正在加载”或先把 Canvas 高度清零。新增页面可使用与主页面相同的 Canvas、Outline、Inspector、组件拖放和结构移动逻辑。
+- **第四批实现证据**：Page Outline 已显示多个页面根，并在搜索框旁提供新建页面按钮；Editor Header 可同时打开、切换和关闭多个页面 Tab。页面具有稳定 ID、合法初始根结构和独立本地 revision，页面与 Tab 会话均可在刷新后恢复；切换页面复用同一个 Canvas Surface，通过文档 ID 区分跨页面 revision 回退，并按“页面 + 断点”缓存内容高度。新增页面可使用与主页面相同的 Canvas、Outline、Inspector、组件拖放和结构移动逻辑。
 - **剩余边界**：多页面编辑闭环当前使用 Studio 工作区本地持久化；Workspace Server 仍以单个主 `PageDocument` 为正式 Revision/History/Export 对象。项目级 Page Schema、服务端多页面 Revision 和项目导出完成前保持 In Progress。
 - **验收条件**：
   - Page Outline 顶部提供可键盘访问、带 tooltip 的“新建页面”按钮，并支持命名、稳定 page ID 与安全的默认根结构。
@@ -561,8 +563,8 @@
 
 ### Batch A：恢复可信的核心链路
 
-1. **STUDIO-002**：修复 Preview 握手、opaque-origin 开发加载和画布选择。
-2. **STUDIO-003**：在可信 Preview 连接上复验 Inspector / Revision / Preview 同步，移除伪操作控件。
+1. **STUDIO-002**：在直接 DOM Canvas 上完成画布选择和 Outline 聚焦矩阵。
+2. **STUDIO-003**：复验 Inspector / Revision / Canvas 同步，移除伪操作控件。
 3. **STUDIO-016**：保证工作区面板始终可恢复。
 4. **STUDIO-001**：接通 Export 完成“编辑 → 验证 → Revision → 导出”闭环。
 
@@ -600,7 +602,7 @@
 
 - 过早将“存在代码”记录为“能力完成”，没有经过用户可见交互验收。
 - 一些占位 UI 使用了可点击或可拖动的视觉暗示，但没有实际行为。
-- Preview 协议有 Schema 和单元测试，但缺少覆盖真实 sandbox origin、iframe 生命周期和点击交互的浏览器级验证。
+- 早期跨窗口协议只有 Schema 和单元测试，缺少真实浏览器生命周期验证；该边界现已删除，后续直接覆盖 Canvas DOM 用户路径。
 - Workbench 测试覆盖单次关闭/停靠，但没有覆盖“关闭最后一个 Tab”和多次重组后的布局归一化。
 - 响应式检查主要围绕顶层 viewport，没有覆盖 IDE 面板被拖到极窄宽度时的容器级布局。
 
@@ -628,10 +630,13 @@
 | 2026-07-23 | 第三批用户反馈去重与稳定 ID 整理                                       | 插入位置、Outline 移动和 Component Slot 归并到 STUDIO-004；Dock 反馈延续为 STUDIO-018；其余反馈去重后建立 STUDIO-019～025。轮次编号只用于 UAT，不再创建 `STUDIO-R3-*`。                                                                                                                                                   |
 | 2026-07-23 | 核对第三批整改实现                                                     | `4165e71`、`f22f34f`、`90afce7` 和 `f7fd334` 提供 History Restore、display metadata、Slot、Saved components、i18n、分组和 Workbench 实现证据；功能项按开发门禁进入 Ready for Verification，仍依赖视觉判断的 STUDIO-004、018、022、024、025 保持 In Progress。                                                             |
 | 2026-07-23 | 第四批创意与问题反馈归类                                               | Outline 视口聚焦归并到 STUDIO-002；组件仅拖入和缩放后蓝色指示器复发归并到 STUDIO-004；建立 STUDIO-026～029 跟踪自定义组件专注编辑、默认双面板布局、多页面模型和 Command Palette / Overlay 一致性。                                                                                                                        |
+| 2026-07-24 | Canvas 重建阶段一用户反馈                                             | Layout Engine 接入后拖拽已可用且优于此前版本，但 Drop 后元素会在位置之间来回跳动；STUDIO-004 重开，新增临时 Projection、动画与正式 Revision 时序稳定性验收。                                                                                                                       |
+| 2026-07-24 | 修复 Canvas Drop 后位置往返跳动                                      | 新增 Drop Commit Guard，使 Projection 跨 `dragend` 保留到正式 Revision；过滤旧 intent 并拒绝超时后的迟到响应。167 项测试、类型检查、构建、Lint、文档检查及 Chrome Studio/Preview 冒烟通过，STUDIO-004 进入 Ready for Verification。                                                                                 |
 | 2026-07-23 | 建立长期 Authoring Model 记录                                          | 新建 `docs/product/studio-authoring-model.md`，记录多页面根节点、Editor Tab、自定义组件资产、变量/Slot 以及同构结构树边界；这些内容是产品契约，不伪装成已完成能力或正式 UAT。                                                                                                                                             |
 | 2026-07-23 | 完成第四批用户可见实现                                                 | Overlay 改为视口坐标层并覆盖 50%～200% 缩放矩阵；Components 保持纯拖拽；默认 Outline/Components 等宽并列并迁移 v2 布局；新增多页面根、创建入口、Editor Tab 和独立 Preview 会话；组件专注页补齐同构结构树与 Slot 移动。Typecheck、ESLint、Stylelint、130 项测试及 Studio/Preview/全仓构建通过。                            |
 | 2026-07-23 | 完成后续编辑体验修正                                                   | Preview 中布局节点增加 72px 基础高度、空布局增加 96px 插入面；Editor Tab 切换复用 iframe 并支持跨文档 revision 回退；组件专注页按结构树、组件库、画布、配置拆为四列。Typecheck、ESLint、Stylelint、132 项测试及 Studio/Preview/全仓构建通过，等待真实浏览器视觉复验。                                                     |
 | 2026-07-23 | 消除页面与组件专注切换闪屏                                             | Canvas 高度改为按页面和断点缓存，页面切换不再清零；组件专注页覆盖在保留 DOM 的主工作台上；Preview 初始化前不再渲染示例页面，加载提示等待组件文档首帧后再切换为空状态。Chrome 实测确认主 iframe 身份保持、加载与空状态连续。                                                                                               |
 | 2026-07-23 | 接入可扩展 Spectrum 上下文菜单                                         | 建立目标感知的 Context Menu Registry 与 UI 门面，覆盖 Page、节点、组件、Canvas 和组件专注工作台；复用现有 capability / Command 路径，并通过 135 项测试与 Chrome Outline、组件卡片、Canvas 节点冒烟。完整浏览器矩阵前保持 Ready for Verification。                                                                         |
+| 2026-07-24 | 删除 Preview Host 并切换直接 DOM Canvas                               | 删除 iframe、跨窗口协议、独立 `4174` 进程和兼容代码；Studio 直接挂载 PageRenderer，以 DOM API 完成命中、边界和拖放。39 个测试文件 189 项测试、生产构建及 Chrome Page 根空白 Drop、17 类插入源与基础编辑冒烟通过；STUDIO-002 保持 Ready for Verification，等待人工缩放与聚焦矩阵。 |
 
 后续每次状态变更都应在本表追加记录，而不覆盖历史。

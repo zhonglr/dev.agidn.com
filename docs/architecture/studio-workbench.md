@@ -35,7 +35,7 @@ Studio Application
 └── Canvas Workbench Panel
     └── Canvas Viewport
         ├── Interaction Overlay
-        └── Sandboxed Preview iframe
+        └── Direct DOM Page Renderer
 ```
 
 Workbench Shell 只管理编辑器工作区；PageDocument 的读取、命令、验证和版本由现有领域链路负责。
@@ -68,7 +68,7 @@ type WorkbenchLayoutNode =
     };
 
 interface WorkbenchLayoutState {
-  version: "1.0.0";
+  version: "2.0.0";
   root: WorkbenchLayoutNode;
   hiddenPanelIds: string[];
   maximizedPanelId?: string;
@@ -158,12 +158,12 @@ Canvas Panel                   不缩放
 ├── Canvas Toolbar             不缩放
 └── Viewport                    固定可见窗口
     ├── Grid / Background       视口装饰
-    ├── Preview Surface         只对此层平移和缩放
-    │   └── sandboxed iframe
+    ├── Canvas Surface          只对此层平移和缩放
+    │   └── PageRenderer DOM
     └── Interaction Overlay     选框、辅助线、拖放提示
 ```
 
-不得通过浏览器缩放、顶层 `zoom` 或 Studio 根节点 `transform` 实现画布缩放。只有 Preview Surface 和与它对齐的 Interaction Overlay 参与坐标变换。
+不得通过浏览器缩放、顶层 `zoom` 或 Studio 根节点 `transform` 实现画布缩放。只有 Canvas Surface 和与它对齐的 Interaction Overlay 参与坐标变换。
 
 ### 5.2 视口状态
 
@@ -184,7 +184,7 @@ interface CanvasViewportState {
 
 ### 5.3 变换与输入
 
-Preview Surface 使用单一变换：
+Canvas Surface 使用单一变换：
 
 ```css
 transform: translate(var(--canvas-x), var(--canvas-y)) scale(var(--canvas-scale));
@@ -210,10 +210,10 @@ transform-origin: 0 0;
 ```ts
 screenToCanvas(point: Point): Point;
 canvasToScreen(point: Point): Point;
-previewRectToScreen(rect: Rect): Rect;
+canvasRectToScreen(rect: Rect): Rect;
 ```
 
-iframe 返回的节点边界使用 Preview 内容坐标。Selection Overlay、Insertion Indicator、辅助线和命中测试必须经过同一服务转换，不得在各功能内重复计算 scale 和 offset。
+Canvas DOM 的节点边界通过 `getBoundingClientRect()` 直接读取，再由单一服务转换为 Viewport 坐标。Selection Overlay、Insertion Indicator、辅助线和命中测试不得各自重复计算 scale 和 offset。
 
 ### 5.5 浏览器默认行为
 
@@ -222,28 +222,28 @@ iframe 返回的节点边界使用 Preview 内容坐标。Selection Overlay、In
 - 文本输入、下拉框和可编辑组件获得焦点时，画布快捷键必须暂停。
 - 尊重 `prefers-reduced-motion`，Fit 动画可被关闭。
 
-## 6. Preview 隔离与通信
+## 6. Canvas 运行时边界
 
-Studio 和 Preview Host 使用 sandboxed iframe 和带版本的 `postMessage` 协议。协议至少包含：
+Studio 直接在 Canvas Surface 中挂载 `PageRenderer`。渲染器接收当前 Revision 的
+PageDocument、Component Registry、Token 和事件回调，输出同一 `Document` 中的原生 DOM。
 
 ```text
-Studio → Preview
-  preview.initialize
-  preview.setDocument
-  preview.setBreakpoint
-  preview.setSelection
-
-Preview → Studio
-  preview.ready
-  preview.nodePointerDown
-  preview.nodeBounds
-  preview.renderError
-  preview.contentOverflow
+Studio Session
+  → validated Project Revision
+  → PageRenderer
+  → Canvas DOM
+  → direct hit test / geometry / selection intent
+  → Command
+  → Workspace Server
 ```
 
-每条消息包含 `protocolVersion`、`requestId`、`documentRevision` 和明确来源。Studio 必须校验 `origin`、消息 Schema 和 Revision，并忽略过期边界数据。
+`elementFromPoint`、`closest("[data-node-id]")`、`getBoundingClientRect` 和
+`ResizeObserver` 是命中与几何的唯一浏览器事实来源。画布断点由容器宽度驱动 CSS Container
+Query，不依赖 Studio 窗口宽度。
 
-Preview 不能直接修改 PageDocument。点击和拖放仅回传用户意图，Studio 生成 Command 后交由 Workspace Server 提交。
+Renderer 不能直接修改 PageDocument。点击和拖放只在 Studio 内产生用户意图，Studio 生成
+Command 后交由 Workspace Server 提交。完整决策见
+[ADR-0005](../adr/0005-studio-canvas-direct-dom-rendering.md)。
 
 ## 7. 扩展与插件基础
 
@@ -311,7 +311,7 @@ apps/studio/src/
 │   ├── canvas-viewport.ts
 │   ├── coordinate-service.ts
 │   ├── gesture-controller.ts
-│   ├── preview-bridge.ts
+│   ├── runtime-components.tsx
 │   └── interaction-overlay.tsx
 ├── panels/
 ├── routes/
@@ -320,8 +320,7 @@ apps/studio/src/
 
 packages/
 ├── studio-workbench/       可复用布局模型和容器
-├── studio-plugin-api/      稳定 Contribution 类型与受控 API（规划，未创建；当前类型在 apps/studio 内部）
-└── preview-protocol/       Studio/Preview 运行时验证协议
+└── studio-plugin-api/      稳定 Contribution 类型与受控 API（规划，未创建；当前类型在 apps/studio 内部）
 ```
 
 只有出现第二个消费者或需要独立契约测试时，才将对应能力拆成 package；初始实现可先位于 `apps/studio/src`。
@@ -346,10 +345,10 @@ packages/
 - 统一坐标转换服务和交互 Overlay。
 - 高频输入性能基线。
 
-### W3：Preview 隔离
+### W3：Canvas Runtime
 
-- sandboxed iframe、版本化 `postMessage` 和运行时校验。
-- 节点命中、边界回传、错误边界和崩溃恢复。
+- Studio 内直接 DOM Renderer、Registry Runtime 和运行时输入校验。
+- 节点命中、边界测量、错误边界和崩溃恢复。
 
 ### W4：首个编辑闭环
 
@@ -376,7 +375,7 @@ packages/
 
 - 触控板缩放只影响画布，Studio Chrome 保持原尺寸。
 - 指针中心缩放后，指针下的画布点保持不变。
-- 任意缩放和平移下，Selection Overlay 与 iframe DOM 边界保持对齐。
+- 任意缩放和平移下，Selection Overlay 与 Canvas DOM 边界保持对齐。
 - 画布手势不破坏 Inspector、树和对话框的正常滚动。
 - 高频平移/缩放不触发文档 Revision，不重渲染无关面板。
 

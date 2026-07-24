@@ -1,17 +1,17 @@
-# Revision Store 持久化格式
+# Project Revision Store 持久化格式
 
-> 当前格式版本：`1.0.0`
+> 当前项目格式版本：`3.0.0`
 
-Workspace Server 将每个 PageDocument 的 Revision 状态保存在文档同目录下：
+Workspace Server 将 `PageDocument + ProjectAssets` 的完整 Project Revision 状态保存在文档同目录下：
 
 ```text
-<document-directory>/.revision-store/<document-name>.revisions.json
+<document-directory>/.revision-store/<document-name>.project-revisions.json
 ```
 
-例如 `examples/golden-pricing/page.ui.json` 对应：
+例如 `examples/foundation/page.ui.json` 对应：
 
 ```text
-examples/golden-pricing/.revision-store/page.ui.revisions.json
+examples/foundation/.revision-store/page.ui.project-revisions.json
 ```
 
 `.revision-store/` 是本地运行状态，默认不进入 Git。启动日志会输出实际文件路径；应用装配测试也可以显式传入其他路径。
@@ -20,7 +20,7 @@ examples/golden-pricing/.revision-store/page.ui.revisions.json
 
 ```json
 {
-  "formatVersion": "1.0.0",
+  "formatVersion": "3.0.0",
   "revisions": [],
   "history": [],
   "undoStack": [],
@@ -28,12 +28,12 @@ examples/golden-pricing/.revision-store/page.ui.revisions.json
 }
 ```
 
-- `revisions` 保存从 0 开始、连续递增的完整 PageDocument 快照。
-- `history` 保存每次 commit、undo 和 redo 的来源、Command 与 Patch。
-- `undoStack` 和 `redoStack` 保存导航所需的文档检查点。
+- `revisions` 保存从 0 开始、连续递增的完整 `{ document, assets }` 项目快照。
+- `history` 保存每次 commit、undo、redo 和 restore 的来源，以及 Document/Asset Command 与对应 Patch。
+- `undoStack` 和 `redoStack` 保存导航所需的完整项目检查点。
 - 已使用的 `commandId` 从 commit history 派生，重启后仍会拒绝重复 Command。
 
-所有字段都经过 TypeBox Schema 和领域不变量校验。未知格式版本、断裂的 Revision 序列、非法 PageDocument 或 Command/Patch 不一致都会阻止服务启动，避免静默恢复损坏状态。
+所有字段都经过 TypeBox Schema 和领域不变量校验。未知格式版本、断裂的 Revision 序列、非法 PageDocument/Assets、越界检查点或 Command/Patch 不一致都会阻止服务启动，避免静默恢复损坏状态。
 
 ## 原子写入
 
@@ -47,6 +47,6 @@ examples/golden-pricing/.revision-store/page.ui.revisions.json
 
 ## 初始文档一致性
 
-Revision 0 保留首次启动时的 PageDocument。恢复时，Revision Store 的文档 ID 必须与启动参数指向的 PageDocument ID 一致；不匹配时服务拒绝启动。
+Revision 0 保留首次启动时的完整项目快照。恢复时，Revision Store 的文档 ID 必须与启动参数指向的 PageDocument ID 一致；不匹配时服务拒绝启动。
 
-当前还没有 Revision Store migration。升级格式前需要先提供显式迁移路径，不能直接修改 `1.0.0` 的含义。
+当前项目 Store 只接受精确 `3.0.0` 格式；旧 `2.0.0` Document-only Revision Store、Service、Endpoint 和状态文件均已删除，不读取、不迁移、不兼容。

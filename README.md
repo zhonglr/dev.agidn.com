@@ -38,7 +38,7 @@ Studio
 Workspace Server
   ↓
 Command Engine → Rule Engine → Patch → Document Revision
-  ├── React Renderer / Preview Host
+  ├── React Renderer → Studio Canvas DOM
   └── Context Exporter
           ↓
     Schema Context Package
@@ -80,13 +80,13 @@ Schema 完整度检查
 M0  领域词汇、Golden Page、组件定义和非法操作矩阵
 M1  Document Schema、Codec、Command、Rule Engine 和 Context Exporter
 M2  Workspace Server、Revision、事务和持久化
-M3  React Renderer 和隔离 Preview Host
+M3  React Renderer 和 Studio 内直接 DOM Canvas
 M4  专业 Studio Workbench 与编辑闭环
 M5  Schema Context Package 导出闭环，MVP 完成
 M6  MCP 与 AI Proposed Commands，后置
 ```
 
-首个 Golden Scenario 是 SaaS Pricing Page，首个运行时目标是 React + TypeScript + Vite。
+当前 Golden Scenario 是从零建立的 Foundation Page，首个运行时目标是 React + TypeScript + Vite。
 
 ## MVP 成功标准
 
@@ -109,14 +109,21 @@ pnpm install
 pnpm dev
 ```
 
-Studio 运行在 `http://127.0.0.1:4173/`，隔离 Preview Host 运行在 `http://127.0.0.1:4174/`，Workspace Server 运行在 `http://127.0.0.1:4178/`。当前 Studio 已具备节点选择与结构拖放、Registry Inspector、Revision 提交/恢复、undo/redo、导出、Saved components、类型安全 i18n 和可切换主题；真实浏览器 UAT 仍以 [项目状态](./docs/project/status.md) 记录为准。
+Studio 运行在 `http://127.0.0.1:4173/`，Workspace Server 运行在 `http://127.0.0.1:4178/`。Canvas 由 Studio 使用 React Renderer 直接渲染为同一文档中的原生 DOM；不启动独立预览服务器，不使用 iframe 或跨窗口消息。当前 Studio 已具备节点选择与结构拖放、Registry Inspector、Revision 提交/恢复、undo/redo、正式 Project Asset 读模型、类型安全 i18n 和可切换主题；真实浏览器 UAT 仍以 [项目状态](./docs/project/status.md) 记录为准。
+
+涉及 Components 面板或 Canvas 拖入链路的修改，可运行隔离的真实浏览器门禁：
+
+```bash
+pnpm test:e2e:studio
+```
 
 ## 仓库基础资产
 
 当前实现建立在以下三项可验证资产上：
 
-1. Golden Pricing Page Schema。
-2. 15 个真实组件及其 `*.ui.ts` 注册定义。
-3. 非法操作矩阵及预期错误码和修复建议。
+1. 严格 V2 Foundation Page Schema。
+2. 9 个 Foundation Primitive 及其 Component Definition V2。
+3. Composite / Pattern Project Asset 基础契约。
+4. 非法操作矩阵及预期错误码和修复建议。
 
 契约测试持续证明：合法 PageDocument 可以通过验证，普通绝对定位会被拒绝，并且能够导出完整 Schema Context Package。

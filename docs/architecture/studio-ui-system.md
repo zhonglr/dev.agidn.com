@@ -17,7 +17,7 @@
 ### 1.2 非目标
 
 - 不使用 Spectrum 或 RAC 渲染画布中的用户页面组件。
-- 不用通用组件库替代 Dock、布局树、Canvas 坐标、Preview iframe 或 Command Engine。
+- 不用通用组件库替代 Dock、布局树、Canvas 坐标、直接 DOM Runtime 或 Command Engine。
 - 不承诺 Spectrum 阶段能够用主题插件任意修改组件内部颜色、间距和字形。
 - 不建立覆盖第三方全部 Props 的“万能 Wrapper”。
 - 不为了假设中的复用提前创建新的 workspace package。
@@ -243,7 +243,7 @@ Spectrum 阶段只映射明暗模式，不把现有主题颜色强行注入 Spec
 | 组件/能力 | 原因 |
 | --- | --- |
 | Workbench、Split、Tab Group、Dock Overlay | 布局树、停靠和持久化是产品领域能力 |
-| CanvasViewport | 具有独立坐标、缩放、iframe 和输入模型 |
+| CanvasViewport | 具有独立坐标、缩放、直接 DOM Runtime 和输入模型 |
 | Selection/Insertion Overlay | 必须与 Preview 协议和坐标服务一致 |
 | Panel/Command/Contribution Registry | 是 Studio 插件扩展边界 |
 | StudioSession 和 Revision 状态 | 属于文档与服务状态，不是 UI 状态 |

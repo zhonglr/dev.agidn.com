@@ -5,6 +5,7 @@
 ## 当前项目
 
 - [项目状态](./project/status.md)：当前已经实现、尚未完成和下一步顺序的唯一快照。
+- [V2 重构 TODO](./project/todo.md)：从零重构尚未完成工作的唯一活动清单。
 - [项目路线图](./project/roadmap.md)：跨 Cycle 的计划、优先级和后置能力。
 - [Development Cycles](./project/cycles/README.md)：每轮范围、Git 边界、测试、UAT 和 carryover。
 
@@ -16,6 +17,10 @@
 - [系统架构](./architecture/system-overview.md)：模块职责、依赖边界和核心数据流。
 - [Logic / Integration Editor 架构](./architecture/logic-integration-editor.md)：Integration Schema、运行时、编辑器、Revision、安全边界和分阶段实施设计。
 - [Studio Workbench](./architecture/studio-workbench.md)：工作区、面板注册和 Canvas Viewport。
+- [Canvas 拖拽与布局引擎重建设计](./architecture/canvas-drag-layout-engine.md)：当前拖拽链路、问题根因、引擎选型、碰撞/占位/压缩/嵌套方案及迁移与验收计划。
+- [组件系统与 Canvas 联合重构方案](./architecture/component-system-and-canvas-refactor.md)：旧组件与数据删除审计、零兼容全新组件分层、Component Definition V2、Inspector/Runtime/Canvas 契约及破坏性重建计划。
+- [统一图标系统](./architecture/icon-system.md)：Studio 语义图标门面、Project Icon Asset、SVG 安全、按需加载和包体积边界。
+- [V2 破坏性重置清单](./architecture/v2-reset-manifest.md)：已经删除的旧仓库目标、废止浏览器键和持续验证边界。
 - [Studio UI 系统](./architecture/studio-ui-system.md)：UI 门面、组件契约和迁移门槛。
 - [技术决策汇总](./architecture/technical-decisions.md)：仍然有效的技术选择和后置决策。
 - [ADR 索引](./adr/README.md)：已经落地且不能靠静默改文档覆盖的长期决策。

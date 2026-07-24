@@ -14,8 +14,8 @@
 1. Studio Shell 使用可版本化的布局树，表达嵌套 Split、Tab Group 和 Panel Host。
 2. 所有内置面板通过 Panel Registry 注册，默认布局只是可替换配置。
 3. 面板支持调整尺寸、移动、停靠、标签合并、折叠、关闭和持久化恢复。
-4. 画布使用独立 Canvas Viewport；只对 Preview Surface 和 Interaction Overlay 应用 scale/translation。
-5. 触控板手势、指针中心缩放、Fit 命令和 iframe 边界映射共用单一坐标转换服务。
+4. 画布使用独立 Canvas Viewport；只对 Canvas Surface 和 Interaction Overlay 应用 scale/translation。
+5. 触控板手势、指针中心缩放、Fit 命令和直接 DOM 边界映射共用单一坐标转换服务。Canvas Runtime 的具体边界由后续 [ADR-0005](./0005-studio-canvas-direct-dom-rendering.md) 确定。
 6. 建立 Panel、Command、Inspector、Route 和 Status Item 的内部 Contribution API，为未来插件保留稳定扩展点。
 7. 插件和内置功能都不得直接写入 PageDocument，页面修改仍统一经过 Command、Rule Engine 和 Revision。
 

@@ -1,6 +1,6 @@
 # 前端开发规范
 
-本文约束 Studio、Preview Host 及前端共享包的结构、组件、状态、样式和测试。通用 TypeScript、
+本文约束 Studio Canvas Runtime 及前端共享包的结构、组件、状态、样式和测试。通用 TypeScript、
 协议与领域规则继续遵循[开发贡献指南](./development.md)，Studio UI 门面的具体架构遵循
 [Studio UI 系统](../architecture/studio-ui-system.md)和
 [ADR-0004](../adr/0004-studio-ui-facade-and-spectrum-to-rac.md)。
@@ -10,7 +10,7 @@
 - 重构默认保持行为不变。业务能力、视觉调整和结构迁移应拆成可独立验证的变更。
 - 优先在现有应用内按职责拆分；没有第二个真实消费者时，不创建新的 workspace package。
 - Studio 是工作台式单页应用，按 feature 和工作区职责组织，不套用传统营销网站的 page-first 目录。
-- Workbench、Canvas、Preview 协议和 Document Command 是领域能力，通用 UI 工具库不能拥有其状态模型。
+- Workbench、Canvas Runtime 和 Document Command 是领域能力，通用 UI 工具库不能拥有其状态模型。
 - 对本规范的长期例外必须写明原因、范围和退出条件；不能用局部注释永久绕过规则。
 
 ## 目录与依赖
@@ -24,7 +24,7 @@ apps/studio/src/
 │   ├── ui/              # 唯一通用 UI 门面
 │   └── studio/          # 跨 feature 的 Studio 领域组件
 ├── features/            # outline、components、inspector、history、problems
-├── canvas/              # 坐标、手势、Preview 连接和画布 overlay
+├── canvas/              # 直接 DOM Runtime、坐标、手势和画布 overlay
 ├── session/             # 文档会话、服务调用和 command actions
 ├── i18n/                # 文案与 locale runtime
 ├── themes/              # Studio chrome 主题插件
@@ -118,7 +118,7 @@ features / canvas → session / domain protocols
 @layer reset, foundation, shell, workbench, features, utilities;
 ```
 
-- Reset 放在低优先级 layer；Studio 规则作用域化在 `.studio-shell`，避免污染组件库 overlay 和 Preview。
+- Reset 放在低优先级 layer；Studio 规则作用域化在 `.studio-shell`，避免污染组件库 overlay 和 Canvas 内容。
 - Feature 样式与 feature 同步迁移，禁止继续向单一 `styles.css` 无边界追加。
 - 类名使用稳定的领域语义；现有 BEM 风格 `block__element--modifier` 可以继续使用。
 - 禁止覆盖第三方库的私有类名、DOM 层级或未公开 CSS variable。
@@ -132,7 +132,7 @@ features / canvas → session / domain protocols
 - 纯函数和状态转换：单元或表驱动测试。
 - UI 门面：公共 props、ref、表单、键盘、焦点和 disabled/pending 行为契约。
 - Feature：loading、empty、error、权限或规则拒绝，以及核心用户操作。
-- Workbench / Canvas：布局序列化、坐标、手势、拖放和 Preview 协议契约。
+- Workbench / Canvas：布局序列化、坐标、手势、拖放和直接 DOM Runtime 契约。
 - 完整编辑流程：真实浏览器 E2E。
 - 视觉变化：Light / Dark × zh-CN / en-US，并覆盖常用窗口宽度。
 

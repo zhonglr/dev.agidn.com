@@ -13,6 +13,7 @@
 pnpm install
 pnpm typecheck
 pnpm test
+pnpm test:e2e:studio
 pnpm build
 ```
 
@@ -64,7 +65,7 @@ transport / infrastructure
 - Schema、静态类型、业务执行、传输和 Adapter 分开。
 - `index.ts` 只公开稳定 API，不承载业务逻辑。
 - 跨 package 使用 `@agidn/*` 和 `workspace:*`，禁止跨 package 相对路径。
-- Studio、Preview Host 和前端共享包还必须遵循[前端开发规范](./frontend.md)。
+- Studio Canvas Runtime 和前端共享包还必须遵循[前端开发规范](./frontend.md)。
 
 ## TypeScript 约定
 
@@ -125,6 +126,14 @@ pnpm typecheck
 pnpm test
 pnpm build
 ```
+
+修改 Studio 的 Components 面板、拖拽协议、Canvas Drop 或 Revision 提交链路时，还必须运行真实浏览器门禁：
+
+```bash
+pnpm test:e2e:studio
+```
+
+该命令使用临时 Foundation 项目和动态端口，不写入开发中的 Workspace。它覆盖 Components 状态、全部插入源和基础编辑/历史/回滚矩阵。默认查找系统 Chrome/Chromium；非标准安装位置通过 `AGIDN_CHROME_BIN` 指向浏览器可执行文件。
 
 ## 命名习惯
 

@@ -11,7 +11,7 @@
 - PageDocument 组件节点支持 `interactions`，每条 Interaction 包含 `event`、`actionRef` 和 arguments。
 - Rule Engine 能验证 Action 引用和基础参数类型。
 - React Renderer 已把组件事件转换为 `onAction(actionRef, arguments, node)`。
-- Preview Host、Studio 和 Workspace Server 已经分离，并使用版本化边界。
+- Canvas Runtime 已在 Studio 内直接渲染；Studio 与 Workspace Server 使用版本化 API 边界。
 - Studio Workbench 已提供 Panel Registry、可持久化布局、Problems、History 和 Inspector 基础。
 - Workspace Server 已提供 Command、Revision、持久化、Catalog 和 Context Export 的分层实现样例。
 
@@ -56,9 +56,9 @@ Integration Editor State
 - Action 如何适配 Operation 属于 IntegrationDocument。
 - 连线图位置和视图偏好属于 Editor State。
 
-### 2.2 不破坏 PageDocument 1.0.0 完成第一个闭环
+### 2.2 基于 PageDocument 2.0.0 完成第一个闭环
 
-现有 Interaction 已足够表达 UI Event 到 Action 的关系。第一阶段不新增 URL、Operation、response mapping 或认证字段到 PageDocument，也不要求迁移已有 Golden Page。
+现有 Interaction 已足够表达 UI Event 到 Action 的关系。第一阶段不新增 URL、Operation、response mapping 或认证字段到 PageDocument，也不要求迁移已有 Foundation Page。
 
 需要动态表单值、页面状态或 Data Source Prop Binding 时，再通过显式 PageDocument Schema migration 增加类型化 Value Source；不得先把任意表达式塞进 `arguments`。
 
@@ -100,7 +100,7 @@ Page Revision                       Integration Revision         │
               Cross Validator                                   │
                     │                                           │
                     ▼                                           │
-Preview Host → actionRequested → Action Runtime → Operation Port│
+Canvas Runtime → actionRequested → Action Runtime → Operation Port│
                     │                           │                │
                     │                           ▼                │
                     │                    Registered Backend ─────┘
@@ -136,7 +136,7 @@ interface ActionDefinition {
 
 ```ts
 interface OperationRegistry {
-  version: "1.0.0";
+  version: "2.0.0";
   operations: Record<OperationId, OperationDefinition>;
 }
 
@@ -212,7 +212,7 @@ type IntegrationEffect =
 
 ```ts
 interface IntegrationDocument {
-  schemaVersion: "1.0.0";
+  schemaVersion: "2.0.0";
   id: string;
   pageDocumentRef: string;
   bindings: Record<ActionRef, IntegrationBinding>;
@@ -233,7 +233,7 @@ interface IntegrationBinding {
 
 ```json
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "id": "pricing-integrations",
   "pageDocumentRef": "page_pricing",
   "bindings": {
@@ -373,7 +373,7 @@ integration.setTimeout
 
 ```ts
 interface IntegrationCommandBase {
-  protocolVersion: "1.0.0";
+  protocolVersion: "2.0.0";
   commandId: string;
 }
 ```
@@ -508,22 +508,22 @@ Action Runtime 不直接依赖 `fetch`、Node HTTP 或具体认证库。HTTP Ada
 - Trace 对 Authorization、Cookie、敏感字段和二进制内容统一脱敏。
 - Test Run 与正式执行环境必须显式区分，默认不能命中生产环境。
 
-## 9. Preview Protocol
+## 9. Action Runtime 边界
 
-计划增加以下消息族：
+计划增加以下 Studio 内部事件和服务端结果：
 
 ```text
-preview.actionRequested
-studio.actionPending
-studio.actionSucceeded
-studio.actionFailed
+canvas.actionRequested
+action.pending
+action.succeeded
+action.failed
 ```
 
-每条消息必须包含 `protocolVersion`、`requestId`、Page Revision 和 Integration Revision。Preview 忽略过期 Revision 或重复完成消息。
+每次执行必须包含 `requestId`、Page Revision 和 Integration Revision。Studio Session 忽略过期 Revision 或重复完成结果。
 
-`preview.actionRequested` 只发送 Action、arguments 和触发节点身份，不发送 Operation、URL 或 Credential。Studio 调用 Workspace Server 后，将规范化的受控 Effect Result 返回 Preview。Preview 只能执行已支持 Effect，未知 Effect 触发协议错误。
+`canvas.actionRequested` 只携带 Action、arguments 和触发节点身份，不包含 Operation、URL 或 Credential。Studio 调用 Workspace Server 后，将规范化的受控 Effect Result 交给 Canvas Runtime。Canvas 只能执行已支持 Effect，未知 Effect 触发运行时错误。
 
-该设计让 sandboxed iframe 保持无 Credential、无任意网络配置，也为未来正式运行时复用相同 Effect 语义提供边界。
+该设计让浏览器 Canvas 不持有 Credential 或任意网络配置，也为未来正式运行时复用相同 Effect 语义提供边界。直接 DOM 不授权页面组件直接访问 Operation Port。
 
 ## 10. Logic Editor 结构
 
@@ -542,7 +542,7 @@ integration-test-run
 integration-history
 ```
 
-Page Canvas Viewport 与 Integration Canvas 只共享必要的输入和坐标抽象，不共享 iframe 特定选择逻辑。
+Page Canvas Viewport 与 Integration Canvas 只共享必要的输入和坐标抽象；页面 DOM 命中属于 Page Canvas Runtime。
 
 ### 10.2 Connection Canvas MVP
 
@@ -576,7 +576,7 @@ operations.json
 integrations.json
 ```
 
-Context Package 的当前文件内容以 [Schema Context Package](../api/context-package.md) 为权威定义；本阶段计划在现有七个文件基础上增加 `operations.json`（当前页面所需 Operation）和 `integrations.json`（Action Binding 与映射）。
+Context Package 的当前文件内容以 [Schema Context Package](../api/context-package.md) 为权威定义；本阶段计划在现有八个文件基础上增加 `operations.json`（当前页面所需 Operation）和 `integrations.json`（Action Binding 与映射）。
 
 Exporter 只选择当前页面引用 Action 所需的 Binding 和 Operation，不能导出整个后端 Catalog、Secret、环境地址或 Test Trace。
 
